@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements JWTSubject
 {
+    use SoftDeletes;
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
 
@@ -25,16 +26,16 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $fillable = [
         'role_id',
+        'serial_id',
         'first_name',
         'last_name',
         'email',
         'country_code',
         'phone',
-        'password',
-        'linkedin_id',
-        'google_id',
-        'provider',
-        'provider_id',
+        'profile_image',
+        'status',
+        'created_by',
+        'updated_by',
         'email_verified_at',
     ];
 

@@ -34,15 +34,43 @@ $controllerRoute = $module['controller_route'];
         <h6 class="text-center alert alert-info alert-sm py-2 px-2"><?= $action ?> <?= $module['title'] ?></h6>
         <form method="POST" action="" class="row g-3">
             @csrf
-            <div class="col-md-2">
-                Name of the <?= $module['title'] ?>
-            </div>
-            <div class="col-md-3">
-                <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name (eg. VHS)" required>
-                @error('name') <span class="text-danger">{{ $message }}</span> @enderror
-            </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-success btn-sm w-100"><?= $action ?></button>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="first_name">First Name</label>
+                    <input type="text" class="form-control form-control-sm" name="first_name" id="first_name" placeholder="Write First Name" autocomplete="off" required>
+                    @error('first_name') <span class="text-danger">{{ $message }}</span> @enderror
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" class="form-control form-control-sm" name="last_name" id="last_name" placeholder="Write Last Name" autocomplete="off" required>
+                    @error('last_name') <span class="text-danger">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="country_code">Country Phone Code</label>
+                    <input type="text" class="form-control form-control-sm" name="country_code" id="country_code" placeholder="Write Country Phone Code" autocomplete="off" required>
+                    @error('country_code') <span class="text-danger">{{ $message }}</span> @enderror
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="phone">Phone</label>
+                    <input type="text" class="form-control form-control-sm" name="phone" id="phone" placeholder="Write Phone" autocomplete="off" required>
+                    @error('phone') <span class="text-danger">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="email">Email</label>
+                    <input type="email" class="form-control form-control-sm" name="email" id="email" placeholder="Write Email" autocomplete="off" required>
+                    @error('email') <span class="text-danger">{{ $message }}</span> @enderror
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="Write Password" autocomplete="off" minlength="8" maxlength="15" required>
+                    @error('password') <span class="text-danger">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="col-sm-6 offset-sm-3 col-md-4 offset-md-4 text-center">
+                    <button type="submit" class="btn btn-success btn-sm w-100"><?= $action ?></button>
+                </div>
             </div>
         </form>
     </div>
@@ -54,7 +82,9 @@ $controllerRoute = $module['controller_route'];
             <thead>
                 <th>#</th>
                 <th>ID (Auto-generated)</th>
-                <th>Name of the <?= $module['title'] ?></th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
                 <th>Action</th>
             </thead>
             <tbody>
@@ -62,7 +92,9 @@ $controllerRoute = $module['controller_route'];
                     <tr>
                         <td><?=$sl++?></td>
                         <td><?=$row->serial_id?></td>
-                        <td><?=$row->name?></td>
+                        <td><?=$row->first_name . ' ' . $row->last_name?></td>
+                        <td><?=$row->email?></td>
+                        <td><?=$row->country_code?> <?=$row->phone?></td>
                         <td>
                             <?php
                             $encoded_id     = Helper::encoded($row->id);
@@ -83,7 +115,7 @@ $controllerRoute = $module['controller_route'];
                     </tr>
                 <?php } } else {?>
                     <tr>
-                        <td colspan="4" class="text-danger text-center">
+                        <td colspan="6" class="text-danger text-center">
                             No records found
                         </td>
                     </tr>

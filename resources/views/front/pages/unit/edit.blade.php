@@ -38,7 +38,7 @@ $controllerRoute = $module['controller_route'];
                 Name of the <?= $module['title'] ?>
             </div>
             <div class="col-md-3">
-                <input class="form-control form-control-sm" name="name" id="name" placeholder="Write Unit Name (eg. VHS)" value="<?= (($single_row)?$single_row->name:'') ?>" required>
+                <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name (eg. VHS)" value="<?= (($single_row)?$single_row->name:'') ?>" required>
                 @error('name') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
             <div class="col-md-1">
@@ -53,8 +53,8 @@ $controllerRoute = $module['controller_route'];
         <table class="table table-bordered datatable">
             <thead>
                 <th>#</th>
-                <th>ID</th>
-                <th>Name of the Unit</th>
+                <th>ID (Auto-generated)</th>
+                <th>Name of the <?= $module['title'] ?></th>
                 <th>Action</th>
             </thead>
             <tbody>
@@ -64,16 +64,21 @@ $controllerRoute = $module['controller_route'];
                         <td><?=$row->serial_id?></td>
                         <td><?=$row->name?></td>
                         <td>
-                            <a href="<?=url($controllerRoute . '/edit/'.Helper::encoded($row->id))?>" class="text-primary" title="Edit <?=$module['title']?>">Edit</a> |
-
+                            <?php
+                            $encoded_id     = Helper::encoded($row->id);
+                            $delete_url     = $controllerRoute . '/delete/';
+                            $status_url     = $controllerRoute . '/change-status/';
+                            $edit_url       = $controllerRoute . '/edit/';
+                            ?>
+                            <a href="<?=url($controllerRoute . '/edit/'.Helper::encoded($row->id))?>" class="text-primary" title="Edit <?=$module['title']?>">Edit</a>
+                            |
                             <?php if($row->status){?>
-                                <a href="<?=url($controllerRoute . '/change-status/'.Helper::encoded($row->id))?>" class="text-success" title="Active <?=$module['title']?>">Active</a>
+                                <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to deactivate this record?')" class="text-success" title="Active <?=$module['title']?>">Active</a>
                             <?php } else {?>
-                                <a href="<?=url($controllerRoute . '/change-status/'.Helper::encoded($row->id))?>" class="text-warning" title="Blocked <?=$module['title']?>">Blocked</a>
+                                <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?=$module['title']?>">Blocked</a>
                             <?php } ?>
                             |
-
-                            <a href="<?=url($controllerRoute . '/delete/'.Helper::encoded($row->id))?>" class="text-danger" title="Delete <?=$module['title']?>" onclick="return confirm('Do You Want To Delete This <?=$module['title']?>');">Delete</a>
+                            <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?=$module['title']?>">Delete</a>
                         </td>
                     </tr>
                 <?php } }?>

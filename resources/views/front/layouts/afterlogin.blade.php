@@ -61,9 +61,28 @@ $pageSegment  = $pageName[0];
     });
   </script>
   <script type="text/javascript">
-    $(function(){
+    $(function() {
       $('.autohide').delay(5000).fadeOut('slow');
     });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    var url = '<?= url('/') ?>';
+    function showConfirmBox(id, action_url, confirm_message) {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: confirm_message,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = url + '/' + action_url + id;
+        }
+      });
+    }
   </script>
   @yield('scripts')
 </body>

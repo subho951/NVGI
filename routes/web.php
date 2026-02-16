@@ -3,6 +3,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\FrontdeskController;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Common\TableController;
@@ -111,6 +113,18 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('unit/delete/{id}', [UnitController::class, 'delete']);
                 Route::get('unit/change-status/{id}', [UnitController::class, 'change_status']);
             /* unit */
+            /* branch */
+                Route::match(['get', 'post'], 'branch/list', [BranchController::class, 'list']);
+                Route::match(['get', 'post'], 'branch/edit/{id}', [BranchController::class, 'edit']);
+                Route::get('branch/delete/{id}', [BranchController::class, 'delete']);
+                Route::get('branch/change-status/{id}', [BranchController::class, 'change_status']);
+            /* branch */
+            /* front desk */
+                Route::match(['get', 'post'], 'front-desk/list', [FrontdeskController::class, 'list']);
+                Route::match(['get', 'post'], 'front-desk/edit/{id}', [FrontdeskController::class, 'edit']);
+                Route::get('front-desk/delete/{id}', [FrontdeskController::class, 'delete']);
+                Route::get('front-desk/change-status/{id}', [FrontdeskController::class, 'change_status']);
+            /* front desk */
         });
     // });
 /* Admin Panel */
