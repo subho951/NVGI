@@ -5,6 +5,7 @@ use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\FrontdeskController;
+use App\Http\Controllers\SubjectController;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Common\TableController;
@@ -125,6 +126,12 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('front-desk/delete/{id}', [FrontdeskController::class, 'delete']);
                 Route::get('front-desk/change-status/{id}', [FrontdeskController::class, 'change_status']);
             /* front desk */
+            /* subject */
+                Route::match(['get', 'post'], 'subject/list', [SubjectController::class, 'list']);
+                Route::match(['get', 'post'], 'subject/edit/{id}', [SubjectController::class, 'edit']);
+                Route::get('subject/delete/{id}', [SubjectController::class, 'delete']);
+                Route::get('subject/change-status/{id}', [SubjectController::class, 'change_status']);
+            /* subject */
         });
     // });
 /* Admin Panel */
