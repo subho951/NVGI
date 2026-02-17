@@ -11,7 +11,12 @@ $pageSegment  = $pageName[0];
         color: #99b138 !important;
     }
 </style>
-<h4>Admin Panel</h4>
+<!-- <h4>Admin Panel</h4> -->
+ <h4 class="text-success text-center">
+    <img src="{{ config('constants.admin_assets_url') }}image/TM-logo-new-vedant.png" class="w-100"><br>
+    <?=Helper::getSettingValue('description')?><br>
+    <hr>
+</h4>
 <a href="<?= url('dashboard') ?>" <?= (($pageSegment == 'dashboard')?'class="active-link"':'')?>><i class="fa fa-home"></i> Dashboard</a>
 <a href="<?= url('unit/list') ?>" <?= (($pageSegment == 'unit')?'class="active-link"':'')?>><i class="fa-solid fa-layer-group"></i> Manage Units</a>
 <a href="<?= url('branch/list') ?>" <?= (($pageSegment == 'branch')?'class="active-link"':'')?>><i class="fa-solid fa-code-branch"></i> Manage Branches</a>

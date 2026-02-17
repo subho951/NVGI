@@ -75,13 +75,13 @@ use App\Http\Controllers\Common\TableController;
                 Route::post('profile-settings', [AuthController::class, 'profile_settings']);
                 Route::post('general-settings', [AuthController::class, 'general_settings']);
                 Route::post('change-password', [AuthController::class, 'change_password']);
-                Route::post('email-settings', [AuthController::class, 'email_settings']);
-                Route::get('test-email', [AuthController::class, 'testEmail']);
-                Route::post('email-template', [AuthController::class, 'email_template']);
+                // Route::post('email-settings', [AuthController::class, 'email_settings']);
+                // Route::get('test-email', [AuthController::class, 'testEmail']);
+                // Route::post('email-template', [AuthController::class, 'email_template']);
                 Route::post('sms-settings', [AuthController::class, 'sms_settings']);
-                Route::post('footer-settings', [AuthController::class, 'footer_settings']);
-                Route::post('seo-settings', [AuthController::class, 'seo_settings']);
-                Route::post('payment-settings', [AuthController::class, 'payment_settings']);
+                // Route::post('footer-settings', [AuthController::class, 'footer_settings']);
+                // Route::post('seo-settings', [AuthController::class, 'seo_settings']);
+                // Route::post('payment-settings', [AuthController::class, 'payment_settings']);
             /* setting */
 
             /* access & permission */

@@ -204,7 +204,7 @@ class AuthController extends Controller
             $title                          = 'Verify OTP';
             $page_name                      = 'validate-otp';
             $data = $this->siteAuthService->admin_before_login_layout($title, $page_name, $data);
-            return view('admin.maincontents.' . $page_name, $data);
+            return view('front.pages.' . $page_name, $data);
         }
         public function resendOtp(Request $request, $id){
             $id                             = Helper::decoded($id);
@@ -254,7 +254,7 @@ class AuthController extends Controller
             $title                          = 'Reset Password';
             $page_name                      = 'reset-password';
             $data = $this->siteAuthService->admin_before_login_layout($title, $page_name, $data);
-            return view('admin.maincontents.' . $page_name, $data);
+            return view('front.pages.' . $page_name, $data);
         }
     /* forgot password */
     
@@ -296,7 +296,7 @@ class AuthController extends Controller
             $title                                                      = 'User All Activity';
             $page_name                                                  = 'user-all-activity';
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
-            return view('admin.maincontents.' . $page_name, $data);
+            return view('front.pages.' . $page_name, $data);
         }
     /* dashboard */
     /* email logs */
@@ -384,7 +384,7 @@ class AuthController extends Controller
             $title                          = 'Settings';
             $page_name                      = 'settings';
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
-            return view('admin.maincontents.' . $page_name, $data);
+            return view('front.pages.' . $page_name, $data);
         }
         public function profile_settings(Request $request){
             $uId        = session('user_data')['user_id'];
@@ -393,8 +393,9 @@ class AuthController extends Controller
             $rules      = [
                 'first_name'        => 'required',
                 'last_name'         => 'required',
+                'country_code'      => 'required',
                 'phone'             => 'required',
-                'email'             => 'required',
+                'email'             => 'required|email',
             ];
             if($this->validate($request, $rules)){
                 /* profile image */
@@ -414,6 +415,7 @@ class AuthController extends Controller
                 $fields = [
                     'first_name'            => strip_tags($postData['first_name']),
                     'last_name'             => strip_tags($postData['last_name']),
+                    'country_code'          => strip_tags($postData['country_code']),
                     'phone'                 => strip_tags($postData['phone']),
                     'email'                 => strip_tags($postData['email']),
                     'profile_image'         => $profile_image
@@ -428,10 +430,13 @@ class AuthController extends Controller
         public function general_settings(Request $request){
             $postData   = $request->all();
             $rules      = [
-                'site_name2'           => 'required',
-                'site_phone'           => 'required',
-                'site_mail'            => 'required',
-                'system_email'         => 'required',
+                'site_name'             => 'required',
+                'site_phone'            => 'required',
+                'site_mail'             => 'required|email',
+                'system_email'          => 'required|email',
+                'address'               => 'required',
+                'site_url'              => 'required',
+                'description'           => 'required',
             ];
             if($this->validate($request, $rules)){
                 unset($postData['_token']);
@@ -450,18 +455,18 @@ class AuthController extends Controller
                     }
                 /* site logo */
                 /* site footer logo */
-                    $imageFile      = $request->file('site_footer_logo');
-                    if($imageFile != ''){
-                        $imageName      = $imageFile->getClientOriginalName();
-                        $uploadedFile   = $this->upload_single_file('site_footer_logo', $imageName, '', 'image');
-                        if($uploadedFile['status']){
-                            $site_footer_logo = 'uploads/' . $uploadedFile['newFilename'];
-                        } else {
-                            return redirect()->back()->with(['error_message' => $uploadedFile['message']]);
-                        }
-                    } else {
-                        $site_footer_logo = Helper::getSettingValue('site_footer_logo');
-                    }
+                    // $imageFile      = $request->file('site_footer_logo');
+                    // if($imageFile != ''){
+                    //     $imageName      = $imageFile->getClientOriginalName();
+                    //     $uploadedFile   = $this->upload_single_file('site_footer_logo', $imageName, '', 'image');
+                    //     if($uploadedFile['status']){
+                    //         $site_footer_logo = 'uploads/' . $uploadedFile['newFilename'];
+                    //     } else {
+                    //         return redirect()->back()->with(['error_message' => $uploadedFile['message']]);
+                    //     }
+                    // } else {
+                    //     $site_footer_logo = Helper::getSettingValue('site_footer_logo');
+                    // }
                 /* site footer logo */
                 /* site favicon */
                     $imageFile      = $request->file('site_favicon');
@@ -489,10 +494,10 @@ class AuthController extends Controller
                     'value'            => $site_logo
                 ];
                 GeneralSetting::where('key', '=', 'site_logo')->where('is_active', '=', 1)->update($fields2);
-                $fields3 = [
-                    'value'            => $site_footer_logo
-                ];
-                GeneralSetting::where('key', '=', 'site_footer_logo')->where('is_active', '=', 1)->update($fields3);
+                // $fields3 = [
+                //     'value'            => $site_footer_logo
+                // ];
+                // GeneralSetting::where('key', '=', 'site_footer_logo')->where('is_active', '=', 1)->update($fields3);
                 $fields4 = [
                     'value'            => $site_favicon
                 ];
