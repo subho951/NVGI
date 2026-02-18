@@ -50,6 +50,9 @@ use App\Helpers\Helper;
                         <button class="nav-link" id="pills-contact-tab" data-bs-toggle="pill" data-bs-target="#pills-contact" type="button" role="tab" aria-controls="pills-contact" aria-selected="false">Change Password</button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-email-tab" data-bs-toggle="pill" data-bs-target="#pills-email" type="button" role="tab" aria-controls="pills-email" aria-selected="false">Email Setting</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="pills-sms-tab" data-bs-toggle="pill" data-bs-target="#pills-sms" type="button" role="tab" aria-controls="pills-sms" aria-selected="false">SMS Setting</button>
                     </li>
                 </ul>
@@ -176,6 +179,49 @@ use App\Helpers\Helper;
                                     <input type="password" class="form-control form-control-sm" name="confirm_password" id="confirm_password" placeholder="Write Confirm Password" autocomplete="off" required>
                                     @error('confirm_password') <span class="text-danger">{{ $message }}</span> @enderror
                                 </div>
+                                <div class="col-sm-6 offset-sm-3 col-md-4 offset-md-4 text-center">
+                                    <button type="submit" class="btn btn-success btn-sm w-100">Submit</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="pills-email" role="tabpanel" aria-labelledby="pills-email-tab">
+                        <h6 class="text-center alert alert-info alert-sm py-2 px-2">Email Setting</h6>
+                        <form method="POST" action="<?= url('email-settings') ?>" class="row g-3" enctype="multipart/form-data">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="from_email">From Email</label>
+                                    <input type="text" class="form-control form-control-sm" name="from_email" id="from_email" placeholder="Write From Email" autocomplete="off" value="<?=Helper::getSettingValue('from_email')?>" required>
+                                    @error('from_email') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="from_name">From Name</label>
+                                    <input type="text" class="form-control form-control-sm" name="from_name" id="from_name" placeholder="Write From Name" autocomplete="off" value="<?=Helper::getSettingValue('from_name')?>" required>
+                                    @error('from_name') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="smtp_host">SMTP Host</label>
+                                    <input type="text" class="form-control form-control-sm" name="smtp_host" id="smtp_host" placeholder="Write SMTP Host" autocomplete="off" value="<?=Helper::getSettingValue('smtp_host')?>" required>
+                                    @error('smtp_host') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label for="smtp_username">SMTP Username</label>
+                                    <input type="text" class="form-control form-control-sm" name="smtp_username" id="smtp_username" placeholder="Write SMTP Username" autocomplete="off" value="<?=Helper::getSettingValue('smtp_username')?>" required>
+                                    @error('smtp_username') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="smtp_password">SMTP Password</label>
+                                    <input type="text" class="form-control form-control-sm" name="smtp_password" id="smtp_password" placeholder="Write SMTP Password" autocomplete="off" value="<?=Helper::getSettingValue('smtp_password')?>" required>
+                                    @error('smtp_password') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="smtp_port">SMTP Port</label>
+                                    <input type="text" class="form-control form-control-sm" name="smtp_port" id="smtp_port" placeholder="Write SMTP Port" autocomplete="off" value="<?=Helper::getSettingValue('smtp_port')?>" required>
+                                    @error('smtp_port') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+
                                 <div class="col-sm-6 offset-sm-3 col-md-4 offset-md-4 text-center">
                                     <button type="submit" class="btn btn-success btn-sm w-100">Submit</button>
                                 </div>
