@@ -12,9 +12,9 @@ $pageSegment  = $pageName[0];
     }
 </style>
 <!-- <h4>Admin Panel</h4> -->
- <h4 class="text-success text-center">
-    <img src="{{ config('constants.admin_assets_url') }}image/TM-logo-new-vedant.png" class="w-100"><br>
-    <?=Helper::getSettingValue('description')?><br>
+<h4 class="text-success text-center">
+    <img src="<?= ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE')) ?>" style="width:100px; height:100px;"><br>
+    <?= Helper::getSettingValue('description') ?><br>
     <hr>
 </h4>
 <a href="<?= url('dashboard') ?>" <?= (($pageSegment == 'dashboard')?'class="active-link"':'')?>><i class="fa fa-home"></i> Dashboard</a>
