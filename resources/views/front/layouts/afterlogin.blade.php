@@ -17,16 +17,14 @@ $pageSegment  = $pageName[0];
 <body>
 
   <!-- Sidebar -->
-  <div class="sidebar">
+  <div id="sidebar" class="sidebar">
     @include('front/elements/sidebar')
   </div>
   <!-- Sidebar -->
 
   <!-- Topbar -->
   <div class="topbar">
-    <div id="sidebar" class="sidebar">
       @include('front/elements/afterheader')
-    </div>
   </div>
   <!-- Topbar -->
 

@@ -76,17 +76,46 @@ if(count($pageName) > 1){
     .sidebar.collapsed span {
         display: none;
     }
+
+    /* Logo default */
+    .sidebar-logo {
+        width: 100%;
+        height: 100px;
+        object-fit: contain;
+        transition: all 0.25s ease;
+    }
+
+    /* Text under logo */
+    .sidebar-title {
+        display: inline-block;
+        transition: opacity 0.2s ease;
+    }
+
+    /* When sidebar is collapsed */
+    .sidebar.collapsed .sidebar-logo {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto;
+        display: block;
+    }
+
+    .sidebar.collapsed .sidebar-title,
+    .sidebar.collapsed hr {
+        display: none;
+    }
+
 </style>
 <!-- <h4>Admin Panel</h4> -->
-<h4 class="text-success text-center">
-    <img src="<?= ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE')) ?>" style="width:100%; height:100px;"><br>
-    <?= Helper::getSettingValue('description') ?><br>
+<h4 class="text-success text-center sidebar-header">
+    <img 
+        src="<?= ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE')) ?>" 
+        class="sidebar-logo"
+    >
+    <span class="sidebar-title">
+        <?= Helper::getSettingValue('description') ?>
+    </span>
     <hr>
 </h4>
-
-<!-- <button id="sidebarToggle" class="btn btn-sm btn-dark w-100 mb-2">
-    <i class="fa-solid fa-bars"></i> Toggle Menu
-</button> -->
 
 <ul class="nav flex-column sidebar-menu">
 
