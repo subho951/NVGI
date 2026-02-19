@@ -6,6 +6,11 @@ use App\Http\Controllers\UnitController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\FrontdeskController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\SessionController;
+use App\Http\Controllers\BoardController;
+use App\Http\Controllers\MediumController;
+use App\Http\Controllers\KnowAboutController;
+use App\Http\Controllers\ClassController;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Common\TableController;
@@ -132,6 +137,36 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('subject/delete/{id}', [SubjectController::class, 'delete']);
                 Route::get('subject/change-status/{id}', [SubjectController::class, 'change_status']);
             /* subject */
+            /* session */
+                Route::match(['get', 'post'], 'session/list', [SessionController::class, 'list']);
+                Route::match(['get', 'post'], 'session/edit/{id}', [SessionController::class, 'edit']);
+                Route::get('session/delete/{id}', [SessionController::class, 'delete']);
+                Route::get('session/change-status/{id}', [SessionController::class, 'change_status']);
+            /* session */
+            /* board */
+                Route::match(['get', 'post'], 'board/list', [BoardController::class, 'list']);
+                Route::match(['get', 'post'], 'board/edit/{id}', [BoardController::class, 'edit']);
+                Route::get('board/delete/{id}', [BoardController::class, 'delete']);
+                Route::get('board/change-status/{id}', [BoardController::class, 'change_status']);
+            /* board */
+            /* medium */
+                Route::match(['get', 'post'], 'medium/list', [MediumController::class, 'list']);
+                Route::match(['get', 'post'], 'medium/edit/{id}', [MediumController::class, 'edit']);
+                Route::get('medium/delete/{id}', [MediumController::class, 'delete']);
+                Route::get('medium/change-status/{id}', [MediumController::class, 'change_status']);
+            /* medium */
+            /* know about us */
+                Route::match(['get', 'post'], 'know-about/list', [KnowAboutController::class, 'list']);
+                Route::match(['get', 'post'], 'know-about/edit/{id}', [KnowAboutController::class, 'edit']);
+                Route::get('know-about/delete/{id}', [KnowAboutController::class, 'delete']);
+                Route::get('know-about/change-status/{id}', [KnowAboutController::class, 'change_status']);
+            /* know about us */
+            /* class */
+                Route::match(['get', 'post'], 'class/list', [ClassController::class, 'list']);
+                Route::match(['get', 'post'], 'class/edit/{id}', [ClassController::class, 'edit']);
+                Route::get('class/delete/{id}', [ClassController::class, 'delete']);
+                Route::get('class/change-status/{id}', [ClassController::class, 'change_status']);
+            /* class */
         });
     // });
 /* Admin Panel */

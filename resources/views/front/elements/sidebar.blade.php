@@ -10,18 +10,188 @@ $pageSegment  = $pageName[0];
     .active-link {
         color: #99b138 !important;
     }
+    .sidebar-menu .nav-link {
+        color: #cfd8dc;
+        padding: 8px 12px;
+        border-radius: 6px;
+    }
+
+    .sidebar-menu .nav-link:hover {
+        background: #2c3e50;
+        color: #fff;
+    }
+
+    .active-link {
+        background: #99B138;
+        color: #fff !important;
+    }
+    .menu-arrow {
+        transition: transform 0.25s ease;
+    }
+
+    .nav-link[aria-expanded="true"] .menu-arrow {
+        transform: rotate(180deg);
+    }
+    .sidebar {
+        width: 260px;
+        transition: width 0.25s ease;
+        overflow-x: hidden;
+    }
+
+    .sidebar.collapsed {
+        width: 70px;
+    }
+
+    .sidebar.collapsed .nav-link span {
+        display: none;
+    }
+
+    .sidebar.collapsed .menu-arrow {
+        display: none;
+    }
+
+    .sidebar.collapsed .nav-link {
+        text-align: center;
+    }
+
+    .sidebar.collapsed .nav-link i {
+        font-size: 18px;
+    }
+    .sidebar {
+        width: 260px;
+        transition: width 0.25s ease;
+        overflow-x: hidden;
+    }
+
+    .sidebar.collapsed {
+        width: 70px;
+    }
+
+    .sidebar.collapsed span {
+        display: none;
+    }
 </style>
 <!-- <h4>Admin Panel</h4> -->
 <h4 class="text-success text-center">
-    <img src="<?= ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE')) ?>" style="width:100px; height:100px;"><br>
+    <img src="<?= ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE')) ?>" style="width:100%; height:100px;"><br>
     <?= Helper::getSettingValue('description') ?><br>
     <hr>
 </h4>
-<a href="<?= url('dashboard') ?>" <?= (($pageSegment == 'dashboard')?'class="active-link"':'')?>><i class="fa fa-home"></i> Dashboard</a>
-<a href="<?= url('unit/list') ?>" <?= (($pageSegment == 'unit')?'class="active-link"':'')?>><i class="fa-solid fa-layer-group"></i> Manage Units</a>
-<a href="<?= url('branch/list') ?>" <?= (($pageSegment == 'branch')?'class="active-link"':'')?>><i class="fa-solid fa-code-branch"></i> Manage Branches</a>
-<a href="<?= url('front-desk/list') ?>" <?= (($pageSegment == 'front-desk')?'class="active-link"':'')?>><i class="fa-solid fa-bell-concierge"></i> Manage Front-Desks</a>
-<a href="<?= url('subject/list') ?>" <?= (($pageSegment == 'subject')?'class="active-link"':'')?>><i class="fa-solid fa-book"></i> Manage Subjects</a>
-<a href="<?= url('add-student') ?>" <?= (($pageSegment == 'add-student')?'class="active-link"':'')?>><i class="fa-solid fa-graduation-cap"></i> Add Student</a>
-<a href="<?= url('student-list') ?>" <?= (($pageSegment == 'student-list')?'class="active-link"':'')?>><i class="fa-solid fa-user-graduate"></i> Students</a>
-<a href="<?= url('settings') ?>" <?= (($pageSegment == 'settings')?'class="active-link"':'')?>><i class="fa-solid fa-gears"></i> Settings</a>
+
+<!-- <button id="sidebarToggle" class="btn btn-sm btn-dark w-100 mb-2">
+    <i class="fa-solid fa-bars"></i> Toggle Menu
+</button> -->
+
+<ul class="nav flex-column sidebar-menu">
+
+    <li class="nav-item">
+        <a href="<?= url('dashboard') ?>" class="nav-link <?= (($pageSegment == 'dashboard')?'active-link':'') ?>">
+            <i class="fa fa-home"></i> <span>Dashboard</span>
+        </a>
+    </li>
+    
+    <!-- Masters -->
+    <li class="nav-item">
+        <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class']) ? 'active-link' : '' ?>"
+        data-bs-toggle="collapse"
+        href="#mastersMenu"
+        role="button"
+        aria-expanded="<?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class']) ? 'true' : 'false' ?>"
+        aria-controls="mastersMenu">
+            <span><i class="fa-solid fa-database"></i> Masters</span>
+            <i class="fa-solid fa-angle-down menu-arrow"></i>
+        </a>
+
+        <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class']) ? 'show' : '' ?>" id="mastersMenu">
+            <li>
+                <a href="<?= url('unit/list') ?>" class="nav-link <?= (($pageSegment == 'unit')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Units</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('branch/list') ?>" class="nav-link <?= (($pageSegment == 'branch')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Branches</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('subject/list') ?>" class="nav-link <?= (($pageSegment == 'subject')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Subjects</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('session/list') ?>" class="nav-link <?= (($pageSegment == 'session')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Sessions</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('board/list') ?>" class="nav-link <?= (($pageSegment == 'board')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Boards</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('medium/list') ?>" class="nav-link <?= (($pageSegment == 'medium')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Mediums</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('know-about/list') ?>" class="nav-link <?= (($pageSegment == 'know-about')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Know About Us</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('class/list') ?>" class="nav-link <?= (($pageSegment == 'class')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Class</span>
+                </a>
+            </li>
+
+        </ul>
+    </li>
+
+    <li class="nav-item">
+        <a href="<?= url('front-desk/list') ?>" class="nav-link <?= (($pageSegment == 'front-desk')?'active-link':'') ?>">
+            <i class="fa-solid fa-bell-concierge"></i> <span>Front-Desks</span>
+        </a>
+    </li>
+
+    <!-- Students -->
+    <li class="nav-item">
+        <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['student']) ? 'active-link' : '' ?>"
+            data-bs-toggle="collapse"
+            href="#studentsMenu"
+            role="button"
+            aria-expanded="<?= in_array($pageSegment, ['student']) ? 'true' : 'false' ?>"
+            aria-controls="studentsMenu">
+            <span><i class="fa-solid fa-users"></i> Students</span>
+            <i class="fa-solid fa-angle-down menu-arrow"></i>
+        </a>
+
+        <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['student']) ? 'show' : '' ?>" id="studentsMenu">
+            <li>
+                <a href="<?= url('unit/list') ?>" class="nav-link <?= (($pageSegment == 'unit')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>List</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('branch/list') ?>" class="nav-link <?= (($pageSegment == 'branch')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Add Student</span>
+                </a>
+            </li>
+
+        </ul>
+    </li>    
+
+    <li class="nav-item">
+        <a href="<?= url('settings') ?>" class="nav-link <?= (($pageSegment == 'settings')?'active-link':'') ?>">
+            <i class="fa-solid fa-gears"></i> <span>Settings</span>
+        </a>
+    </li>
+
+</ul>

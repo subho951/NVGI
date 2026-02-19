@@ -24,7 +24,9 @@ $pageSegment  = $pageName[0];
 
   <!-- Topbar -->
   <div class="topbar">
-    @include('front/elements/afterheader')
+    <div id="sidebar" class="sidebar">
+      @include('front/elements/afterheader')
+    </div>
   </div>
   <!-- Topbar -->
 
@@ -83,6 +85,21 @@ $pageSegment  = $pageName[0];
         }
       });
     }
+  </script>
+  <script>
+      document.addEventListener('DOMContentLoaded', function () {
+          const toggleBtn = document.getElementById('sidebarToggle');
+          const sidebar   = document.getElementById('sidebar');
+
+          if (!toggleBtn || !sidebar) {
+              console.error('Sidebar or toggle button not found!');
+              return;
+          }
+
+          toggleBtn.addEventListener('click', function () {
+              sidebar.classList.toggle('collapsed');
+          });
+      });
   </script>
   @yield('scripts')
 </body>
