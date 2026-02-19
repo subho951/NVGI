@@ -1,7 +1,8 @@
 @extends('front.layouts.afterlogin')
 @section('content')
 <?php
-
+use App\Models\Unit;
+use App\Models\Student;
 use App\Helpers\Helper;
 ?>
 <h2>Dashboard</h2>
@@ -9,58 +10,33 @@ use App\Helpers\Helper;
 <div class="card shadow bg-light mb-4">
     <div class="card-body">
         <div class="row">
-            <div class="col-md-3">
-                <div class="card shadow bg-info ">
-                    <div class="card-body text-center text-white">
-                        <h5>VHS Bibirhat</h5>
-                        <h2>19</h2>
+            <?php
+            if($branches){ foreach($branches as $branch){
+                $getUnit = Unit::select('name')->where('id', '=', $branch->unit_id)->first();
+                $student_count = Student::where('branch_id', '=', $branch->id)->where('status', '!=', 3)->count();
+            ?>
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow bg-info ">
+                        <div class="card-body text-center text-white">
+                            <h5><?= (($getUnit)?$getUnit->name:'') ?> <?= $branch->name ?></h5>
+                            <h2><?= $student_count ?></h2>
+                        </div>
                     </div>
                 </div>
-            </div>
+            <?php } }?>
 
-            <div class="col-md-3 mb-4">
-                <div class="card shadow bg-info ">
-                    <div class="card-body text-center text-white">
-                        <h5>VHS Rajarhat</h5>
-                        <h2>4</h2>
+            <?php
+            if($units){ foreach($units as $unit){
+                $student_count = Student::where('unit_id', '=', $unit->id)->where('status', '!=', 3)->count();
+            ?>
+                <div class="col-md-6">
+                    <div class="card shadow bg-warning ">
+                        <div class="card-body text-center text-white">
+                            <h5>Total <?= $unit->name ?> Students : <?= $student_count ?></h5>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="col-md-3">
-                <div class="card shadow bg-info ">
-                    <div class="card-body text-center text-white">
-                        <h5>TSA Bibirhat</h5>
-                        <h2>239</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-3">
-                <div class="card shadow bg-info ">
-                    <div class="card-body text-center text-white">
-                        <h5>TSA Mukundapur</h5>
-                        <h2>6</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="card shadow bg-warning ">
-                    <div class="card-body text-center text-white">
-                        <h5>Total VHS Students : 23</h5>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="card shadow bg-warning ">
-                    <div class="card-body text-center text-white">
-                        <h5>Total TSA Students : 245</h5>
-                    </div>
-                </div>
-            </div>
-
+            <?php } }?>
         </div>
 
     </div>
@@ -69,65 +45,20 @@ use App\Helpers\Helper;
 <div class="card shadow bg-light">
     <div class="card-body">
         <div class="row">
-            <div class="col-md-2">
-                <div class="card shadow bg-success ">
-                    <div class="card-body text-center text-white">
-                        <h5>Jayeeta</h5>
-                        <h2>126</h2>
+            <?php
+            if($users){ foreach($users as $user){
+                $student_count = Student::where('created_by', '=', $user->id)->where('status', '!=', 3)->count();
+            ?>
+                <div class="col-md-2">
+                    <div class="card shadow bg-success ">
+                        <div class="card-body text-center text-white">
+                            <h5><?= $user->first_name . ' ' . $user->last_name ?></h5>
+                            <h2><?= $student_count ?></h2>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="col-md-2">
-                <div class="card shadow bg-success ">
-                    <div class="card-body text-center text-white">
-                        <h5>Swastika</h5>
-                        <h2>4</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2">
-                <div class="card shadow bg-success ">
-                    <div class="card-body text-center text-white">
-                        <h5>Sahana</h5>
-                        <h2>239</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2">
-                <div class="card shadow bg-success ">
-                    <div class="card-body text-center text-white">
-                        <h5>Abirlal</h5>
-                        <h2>6</h2>
-                    </div>
-                </div>
-            </div>
-
-
-            <div class="col-md-2">
-                <div class="card shadow bg-success ">
-                    <div class="card-body text-center text-white">
-                        <h5>Sweety</h5>
-                        <h2>6</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2">
-                <div class="card shadow bg-success ">
-                    <div class="card-body text-center text-white">
-                        <h5>Ruma</h5>
-                        <h2>6</h2>
-                    </div>
-                </div>
-            </div>
-
-
-
+            <?php } }?>
         </div>
-
     </div>
 </div>
 @endsection

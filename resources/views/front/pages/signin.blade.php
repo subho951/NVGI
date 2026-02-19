@@ -20,7 +20,7 @@ use App\Helpers\Helper;
         </button>
     </div>
 <?php } ?>
-<h4 class="text-success text-center"><img src="<?=((Helper::getSettingValue('site_logo') != '')?config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo'):env('NO_IMAGE'))?>" style="width:150px; height:150px;"><br><?=Helper::getSettingValue('description')?></h4>
+<h4 class="text-success text-center"><img src="<?=((Helper::getSettingValue('site_logo') != '')?config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo'):env('NO_IMAGE'))?>" style="width:100%; height:100px;"><br><?=Helper::getSettingValue('description')?></h4>
 <form action="{{ url('signin') }}" method="POST">
     @csrf
     <div class="mb-3">

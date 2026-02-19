@@ -307,8 +307,8 @@ if($row){
         <label for="photo">Upload Photo (jpg or png)</label>
         <input type="file" class="form-control form-control-sm" name="photo" id="photo" placeholder="Upload Photo (jpg or png)">
         <p class="mt-2">
-            <?php if($row->photo != ''){?>
-                <img src="<?= config('constants.app_url') . config('constants.uploads_url_path') . $row->photo ?>" style="width:100px; height:100px; border:1px solid #CCCCCC;border-radius:5px;">
+            <?php if($photo != ''){?>
+                <img src="<?= config('constants.app_url') . config('constants.uploads_url_path') . $photo ?>" style="width:100px; height:100px; border:1px solid #CCCCCC;border-radius:5px;">
             <?php } else {?>
                 <img src="https://placehold.co/300x200" style="width:100px; height:100px; border:1px solid #CCCCCC;border-radius:5px;">
             <?php }?>

@@ -13,9 +13,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
 use App\Models\EmailLog;
-use App\Models\User;
 use App\Models\GeneralSetting;
 use App\Models\UserActivity;
+use App\Models\Unit;
+use App\Models\Branch;
+use App\Models\User;
 
 use App\Helpers\Helper;
 use Carbon\Carbon;
@@ -257,45 +259,16 @@ class AuthController extends Controller
             return view('front.pages.' . $page_name, $data);
         }
     /* forgot password */
-    
     /* dashboard */
         public function dashboard()
         {
-            $data                                   = [];
-            $title                                  = 'Dashboard';
-            $page_name                              = 'dashboard';
+            $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
+            $data['branches']               = Branch::select('id', 'name', 'unit_id')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
+            $data['users']                  = User::select('id', 'first_name', 'last_name')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
+            $title                          = 'Dashboard';
+            $page_name                      = 'dashboard';
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             
-            return view('front.pages.' . $page_name, $data);
-        }
-        public function getMonthYearList($startDate) {
-            $start = new DateTime($startDate);
-            $end = new DateTime(); // Current date
-            $end->modify('last day of this month'); // End of the current month
-            $interval = new DateInterval('P1M'); // Interval of 1 month
-            $period = new DatePeriod($start, $interval, $end->add($interval)); // Period from start to end
-
-            $monthYearList = [];
-            foreach ($period as $date) {
-                // $monthYearList[] = $date->format('Y-m'); // Format as "YYYY-MM"
-                $monthYearList[] = [
-                    'month' => $date->format('m'), // Full month name
-                    'month_name' => $date->format('M'), // Full month name
-                    'year' => $date->format('Y'),  // Year
-                ];
-            }
-
-            return $monthYearList;
-        }
-        public function userAllActivity(Request $request){
-            $data['rows']                                               = DB::table('user_website_activities')
-                                                                                ->join('users', 'user_website_activities.user_id', '=', 'users.id')
-                                                                                ->select('user_website_activities.*', 'users.profile_image')
-                                                                                ->orderBy('user_website_activities.id', 'DESC')
-                                                                                ->get();
-            $title                                                      = 'User All Activity';
-            $page_name                                                  = 'user-all-activity';
-            $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             return view('front.pages.' . $page_name, $data);
         }
     /* dashboard */
