@@ -53,6 +53,20 @@ $pageSegment  = $pageName[0];
   <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
   <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
+  <!-- Initialize DataTable -->
+  <script>
+    $(document).ready(function() {
+        $('#example').DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                { extend: 'excel', className: 'btn btn-success btn-sm' },
+                { extend: 'pdf', className: 'btn btn-danger btn-sm' }
+            ],
+            pageLength: 10
+        });
+    });
+  </script>
+
   <!-- Initialize Tooltips -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {

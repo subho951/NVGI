@@ -5,6 +5,12 @@ use App\Helpers\Helper;
 $routeName    = Route::current();
 $pageName     = explode("/", $routeName->uri());
 $pageSegment  = $pageName[0];
+if(count($pageName) > 1){
+    $pageFunction  = $pageName[1];
+} else {
+    $pageFunction  = '';
+}
+
 ?>
 <style>
     .active-link {
@@ -92,17 +98,17 @@ $pageSegment  = $pageName[0];
     
     <!-- Masters -->
     <li class="nav-item">
-        <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class']) ? 'active-link' : '' ?>"
+        <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class','religion']) ? 'active-link' : '' ?>"
         data-bs-toggle="collapse"
         href="#mastersMenu"
         role="button"
-        aria-expanded="<?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class']) ? 'true' : 'false' ?>"
+        aria-expanded="<?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class','religion']) ? 'true' : 'false' ?>"
         aria-controls="mastersMenu">
             <span><i class="fa-solid fa-database"></i> Masters</span>
             <i class="fa-solid fa-angle-down menu-arrow"></i>
         </a>
 
-        <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class']) ? 'show' : '' ?>" id="mastersMenu">
+        <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['unit','branch','subject','session','board','medium','know-about','class','religion']) ? 'show' : '' ?>" id="mastersMenu">
             <li>
                 <a href="<?= url('unit/list') ?>" class="nav-link <?= (($pageSegment == 'unit')?'active-link':'') ?>">
                     <i class="fa-solid fa-arrow-right"></i> <span>Units</span>
@@ -136,6 +142,12 @@ $pageSegment  = $pageName[0];
             <li>
                 <a href="<?= url('medium/list') ?>" class="nav-link <?= (($pageSegment == 'medium')?'active-link':'') ?>">
                     <i class="fa-solid fa-arrow-right"></i> <span>Mediums</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="<?= url('religion/list') ?>" class="nav-link <?= (($pageSegment == 'religion')?'active-link':'') ?>">
+                    <i class="fa-solid fa-arrow-right"></i> <span>Religion</span>
                 </a>
             </li>
 
@@ -174,13 +186,13 @@ $pageSegment  = $pageName[0];
 
         <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['student']) ? 'show' : '' ?>" id="studentsMenu">
             <li>
-                <a href="<?= url('unit/list') ?>" class="nav-link <?= (($pageSegment == 'unit')?'active-link':'') ?>">
+                <a href="<?= url('student/list') ?>" class="nav-link <?= (($pageSegment == 'student' && $pageFunction == 'list')?'active-link':'') ?>">
                     <i class="fa-solid fa-arrow-right"></i> <span>List</span>
                 </a>
             </li>
 
             <li>
-                <a href="<?= url('branch/list') ?>" class="nav-link <?= (($pageSegment == 'branch')?'active-link':'') ?>">
+                <a href="<?= url('student/add') ?>" class="nav-link <?= (($pageSegment == 'student' && $pageFunction == 'add')?'active-link':'') ?>">
                     <i class="fa-solid fa-arrow-right"></i> <span>Add Student</span>
                 </a>
             </li>

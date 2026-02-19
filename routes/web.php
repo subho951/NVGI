@@ -1,5 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\UnitController;
@@ -11,8 +12,8 @@ use App\Http\Controllers\BoardController;
 use App\Http\Controllers\MediumController;
 use App\Http\Controllers\KnowAboutController;
 use App\Http\Controllers\ClassController;
-
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ReligionController;
+use App\Http\Controllers\StudentController;
 use App\Http\Controllers\Common\TableController;
 
 /* Front Panel */
@@ -166,6 +167,19 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'class/edit/{id}', [ClassController::class, 'edit']);
                 Route::get('class/delete/{id}', [ClassController::class, 'delete']);
                 Route::get('class/change-status/{id}', [ClassController::class, 'change_status']);
+            /* class */
+            /* ReligionController */
+                Route::match(['get', 'post'], 'religion/list', [ReligionController::class, 'list']);
+                Route::match(['get', 'post'], 'religion/edit/{id}', [ReligionController::class, 'edit']);
+                Route::get('religion/delete/{id}', [ReligionController::class, 'delete']);
+                Route::get('religion/change-status/{id}', [ReligionController::class, 'change_status']);
+            /* ReligionController */
+            /* class */
+                Route::match(['get', 'post'], 'student/list', [StudentController::class, 'list']);
+                Route::match(['get', 'post'], 'student/add', [StudentController::class, 'add']);
+                Route::match(['get', 'post'], 'student/edit/{id}', [StudentController::class, 'edit']);
+                Route::get('student/delete/{id}', [StudentController::class, 'delete']);
+                Route::get('student/change-status/{id}', [StudentController::class, 'change_status']);
             /* class */
         });
     // });
