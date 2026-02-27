@@ -1,6 +1,6 @@
 <?php
 use App\Helpers\Helper;
-print_r(session()->all());
+echo '<pre>';print_r(session()->all());
 ?>
 <button id="sidebarToggle" class="btn btn-sm btn-dark mb-2 d-lg-none">
     <i class="fa-solid fa-bars"></i>
