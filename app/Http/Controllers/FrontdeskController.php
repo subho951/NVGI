@@ -96,8 +96,7 @@ class FrontdeskController extends Controller
 
                 $serial_id = 'NVGI/' . $request->first_name . '/' . $request->phone;
 
-                if($request->password != ''){
-                    $member->update([
+                $fields = [
                         'serial_id'         => $serial_id,
                         'first_name'        => $request->first_name,
                         'middle_name'       => $request->middle_name,
@@ -106,20 +105,24 @@ class FrontdeskController extends Controller
                         'phone'             => $request->phone,
                         'password'          => Hash::make($request->password),
                         'original_password' => $request->password,
-                    ]);
-                } else {
-                    $member->update([
-                        'serial_id'         => $serial_id,
-                        'first_name'        => $request->first_name,
-                        'middle_name'       => $request->middle_name,
-                        'last_name'         => $request->last_name,
-                        // 'email'             => $request->email,
-                        'country_code'      => $request->country_code,
-                        'phone'             => $request->phone,
-                        'password'          => Hash::make($request->password),
-                        'original_password' => $request->password,
-                    ]);
-                }                
+                    ];
+                Helper::pr($fields);
+                // if($request->password != ''){
+                //     $member->update($fields);
+                // } else {
+                //     $member->update([
+                //         'serial_id'         => $serial_id,
+                //         'first_name'        => $request->first_name,
+                //         'middle_name'       => $request->middle_name,
+                //         'last_name'         => $request->last_name,
+                //         // 'email'             => $request->email,
+                //         'country_code'      => $request->country_code,
+                //         'phone'             => $request->phone,
+                //         'password'          => Hash::make($request->password),
+                //         'original_password' => $request->password,
+                //     ]);
+                // }
+                $member->update($fields);                
 
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
             }
