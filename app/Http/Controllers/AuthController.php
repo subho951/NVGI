@@ -51,7 +51,7 @@ class AuthController extends Controller
 
             $user = User::where('email', $authData['email'])
                         ->where('status', 1)
-                        ->where('role_id', 1)
+                        // ->where('role_id', 1)
                         ->first();
             // Helper::pr($user);
 
