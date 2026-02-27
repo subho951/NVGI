@@ -1,5 +1,4 @@
 <?php
-
 use App\Helpers\Helper;
 ?>
 <button id="sidebarToggle" class="btn btn-sm btn-dark mb-2 d-lg-none">

@@ -19,7 +19,6 @@ if(count($pageName) > 1){
 </style>
 
 <h4>Admin Panel 1.0</h4>
-
 <ul class="nav flex-column sidebar-menu">
 
     <li class="nav-item">

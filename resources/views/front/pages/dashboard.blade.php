@@ -1,7 +1,6 @@
 @extends('front.layouts.afterlogin')
 @section('content')
 <?php
-
 use App\Models\Unit;
 use App\Models\Student;
 use App\Helpers\Helper;
@@ -27,7 +26,6 @@ use App\Helpers\Helper;
                     </div>
             <?php }
             } ?>
-
             <?php
             if ($units) {
                 foreach ($units as $unit) {
@@ -43,10 +41,8 @@ use App\Helpers\Helper;
             <?php }
             } ?>
         </div>
-
     </div>
 </div>
-
 <div class="card shadow bg-light">
     <div class="card-header">
         <h4 class=" text-center">Entry Record</h4>
@@ -71,36 +67,28 @@ use App\Helpers\Helper;
         </div>
     </div>
 </div>
-
 <hr class="my-4">
-
 <h4 class="mb-3 text-center">Analytics</h4>
-
 <div class="row g-3">
-
     <div class="col-md-6">
         <div class="chart-box shadow">
             <canvas id="branchChart"></canvas>
         </div>
     </div>
-
     <div class="col-md-6">
         <div class="chart-box shadow">
             <canvas id="growthChart"></canvas>
         </div>
     </div>
-
     <div class="col-md-6">
         <div class="chart-box shadow">
             <canvas id="totalChart"></canvas>
         </div>
     </div>
-
     <div class="col-md-6">
         <div class="chart-box shadow">
             <canvas id="staffChart"></canvas>
         </div>
     </div>
-
 </div>
 @endsection
