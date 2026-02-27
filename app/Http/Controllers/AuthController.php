@@ -61,7 +61,7 @@ class AuthController extends Controller
 
                 // Store selected user info in session array
                 session([
-                    'user_data' => [
+                        'user_data' => [
                         'user_id'       => $user->id,
                         'name'          => $user->first_name . ' ' . $user->last_name,
                         'email'         => $user->email,
