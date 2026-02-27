@@ -25,7 +25,7 @@ use App\Helpers\Helper;
     @csrf
     <div class="mb-3">
         <label for="email" class="form-label">Username</label>
-        <input type="email" class="form-control" id="email" name="email" placeholder="Enter username" required>
+        <input type="text" class="form-control" id="email" name="email" placeholder="Enter username" required>
     </div>
     <div class="mb-3">
         <label for="password" class="form-label">Password</label>
