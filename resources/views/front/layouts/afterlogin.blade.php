@@ -33,7 +33,10 @@ $pageSegment  = $pageName[0];
   </div>
   <!-- Main Content -->
 
+  <!-- footer -->
+  <div class="footer">
   @include('front/elements/footer')
+  </div>
 
   <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
