@@ -45,11 +45,11 @@ class AuthController extends Controller
         public function login(Request $request)
         {
             $authData = $request->validate([
-                'email'     => ['required', 'email'],
+                'phone'     => ['required'],
                 'password'  => ['required'],
             ]);
 
-            $user = User::where('email', $authData['email'])
+            $user = User::where('phone', $authData['email'])
                         ->where('status', 1)
                         // ->where('role_id', 1)
                         ->first();
