@@ -1,7 +1,9 @@
 @extends('front.layouts.afterlogin')
 @section('content')
 <?php
+
 use App\Helpers\Helper;
+
 $controllerRoute = $module['controller_route'];
 ?>
 <h2>Manage <?= $module['title'] ?></h2>
@@ -84,53 +86,57 @@ $controllerRoute = $module['controller_route'];
 <div class="card shadow bg-light">
     <div class="card-body">
         <h6 class="text-center alert alert-info alert-sm py-2 px-2">List of <?= $module['title'] ?></h6>
-        <table class="table table-bordered datatable">
-            <thead>
-                <th>#</th>
-                <th>ID (Auto-generated)</th>
-                <th>Name</th>
-                <!-- <th>Email</th> -->
-                <th>Phone</th>
-                <th>Password</th>
-                <th>Action</th>
-            </thead>
-            <tbody>
-                <?php if(count($rows) > 0){ $sl=1; foreach($rows as $row){?>
-                    <tr>
-                        <td><?=$sl++?></td>
-                        <td><?=$row->serial_id?></td>
-                        <td><?=$row->first_name . ' ' . $row->middle_name. ' ' . $row->last_name?></td>
-                        <!-- <td><?=$row->email?></td> -->
-                        <td><?=$row->phone?></td>
-                        <td><?=$row->original_password?></td>
-                        <td>
-                            <?php
-                            $encoded_id     = Helper::encoded($row->id);
-                            $delete_url     = $controllerRoute . '/delete/';
-                            $status_url     = $controllerRoute . '/change-status/';
-                            $edit_url       = $controllerRoute . '/edit/';
-                            ?>
-                            <a href="<?=url($controllerRoute . '/edit/'.Helper::encoded($row->id))?>" class="text-primary" title="Edit <?=$module['title']?>">Edit</a>
-                            |
-                            <?php if($row->status){?>
-                                <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to deactivate this record?')" class="text-success" title="Active <?=$module['title']?>">Active</a>
-                            <?php } else {?>
-                                <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?=$module['title']?>">Blocked</a>
-                            <?php } ?>
-                            |
-                            <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?=$module['title']?>">Delete</a>
-                        </td>
-                    </tr>
-                <?php } } else {?>
-                    <tr>
-                        <td colspan="5" class="text-danger text-center">
-                            No records found
-                        </td>
-                    </tr>
-                <?php }?>
-            </tbody>
-        </table>
-        <!-- <small class="text-danger">Developer's note : deactivation, delete, etc should come with nice confirm message</small> -->
+        <div class="table-responsive">
+            <table class="table table-bordered datatable">
+                <thead>
+                    <th>#</th>
+                    <th>ID (Auto-generated)</th>
+                    <th>Name</th>
+                    <!-- <th>Email</th> -->
+                    <th>Phone</th>
+                    <th>Password</th>
+                    <th>Action</th>
+                </thead>
+                <tbody>
+                    <?php if (count($rows) > 0) {
+                        $sl = 1;
+                        foreach ($rows as $row) { ?>
+                            <tr>
+                                <td><?= $sl++ ?></td>
+                                <td><?= $row->serial_id ?></td>
+                                <td><?= $row->first_name . ' ' . $row->middle_name . ' ' . $row->last_name ?></td>
+                                <!-- <td><?= $row->email ?></td> -->
+                                <td><?= $row->phone ?></td>
+                                <td><?= $row->original_password ?></td>
+                                <td>
+                                    <?php
+                                    $encoded_id     = Helper::encoded($row->id);
+                                    $delete_url     = $controllerRoute . '/delete/';
+                                    $status_url     = $controllerRoute . '/change-status/';
+                                    $edit_url       = $controllerRoute . '/edit/';
+                                    ?>
+                                    <a href="<?= url($controllerRoute . '/edit/' . Helper::encoded($row->id)) ?>" class="text-primary" title="Edit <?= $module['title'] ?>">Edit</a>
+                                    |
+                                    <?php if ($row->status) { ?>
+                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to deactivate this record?')" class="text-success" title="Active <?= $module['title'] ?>">Active</a>
+                                    <?php } else { ?>
+                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>">Blocked</a>
+                                    <?php } ?>
+                                    <!-- |
+                            <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>">Delete</a> -->
+                                </td>
+                            </tr>
+                        <?php }
+                    } else { ?>
+                        <tr>
+                            <td colspan="5" class="text-danger text-center">
+                                No records found
+                            </td>
+                        </tr>
+                    <?php } ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endsection
