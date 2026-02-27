@@ -70,7 +70,7 @@ $controllerRoute = $module['controller_route'];
                 </div> -->
                 <div class="col-md-6 mb-3">
                     <label for="password">Password</label>
-                    <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="Write Password" autocomplete="off" minlength="8" maxlength="15">
+                    <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="Write Password" autocomplete="off" minlength="8" maxlength="15" value="<?= (($single_row)?$single_row->original_password:'') ?>">
                     <small class="text-info">Leave blank if you dont want to change password</small>
                     @error('password') <span class="text-danger">{{ $message }}</span> @enderror
                 </div>
@@ -92,6 +92,7 @@ $controllerRoute = $module['controller_route'];
                 <th>Name</th>
                 <!-- <th>Email</th> -->
                 <th>Phone</th>
+                <th>Password</th>
                 <th>Action</th>
             </thead>
             <tbody>
@@ -101,7 +102,8 @@ $controllerRoute = $module['controller_route'];
                         <td><?=$row->serial_id?></td>
                         <td><?=$row->first_name . ' ' . $row->middle_name. ' ' . $row->last_name?></td>
                         <!-- <td><?=$row->email?></td> -->
-                        <td><?=$row->country_code?> <?=$row->phone?></td>
+                        <td><?=$row->phone?></td>
+                        <td><?=$row->original_password?></td>
                         <td>
                             <?php
                             $encoded_id     = Helper::encoded($row->id);

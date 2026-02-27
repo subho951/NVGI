@@ -91,6 +91,7 @@ $controllerRoute = $module['controller_route'];
                 <th>Name</th>
                 <!-- <th>Email</th> -->
                 <th>Phone</th>
+                <th>Password</th>
                 <th>Action</th>
             </thead>
             <tbody>
@@ -100,7 +101,8 @@ $controllerRoute = $module['controller_route'];
                         <td><?=$row->serial_id?></td>
                         <td><?=$row->first_name . ' ' . $row->middle_name. ' ' . $row->last_name?></td>
                         <!-- <td><?=$row->email?></td> -->
-                        <td><?=$row->country_code?> <?=$row->phone?></td>
+                        <td><?=$row->phone?></td>
+                        <td><?=$row->original_password?></td>
                         <td>
                             <?php
                             $encoded_id     = Helper::encoded($row->id);

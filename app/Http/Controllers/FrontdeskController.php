@@ -61,6 +61,7 @@ class FrontdeskController extends Controller
                     'country_code'      => $request->country_code,
                     'phone'             => $request->phone,
                     'password'          => Hash::make($request->password),
+                    'original_password' => $request->password,
                     'email_verified_at' => date('Y-m-d H:i:s'),
                 ]);
 
@@ -104,6 +105,7 @@ class FrontdeskController extends Controller
                         // 'email'             => $request->email,
                         'phone'             => $request->phone,
                         'password'          => Hash::make($request->password),
+                        'original_password' => $request->password,
                     ]);
                 } else {
                     $member->update([
@@ -114,6 +116,8 @@ class FrontdeskController extends Controller
                         // 'email'             => $request->email,
                         'country_code'      => $request->country_code,
                         'phone'             => $request->phone,
+                        'password'          => Hash::make($request->password),
+                        'original_password' => $request->password,
                     ]);
                 }                
 
