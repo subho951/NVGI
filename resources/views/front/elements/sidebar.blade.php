@@ -18,7 +18,7 @@ if(count($pageName) > 1){
     }
 </style>
 
-<h4>Admin Panel</h4>
+<h4>Admin Panel 1.0</h4>
 
 <ul class="nav flex-column sidebar-menu">
 
@@ -83,11 +83,11 @@ if(count($pageName) > 1){
                 </a>
             </li>
 
-            <li>
+            <!--<li>
                 <a href="<?= url('know-about/list') ?>" class="nav-link <?= (($pageSegment == 'know-about')?'active-link':'') ?>">
                     <i class="fa-solid fa-arrow-right"></i> <span>Know About Us</span>
                 </a>
-            </li>
+            </li>-->
 
             <li>
                 <a href="<?= url('class/list') ?>" class="nav-link <?= (($pageSegment == 'class')?'active-link':'') ?>">

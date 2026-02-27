@@ -141,7 +141,6 @@ $pageSegment  = $pageName[0];
   <!-- ChartJS -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    
 
     // Charts
     new Chart(document.getElementById('branchChart'), {
