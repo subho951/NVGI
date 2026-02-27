@@ -43,7 +43,7 @@ $controllerRoute = $module['controller_route'];
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="middle_name">Middle Name</label>
-                    <input type="text" class="form-control form-control-sm" name="middle_name" id="middle_name" placeholder="Write Middle Name" autocomplete="off" required>
+                    <input type="text" class="form-control form-control-sm" name="middle_name" id="middle_name" placeholder="Write Middle Name" autocomplete="off">
                     @error('middle_name') <span class="text-danger">{{ $message }}</span> @enderror
                 </div>
                 <div class="col-md-4 mb-3">

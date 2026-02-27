@@ -17,8 +17,17 @@ if(count($pageName) > 1){
         color: #99b138 !important;
     }
 </style>
-
-<h4>Admin Panel</h4>
+<!-- <h4>Admin Panel</h4> -->
+<h4 class="text-success text-center sidebar-header">
+    <!-- <img 
+        src="<?= ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE')) ?>" 
+        class="sidebar-logo"
+    > -->
+    <span class="sidebar-title">
+        <?= Helper::getSettingValue('description') ?>
+    </span>
+    <hr>
+</h4>
 
 <ul class="nav flex-column sidebar-menu">
 
@@ -139,6 +148,3 @@ if(count($pageName) > 1){
     </li>
 
 </ul>
-
-
-

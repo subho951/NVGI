@@ -15,16 +15,15 @@ $pageSegment  = $pageName[0];
 </head>
 
 <body>
-
+  <div class="mobile-overlay" id="mobileOverlay"></div>
   <!-- Sidebar -->
   <div id="sidebar" class="sidebar">
     @include('front/elements/sidebar')
   </div>
-  <!-- Sidebar -->
 
   <!-- Topbar -->
   <div class="topbar">
-      @include('front/elements/afterheader')
+    @include('front/elements/afterheader')
   </div>
   <!-- Topbar -->
 
@@ -54,14 +53,19 @@ $pageSegment  = $pageName[0];
   <!-- Initialize DataTable -->
   <script>
     $(document).ready(function() {
-        $('#example').DataTable({
-            dom: 'Bfrtip',
-            buttons: [
-                { extend: 'excel', className: 'btn btn-success btn-sm' },
-                { extend: 'pdf', className: 'btn btn-danger btn-sm' }
-            ],
-            pageLength: 10
-        });
+      $('#example').DataTable({
+        dom: 'Bfrtip',
+        buttons: [{
+            extend: 'excel',
+            className: 'btn btn-success btn-sm'
+          },
+          {
+            extend: 'pdf',
+            className: 'btn btn-danger btn-sm'
+          }
+        ],
+        pageLength: 10
+      });
     });
   </script>
 
@@ -83,6 +87,7 @@ $pageSegment  = $pageName[0];
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     var url = '<?= url('/') ?>';
+
     function showConfirmBox(id, action_url, confirm_message) {
       Swal.fire({
         title: 'Are you sure?',
@@ -99,19 +104,89 @@ $pageSegment  = $pageName[0];
     }
   </script>
   <script>
-      document.addEventListener('DOMContentLoaded', function () {
-          const toggleBtn = document.getElementById('sidebarToggle');
-          const sidebar   = document.getElementById('sidebar');
+    document.addEventListener('DOMContentLoaded', function() {
 
-          if (!toggleBtn || !sidebar) {
-              console.error('Sidebar or toggle button not found!');
-              return;
-          }
+      const toggleBtn = document.getElementById('sidebarToggle');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('mobileOverlay');
 
-          toggleBtn.addEventListener('click', function () {
-              sidebar.classList.toggle('collapsed');
-          });
+      function closeSidebar() {
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+      }
+
+      toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        sidebar.classList.toggle('show');
+        overlay.classList.toggle('show');
       });
+
+      /* Close when clicking overlay */
+      overlay.addEventListener('click', closeSidebar);
+
+      /* Close when clicking anywhere on page */
+      document.addEventListener('click', function(e) {
+        if (
+          sidebar.classList.contains('show') &&
+          !sidebar.contains(e.target) &&
+          !toggleBtn.contains(e.target)
+        ) {
+          closeSidebar();
+        }
+      });
+
+    });
+  </script>
+
+  <!-- ChartJS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    
+
+    // Charts
+    new Chart(document.getElementById('branchChart'), {
+      type: 'bar',
+      data: {
+        labels: ['VHS Bibirhat', 'VHS Rajarhat', 'TSA Bibirhat', 'TSA Mukundapur'],
+        datasets: [{
+          data: [78, 23, 250, 11]
+        }]
+      }
+    });
+
+    new Chart(document.getElementById('staffChart'), {
+      type: 'pie',
+      data: {
+        labels: ['Jayeeta', 'Swastika', 'Trija', 'Riyanka'],
+        datasets: [{
+          data: [50, 28, 23, 6]
+        }]
+      }
+    });
+
+    new Chart(document.getElementById('totalChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['VHS', 'TSA'],
+        datasets: [{
+          data: [101, 261]
+        }]
+      }
+    });
+
+    new Chart(document.getElementById('growthChart'), {
+      type: 'line',
+      data: {
+        labels: ['Month 1', 'Month 2', 'Month 3', 'Month 4'],
+        datasets: [{
+          label: 'VHS',
+          data: [5, 10, 18, 23]
+        }, {
+          label: 'TSA',
+          data: [100, 150, 200, 245]
+        }]
+      }
+    });
   </script>
   @yield('scripts')
 </body>
