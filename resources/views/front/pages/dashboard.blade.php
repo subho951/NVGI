@@ -49,10 +49,10 @@ use App\Helpers\Helper;
             if($users){ foreach($users as $user){
                 $student_count = Student::where('created_by', '=', $user->id)->where('status', '!=', 3)->count();
             ?>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="card shadow bg-success ">
                         <div class="card-body text-center text-white">
-                            <h5><?= $user->first_name . ' ' . $user->last_name ?></h5>
+                            <h5><?=$user->first_name . ' ' . $user->middle_name. ' ' . $user->last_name?></h5>
                             <h2><?= $student_count ?></h2>
                         </div>
                     </div>

@@ -111,6 +111,9 @@ class StudentController extends Controller
                     'emergency_phone'           => 'required|string',
                     'emergency_relation'        => 'required|string',
                     'know_about_us'             => 'required|string',
+                    'blood_group'               => 'required|string',
+                    'admission_fees'            => 'required',
+                    'monthly_fees'              => 'required',
                 ]);
 
                 if($request->middle_name != ''){
@@ -184,6 +187,9 @@ class StudentController extends Controller
                     'emergency_phone'           => $request->emergency_phone,
                     'emergency_relation'        => $request->emergency_relation,
                     'know_about_us'             => $request->know_about_us,
+                    'blood_group'               => $request->blood_group,
+                    'admission_fees'            => $request->admission_fees,
+                    'monthly_fees'              => $request->monthly_fees,
                     'photo'                     => $photo,
                     'created_by'                => session('user_data')['user_id'],
                     'updated_by'                => session('user_data')['user_id'],
@@ -272,6 +278,9 @@ class StudentController extends Controller
                     'emergency_phone'           => 'required|string',
                     'emergency_relation'        => 'required|string',
                     'know_about_us'             => 'required|string',
+                    'blood_group'               => 'required|string',
+                    'admission_fees'            => 'required',
+                    'monthly_fees'              => 'required',
                 ]);
 
                 $member->update([
@@ -307,6 +316,9 @@ class StudentController extends Controller
                     'emergency_phone'           => $request->emergency_phone,
                     'emergency_relation'        => $request->emergency_relation,
                     'know_about_us'             => $request->know_about_us,
+                    'blood_group'               => $request->blood_group,
+                    'admission_fees'            => $request->admission_fees,
+                    'monthly_fees'              => $request->monthly_fees,
                     'photo'                     => $photo,
                     'updated_by'                => session('user_data')['user_id'],
                 ]);

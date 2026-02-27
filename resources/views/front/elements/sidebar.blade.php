@@ -107,10 +107,10 @@ if(count($pageName) > 1){
 </style>
 <!-- <h4>Admin Panel</h4> -->
 <h4 class="text-success text-center sidebar-header">
-    <img 
+    <!-- <img 
         src="<?= ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE')) ?>" 
         class="sidebar-logo"
-    >
+    > -->
     <span class="sidebar-title">
         <?= Helper::getSettingValue('description') ?>
     </span>

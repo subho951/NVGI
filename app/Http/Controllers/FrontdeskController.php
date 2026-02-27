@@ -43,7 +43,7 @@ class FrontdeskController extends Controller
                 $request->validate([
                     'first_name'            => 'required|string|max:255',
                     'last_name'             => 'required|string|max:255',
-                    'email'                 => 'required|email|max:255|unique:users,email',
+                    // 'email'                 => 'required|email|max:255|unique:users,email',
                     'country_code'          => 'required',
                     'phone'                 => 'required|digits:10|unique:users,phone',
                     'password'              => 'required|string|max:255',
@@ -55,8 +55,9 @@ class FrontdeskController extends Controller
                     'role_id'           => 2,
                     'serial_id'         => $serial_id,
                     'first_name'        => $request->first_name,
+                    'middle_name'       => $request->middle_name,
                     'last_name'         => $request->last_name,
-                    'email'             => $request->email,
+                    // 'email'             => $request->email,
                     'country_code'      => $request->country_code,
                     'phone'             => $request->phone,
                     'password'          => Hash::make($request->password),
@@ -87,7 +88,7 @@ class FrontdeskController extends Controller
                 $request->validate([
                     'first_name'            => 'required|string|max:255',
                     'last_name'             => 'required|string|max:255',
-                    'email'                 => 'required|email|max:255|unique:users,email,'.$member->id,
+                    // 'email'                 => 'required|email|max:255|unique:users,email,'.$member->id,
                     'country_code'          => 'required',
                     'phone'                 => 'required|digits:10|unique:users,phone,'.$member->id,
                 ]);
@@ -98,8 +99,9 @@ class FrontdeskController extends Controller
                     $member->update([
                         'serial_id'         => $serial_id,
                         'first_name'        => $request->first_name,
+                        'middle_name'       => $request->middle_name,
                         'last_name'         => $request->last_name,
-                        'email'             => $request->email,
+                        // 'email'             => $request->email,
                         'phone'             => $request->phone,
                         'password'          => Hash::make($request->password),
                     ]);
@@ -107,8 +109,9 @@ class FrontdeskController extends Controller
                     $member->update([
                         'serial_id'         => $serial_id,
                         'first_name'        => $request->first_name,
+                        'middle_name'       => $request->middle_name,
                         'last_name'         => $request->last_name,
-                        'email'             => $request->email,
+                        // 'email'             => $request->email,
                         'country_code'      => $request->country_code,
                         'phone'             => $request->phone,
                     ]);

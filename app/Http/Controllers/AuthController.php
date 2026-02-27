@@ -264,7 +264,7 @@ class AuthController extends Controller
         {
             $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
             $data['branches']               = Branch::select('id', 'name', 'unit_id')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
-            $data['users']                  = User::select('id', 'first_name', 'last_name')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
+            $data['users']                  = User::select('id', 'first_name', 'last_name', 'middle_name')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
             $title                          = 'Dashboard';
             $page_name                      = 'dashboard';
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);

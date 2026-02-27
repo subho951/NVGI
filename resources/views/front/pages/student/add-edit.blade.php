@@ -64,6 +64,9 @@ if($row){
     $emergency_relation = $row->emergency_relation;
     $know_about_us = $row->know_about_us;
     $photo = $row->photo;
+    $blood_group = $row->blood_group;
+    $admission_fees = $row->admission_fees;
+    $monthly_fees = $row->monthly_fees;
 } else {
     $unit_id = '';
     $branch_id = '';
@@ -96,6 +99,9 @@ if($row){
     $emergency_relation = '';
     $know_about_us = '';
     $photo = '';
+    $blood_group = '';
+    $admission_fees = '';
+    $monthly_fees = '';
 }
 ?>
 
@@ -303,7 +309,31 @@ if($row){
             <?php } } ?>
         </select>
     </div>
+
     <div class="col-md-3">
+        <label for="blood_group">Blood Group <span class="text-danger">*</span></label>
+        <select class="form-select form-select-sm" name="blood_group" id="blood_group" required>
+            <option selected value="">Select</option>
+            <option value="A+" <?= (($blood_group == 'A+')?'selected':'') ?>>A+</option>
+            <option value="A-" <?= (($blood_group == 'A-')?'selected':'') ?>>A-</option>
+            <option value="B+" <?= (($blood_group == 'B+')?'selected':'') ?>>B+</option>
+            <option value="B-" <?= (($blood_group == 'B-')?'selected':'') ?>>B-</option>
+            <option value="AB+" <?= (($blood_group == 'AB+')?'selected':'') ?>>AB+</option>
+            <option value="AB-" <?= (($blood_group == 'AB-')?'selected':'') ?>>AB-</option>
+            <option value="O+" <?= (($blood_group == 'O+')?'selected':'') ?>>O+</option>
+            <option value="O-" <?= (($blood_group == 'O-')?'selected':'') ?>>O-</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="admission_fees">Admission Fees <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-sm" name="admission_fees" id="admission_fees" placeholder="Admission Fees" value="<?= $admission_fees ?>" required>
+    </div>
+    <div class="col-md-3">
+        <label for="monthly_fees">Monthly Fees <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-sm" name="monthly_fees" id="monthly_fees" placeholder="Monthly Fees" value="<?= $monthly_fees ?>" required>
+    </div>
+    
+    <div class="col-md-6">
         <label for="photo">Upload Photo (jpg or png)</label>
         <input type="file" class="form-control form-control-sm" name="photo" id="photo" placeholder="Upload Photo (jpg or png)">
         <p class="mt-2">

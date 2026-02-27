@@ -51,6 +51,8 @@ $controllerRoute = $module['controller_route'];
                     <th class="text-center">Class</th>
                     <th class="text-center">Admitted On</th>
                     <th class="text-center">Taken By</th>
+                    <th class="text-center">Admission Fees</th>
+                    <th class="text-center">Monthly Fees</th>
                     <th class="text-center">Action</th>
                 </tr>
             </thead>
@@ -74,6 +76,8 @@ $controllerRoute = $module['controller_route'];
                         <td><?= $row->class_name ?></td>
                         <td><?= date_format(date_create($row->created_at), "d-m-Y h:i A") ?></td>
                         <td><?= $row->first_name . ' ' . $row->last_name ?></td>
+                        <td><?= $row->admission_fees ?></td>
+                        <td><?= $row->monthly_fees ?></td>
                         <td>
                             <?php
                             $encoded_id     = Helper::encoded($row->id);
