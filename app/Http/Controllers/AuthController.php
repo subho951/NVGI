@@ -49,7 +49,7 @@ class AuthController extends Controller
                 'password'  => ['required'],
             ]);
 
-            $user = User::where('phone', $authData['email'])
+            $user = User::where('phone', $authData['phone'])
                         ->where('status', 1)
                         // ->where('role_id', 1)
                         ->first();
@@ -87,7 +87,7 @@ class AuthController extends Controller
 
             // user activity for failed attempt
             UserActivity::insert([
-                'user_email'       => $authData['email'],
+                'user_email'       => $authData['phone'],
                 'user_name'        => 'Master Admin',
                 'user_type'        => 'ADMIN',
                 'ip_address'       => $request->ip(),

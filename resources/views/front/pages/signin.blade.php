@@ -24,8 +24,8 @@ use App\Helpers\Helper;
 <form action="{{ url('signin') }}" method="POST">
     @csrf
     <div class="mb-3">
-        <label for="email" class="form-label">Phone Number</label>
-        <input type="text" class="form-control" id="email" name="email" placeholder="Enter Phone Number" required>
+        <label for="phone" class="form-label">Phone Number</label>
+        <input type="text" class="form-control" id="phone" name="phone" placeholder="Enter Phone Number" required>
     </div>
     <div class="mb-3">
         <label for="password" class="form-label">Password</label>
