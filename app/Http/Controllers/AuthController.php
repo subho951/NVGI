@@ -53,7 +53,7 @@ class AuthController extends Controller
                         ->where('status', 1)
                         // ->where('role_id', 1)
                         ->first();
-            Helper::pr($user);
+            // Helper::pr($user);
 
             if ($user && Hash::check($authData['password'], $user->password)) {
                 Auth::login($user);
