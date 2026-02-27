@@ -106,7 +106,7 @@ class FrontdeskController extends Controller
                         'password'          => Hash::make($request->password),
                         'original_password' => $request->password,
                     ];
-                Helper::pr($fields);
+                // Helper::pr($fields);
                 // if($request->password != ''){
                 //     $member->update($fields);
                 // } else {
