@@ -152,7 +152,13 @@ class StudentController extends Controller
                         $photo = '';
                     }
                 /* photo */
-
+                $postData               = $request->all();
+                if($request->unit_id == 1){
+                    $tsa_subjects = array();
+                } else {
+                    $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
+                }
+                // array_key_exists("tsa_subjects",$postData))
                 $fields = [
                     'sl_no'                     => $next_sl_no,
                     'student_id_serial'         => $student_id_serial,
@@ -175,7 +181,7 @@ class StudentController extends Controller
                     'vhs_daycare'               => $request->vhs_daycare,
                     'tsa_class_id'              => $request->tsa_class_id,
                     'tsa_board'                 => $request->tsa_board,
-                    'tsa_subjects'              => (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]),
+                    'tsa_subjects'              => json_encode($tsa_subjects),
                     'tsa_medium'                => $request->tsa_medium,
                     'father_name'               => $request->father_name,
                     'father_occupation'         => $request->father_occupation,
