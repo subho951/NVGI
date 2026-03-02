@@ -16,7 +16,7 @@ use App\Helpers\Helper;
                     $getUnit = Unit::select('name')->where('id', '=', $branch->unit_id)->first();
                     $student_count = Student::where('branch_id', '=', $branch->id)->where('status', '!=', 3)->count();
             ?>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <div class="card shadow dashboard-card bg1 ">
                             <div class="card-body text-center text-white">
                                 <h5><?= (($getUnit) ? $getUnit->name : '') ?> <?= $branch->name ?></h5>
