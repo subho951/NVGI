@@ -96,7 +96,13 @@ $controllerRoute = $module['controller_route'];
                                         <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>"><i class="fas fa-ban text-danger"></i></a>
                                     <?php } ?>
                                     <!-- |
-                            <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>"><i class="fa fa-trash text-danger"></i></a> -->
+                                    <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>"><i class="fa fa-trash text-danger"></i></a> -->
+                                    <!-- <a href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#studentDetails<?= $row->id ?>">
+                                        <i class="fa fa-eye text-success"></i>
+                                    </a> -->
+                                    <a href="javascript:void(0);" class="viewStudentBtn" data-id="<?= Helper::encoded($row->id) ?>">
+                                        <i class="fa fa-eye text-success"></i>
+                                    </a>
                                 </td>
                             </tr>
                     <?php }
@@ -106,4 +112,47 @@ $controllerRoute = $module['controller_route'];
         </div>
     </div>
 </div>
+
+<!-- Modal -->
+<div class="modal fade" id="studentDetailsModal" tabindex="-1" aria-labelledby="studentDetailsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen modal-dialog-centered">
+        <div class="modal-content" id="studentDetailsContent">
+            
+        </div>
+    </div>
+</div>
+@endsection
+@section('scripts')
+    <script>
+    document.addEventListener("click", function (e) {
+
+        let btn = e.target.closest(".viewStudentBtn");
+
+        if (btn) {
+
+            let studentId = btn.dataset.id;
+            let modalElement = document.getElementById('studentDetailsModal');
+
+            if (!modalElement) {
+                console.error("Modal not found!");
+                return;
+            }
+
+            let modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modal.show();
+
+            
+
+            fetch("{{ url('student/details') }}/" + studentId)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("studentDetailsContent").innerHTML = data.html;
+                })
+                .catch(error => {
+                    document.getElementById("studentDetailsContent").innerHTML =
+                        `<div class="alert alert-danger">Something went wrong.</div>`;
+                });
+        }
+    });
+    </script>
 @endsection

@@ -362,4 +362,63 @@ class StudentController extends Controller
             return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' '.$msg.' successfully !!!');
         }
     /* change status */
+    public function details($id)
+    {
+        $id = Helper::decoded($id);
+        $student = [];
+        $getStudent = Student::where('id', '=', $id)->first();
+        if($getStudent){
+            if($getStudent->unit_id == 1){
+                $student = Student::leftJoin('units','units.id','=','students.unit_id')
+                                    ->leftJoin('branches','branches.id','=','students.branch_id')
+                                    ->leftJoin('classes','classes.id','=','students.vhs_class_id')
+                                    ->leftJoin('sessions','sessions.id','=','students.session_id')
+                                    ->leftJoin('religions','religions.id','=','students.religion_id')
+                                    ->leftJoin('know_abouts','know_abouts.id','=','students.know_about_us')
+                                    ->select(
+                                        'students.*',
+                                        'units.name as unit_name',
+                                        'branches.name as branch_name',
+                                        'classes.name as class_name',
+                                        'sessions.name as session_name',
+                                        'religions.name as religion_name',
+                                        'know_abouts.name as source_name',
+                                    )
+                                    ->where('students.id', $id)
+                                    ->first();
+            } else {
+                $student = Student::leftJoin('units','units.id','=','students.unit_id')
+                                    ->leftJoin('branches','branches.id','=','students.branch_id')
+                                    ->leftJoin('classes','classes.id','=','students.tsa_class_id')
+                                    ->leftJoin('sessions','sessions.id','=','students.session_id')
+                                    ->leftJoin('religions','religions.id','=','students.religion_id')
+                                    ->leftJoin('know_abouts','know_abouts.id','=','students.know_about_us')
+                                    ->select(
+                                        'students.*',
+                                        'units.name as unit_name',
+                                        'branches.name as branch_name',
+                                        'classes.name as class_name',
+                                        'sessions.name as session_name',
+                                        'religions.name as religion_name',
+                                        'know_abouts.name as source_name',
+                                    )
+                                    ->where('students.id', $id)
+                                    ->first();
+            }
+        }        
+
+        if (!$student) {
+            return response()->json([
+                'status' => false,
+                'html' => '<div class="alert alert-danger">Student not found</div>'
+            ]);
+        }
+
+        $html = view('front.pages.student.student-details', compact('student'))->render();
+
+        return response()->json([
+            'status' => true,
+            'html' => $html
+        ]);
+    }
 }

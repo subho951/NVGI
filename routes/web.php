@@ -174,13 +174,14 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('religion/delete/{id}', [ReligionController::class, 'delete']);
                 Route::get('religion/change-status/{id}', [ReligionController::class, 'change_status']);
             /* ReligionController */
-            /* class */
+            /* student */
                 Route::match(['get', 'post'], 'student/list', [StudentController::class, 'list']);
                 Route::match(['get', 'post'], 'student/add', [StudentController::class, 'add']);
                 Route::match(['get', 'post'], 'student/edit/{id}', [StudentController::class, 'edit']);
                 Route::get('student/delete/{id}', [StudentController::class, 'delete']);
                 Route::get('student/change-status/{id}', [StudentController::class, 'change_status']);
-            /* class */
+                Route::get('student/details/{id}', [StudentController::class, 'details'])->name('student.details');
+            /* student */
         });
     // });
 /* Admin Panel */
