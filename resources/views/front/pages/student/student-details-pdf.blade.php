@@ -87,7 +87,7 @@ $pageSegment  = $pageName[0];
                         <img src="data:image/png;base64,{{ $base64 }}" style="width:150px;height:150px;border:1px solid #ccc;" class="img-thumbnail">
                     @else
                         @php
-                        $img = file_get_contents('https://placehold.co/300x200');
+                        $img = file_get_contents(config('constants.no_image_avatar'));
                         $base64 = base64_encode($img);
                         @endphp
                         <img src="data:image/png;base64,{{ $base64 }}" style="width:150px;height:150px;border:1px solid #ccc;" class="img-thumbnail">

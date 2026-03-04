@@ -65,7 +65,7 @@ $controllerRoute = $module['controller_route'];
             @if($student->photo)
             <img src="{{ config('constants.app_url') . config('constants.uploads_url_path') . $student->photo }}" style="width:150px;height:150px;border:1px solid #ccc;" class="img-thumbnail">
             @else
-            <img src="https://placehold.co/300x200" style="width:150px;height:150px;border:1px solid #ccc;" class="img-thumbnail">
+            <img src="{{ config('constants.no_image_avatar') }}" style="width:150px;height:150px;border:1px solid #ccc;" class="img-thumbnail">
             @endif
         </div>
         <table class="table table-bordered align-middle">
