@@ -157,7 +157,7 @@ class StudentController extends Controller
                 /* photo */
                 $postData               = $request->all();
                 if($request->unit_id == 1){
-                    $tsa_subjects = array();
+                    $tsa_subjects = json_encode(array());
                 } else {
                     $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
                 }
@@ -293,7 +293,7 @@ class StudentController extends Controller
                 ]);
                 $postData               = $request->all();
                 if($request->unit_id == 1){
-                    $tsa_subjects = array();
+                    $tsa_subjects = json_encode(array());
                 } else {
                     $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
                 }
