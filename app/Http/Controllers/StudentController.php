@@ -184,7 +184,7 @@ class StudentController extends Controller
                     'vhs_daycare'               => $request->vhs_daycare,
                     'tsa_class_id'              => $request->tsa_class_id,
                     'tsa_board'                 => $request->tsa_board,
-                    'tsa_subjects'              => json_encode($tsa_subjects),
+                    'tsa_subjects'              => $tsa_subjects,
                     'tsa_medium'                => $request->tsa_medium,
                     'father_name'               => $request->father_name,
                     'father_occupation'         => $request->father_occupation,
@@ -291,7 +291,12 @@ class StudentController extends Controller
                     'admission_fees'            => 'required',
                     'monthly_fees'              => 'required',
                 ]);
-
+                $postData               = $request->all();
+                if($request->unit_id == 1){
+                    $tsa_subjects = array();
+                } else {
+                    $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
+                }
                 $member->update([
                     'student_id_serial'         => $student_id_serial,
                     'unit_id'                   => $request->unit_id,
@@ -313,7 +318,7 @@ class StudentController extends Controller
                     'vhs_daycare'               => $request->vhs_daycare,
                     'tsa_class_id'              => $request->tsa_class_id,
                     'tsa_board'                 => $request->tsa_board,
-                    'tsa_subjects'              => (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]),
+                    'tsa_subjects'              => $tsa_subjects,
                     'tsa_medium'                => $request->tsa_medium,
                     'father_name'               => $request->father_name,
                     'father_occupation'         => $request->father_occupation,

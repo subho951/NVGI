@@ -105,8 +105,6 @@ $controllerRoute = $module['controller_route'];
 
                 $subject = [];
                 $tsa_subjects = json_decode($student->tsa_subjects);
-                echo 'subject';
-                Helper::pr(json_decode($tsa_subjects));
                 if (!empty($tsa_subjects)) {
                     for ($k = 0; $k < count($tsa_subjects); $k++) {
                         $getSubject = Subject::select('name')->where('id', '=', $tsa_subjects[$k])->first();
