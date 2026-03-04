@@ -3,6 +3,7 @@ use App\Models\Classes;
 use App\Models\Subject;
 use App\Models\Medium;
 use App\Models\Board;
+use App\Helpers\Helper;
 ?>
 <div class="modal-header">
     <h1 class="modal-title fs-5" id="studentDetailsLabel"><?= $student->first_name.' '. $student->middle_name . ' ' . $student->last_name ?></h1>
@@ -11,11 +12,9 @@ use App\Models\Board;
 <div class="modal-body">
     <div class="text-center mb-3">
         @if($student->photo)
-        <img src="{{ config('constants.app_url') . config('constants.uploads_url_path') . $student->photo }}"
-            style="width:70px;height:80px;border:1px solid #ccc;">
+        <img src="{{ config('constants.app_url') . config('constants.uploads_url_path') . $student->photo }}" style="width:150px;height:150px;border:1px solid #ccc;" class="img-thumbnail">
         @else
-        <img src="https://placehold.co/300x200"
-            style="width:70px;height:80px;border:1px solid #ccc;">
+        <img src="https://placehold.co/300x200" style="width:150px;height:150px;border:1px solid #ccc;" class="img-thumbnail">
         @endif
     </div>
     <table class="table table-bordered align-middle">
@@ -25,7 +24,7 @@ use App\Models\Board;
             <td>Branch : {{ $student->branch_name }}</td>
             <td>Session : {{ $student->session_name }}</td>
             <td>
-                Admission Fees : {{ $student->admission_fees }}<br>
+                Admission Fees : {{ number_format($student->admission_fees,2) }}<br>
                 Admission Date : {{ date('d-m-Y', strtotime($student->admission_date)) }}
             </td>
             <td>Gender : {{ $student->gender }}</td>
@@ -101,12 +100,12 @@ use App\Models\Board;
             <td>Relation : {{ $student->emergency_relation }}</td>
             <td>Source : {{ $student->source_name }}</td>
             <td>Blood Group : {{ $student->blood_group }}</td>
-            <td>Monthly Fees : {{ $student->monthly_fees }}</td>
+            <td>Monthly Fees : {{ number_format($student->monthly_fees,2) }}</td>
         </tr>
     </table>
 </div>
 
 <div class="modal-footer">
     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-    <button type="button" class="btn btn-success btn-sm">Print</button>
+    <a href="<?= url('student/student-print/' . Helper::encoded($student->id)) ?>" target="_blank"><button type="button" class="btn btn-success btn-sm">Print</button></a>
 </div>

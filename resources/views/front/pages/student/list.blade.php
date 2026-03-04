@@ -6,6 +6,11 @@ use App\Helpers\Helper;
 
 $controllerRoute = $module['controller_route'];
 ?>
+<style>
+    a{
+        text-decoration: none;
+    }
+</style>
 <h2>Manage <?= $module['title'] ?></h2>
 @if(session('success_message'))
 <div class="alert alert-success bg-success text-light border-0 alert-dismissible fade show autohide" role="alert">
@@ -95,13 +100,21 @@ $controllerRoute = $module['controller_route'];
                                     <?php } else { ?>
                                         <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>"><i class="fas fa-ban text-danger"></i></a>
                                     <?php } ?>
-                                    <!-- |
-                                    <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>"><i class="fa fa-trash text-danger"></i></a> -->
+                                    |
+                                    <!-- <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>"><i class="fa fa-trash text-danger"></i></a> -->
                                     <!-- <a href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#studentDetails<?= $row->id ?>">
                                         <i class="fa fa-eye text-success"></i>
                                     </a> -->
-                                    <a href="javascript:void(0);" class="viewStudentBtn" data-id="<?= Helper::encoded($row->id) ?>">
-                                        <i class="fa fa-eye text-success"></i>
+                                    <a href="javascript:void(0);" class="viewStudentBtn text-info" data-id="<?= Helper::encoded($row->id) ?>" title="View <?= $module['title'] ?>">
+                                        <i class="fa fa-eye text-info"></i>
+                                    </a>
+                                    |
+                                    <a href="<?= url($controllerRoute . '/student-print/' . Helper::encoded($row->id)) ?>" class="text-primary" target="_blank" title="Print <?= $module['title'] ?>">
+                                        <i class="fa fa-print text-primary"></i>
+                                    </a>
+                                    |
+                                    <a href="<?= url($controllerRoute . '/student-pdf/' . Helper::encoded($row->id)) ?>" class="text-danger" target="_blank" title="PDF <?= $module['title'] ?>">
+                                        <i class="fa-solid fa-file-pdf text-danger"></i>
                                     </a>
                                 </td>
                             </tr>

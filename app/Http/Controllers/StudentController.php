@@ -25,6 +25,9 @@ use App\Helpers\Helper;
 use Auth;
 use DB;
 use Hash;
+use Dompdf\Dompdf;
+use Dompdf\Options;
+use DateTime;
 
 class StudentController extends Controller
 {
@@ -405,7 +408,7 @@ class StudentController extends Controller
                                     ->where('students.id', $id)
                                     ->first();
             }
-        }        
+        }
 
         if (!$student) {
             return response()->json([
@@ -420,5 +423,133 @@ class StudentController extends Controller
             'status' => true,
             'html' => $html
         ]);
+    }
+    public function studentPrint(Request $request, $id){
+        $data['module']                 = $this->data;
+        $id                             = Helper::decoded($id);
+        $page_name                      = 'student.student-details-print';
+        
+        $generalSetting                 = GeneralSetting::find('1');
+        $data['action']                 = 'Print';
+
+        $student                        = [];
+        $getStudent                     = Student::where('id', '=', $id)->first();
+        $title                          = 'Print-' . (($getStudent)?$getStudent->student_id_serial:'');
+        if($getStudent){
+            if($getStudent->unit_id == 1){
+                $student = Student::leftJoin('units','units.id','=','students.unit_id')
+                                    ->leftJoin('branches','branches.id','=','students.branch_id')
+                                    ->leftJoin('classes','classes.id','=','students.vhs_class_id')
+                                    ->leftJoin('sessions','sessions.id','=','students.session_id')
+                                    ->leftJoin('religions','religions.id','=','students.religion_id')
+                                    ->leftJoin('know_abouts','know_abouts.id','=','students.know_about_us')
+                                    ->select(
+                                        'students.*',
+                                        'units.name as unit_name',
+                                        'branches.name as branch_name',
+                                        'classes.name as class_name',
+                                        'sessions.name as session_name',
+                                        'religions.name as religion_name',
+                                        'know_abouts.name as source_name',
+                                    )
+                                    ->where('students.id', $id)
+                                    ->first();
+            } else {
+                $student = Student::leftJoin('units','units.id','=','students.unit_id')
+                                    ->leftJoin('branches','branches.id','=','students.branch_id')
+                                    ->leftJoin('classes','classes.id','=','students.tsa_class_id')
+                                    ->leftJoin('sessions','sessions.id','=','students.session_id')
+                                    ->leftJoin('religions','religions.id','=','students.religion_id')
+                                    ->leftJoin('know_abouts','know_abouts.id','=','students.know_about_us')
+                                    ->select(
+                                        'students.*',
+                                        'units.name as unit_name',
+                                        'branches.name as branch_name',
+                                        'classes.name as class_name',
+                                        'sessions.name as session_name',
+                                        'religions.name as religion_name',
+                                        'know_abouts.name as source_name',
+                                    )
+                                    ->where('students.id', $id)
+                                    ->first();
+            }
+        }
+
+        $data['student']                 = $student;
+        
+        $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+        return view('front.pages.' . $page_name, $data);
+    }
+    public function studentPDF(Request $request, $id){
+        $data['module']                 = $this->data;
+        $id                             = Helper::decoded($id);
+        $page_name                      = 'student.student-details-pdf';
+        $generalSetting                 = GeneralSetting::find('1');
+        $data['action']                 = 'Print';
+
+        $student                        = [];
+        $getStudent                     = Student::where('id', '=', $id)->first();
+        $title                          = 'Print-' . (($getStudent)?$getStudent->student_id_serial:'');
+        $data['title']                  = 'Print-' . (($getStudent)?$getStudent->student_id_serial:'');
+        if($getStudent){
+            if($getStudent->unit_id == 1){
+                $student = Student::leftJoin('units','units.id','=','students.unit_id')
+                                    ->leftJoin('branches','branches.id','=','students.branch_id')
+                                    ->leftJoin('classes','classes.id','=','students.vhs_class_id')
+                                    ->leftJoin('sessions','sessions.id','=','students.session_id')
+                                    ->leftJoin('religions','religions.id','=','students.religion_id')
+                                    ->leftJoin('know_abouts','know_abouts.id','=','students.know_about_us')
+                                    ->select(
+                                        'students.*',
+                                        'units.name as unit_name',
+                                        'branches.name as branch_name',
+                                        'classes.name as class_name',
+                                        'sessions.name as session_name',
+                                        'religions.name as religion_name',
+                                        'know_abouts.name as source_name',
+                                    )
+                                    ->where('students.id', $id)
+                                    ->first();
+            } else {
+                $student = Student::leftJoin('units','units.id','=','students.unit_id')
+                                    ->leftJoin('branches','branches.id','=','students.branch_id')
+                                    ->leftJoin('classes','classes.id','=','students.tsa_class_id')
+                                    ->leftJoin('sessions','sessions.id','=','students.session_id')
+                                    ->leftJoin('religions','religions.id','=','students.religion_id')
+                                    ->leftJoin('know_abouts','know_abouts.id','=','students.know_about_us')
+                                    ->select(
+                                        'students.*',
+                                        'units.name as unit_name',
+                                        'branches.name as branch_name',
+                                        'classes.name as class_name',
+                                        'sessions.name as session_name',
+                                        'religions.name as religion_name',
+                                        'know_abouts.name as source_name',
+                                    )
+                                    ->where('students.id', $id)
+                                    ->first();
+            }
+        }
+
+        $data['student']                 = $student;
+
+
+        /* generate inspection pdf & save it to directory */
+            $message                        = view('front.pages.student.student-details-pdf',$data);
+            // echo $message;die;
+            $options    = new Options();
+            $options->set('defaultFont', 'Courier');
+            $dompdf     = new Dompdf($options);
+            $html       = $message;
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+            $output = $dompdf->output();
+            // Output the generated PDF to browser
+            $dompdf->stream("document.pdf", array("Attachment" => false));
+        /* generate inspection pdf & save it to directory */
+        
+        $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+        return view('front.pages.' . $page_name, $data);
     }
 }
