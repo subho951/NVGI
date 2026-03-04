@@ -73,7 +73,7 @@ $controllerRoute = $module['controller_route'];
                                     <?php if ($row->photo != '') { ?>
                                         <img src="<?= config('constants.app_url') . config('constants.uploads_url_path') . $row->photo ?>" style="width:50px; height:50px; border:1px solid #CCCCCC;">
                                     <?php } else { ?>
-                                        <img src="https://placehold.co/300x200" style="width:50px; height:50px; border:1px solid #CCCCCC;">
+                                        <img src="{{ config('constants.no_image_avatar') }}" style="width:50px; height:50px; border:1px solid #CCCCCC; border-radius:50%;">
                                     <?php } ?>
                                     <br>
                                     <?= $row->full_name ?>
