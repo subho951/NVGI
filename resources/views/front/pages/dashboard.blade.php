@@ -67,7 +67,7 @@ use App\Helpers\Helper;
         </div>
     </div>
 </div>
-<hr class="my-4">
+<!-- <hr class="my-4">
 <h4 class="mb-3 text-center">Analytics</h4>
 <div class="row g-3">
     <div class="col-md-6">
@@ -90,5 +90,5 @@ use App\Helpers\Helper;
             <canvas id="staffChart"></canvas>
         </div>
     </div>
-</div>
+</div> -->
 @endsection
