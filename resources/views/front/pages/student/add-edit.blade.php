@@ -379,9 +379,25 @@ if($row){
                 if(unit_id == 1){
                     $('.vhs').show();
                     $('.tsa').hide();
+
+                    $('#vhs_class_id').attr('required', true);
+                    $('#vhs_daycare').attr('required', true);
+
+                    $('#tsa_class_id').attr('required', false);
+                    $('#tsa_board').attr('required', false);
+                    $('#tsa_subjects').attr('required', false);
+                    $('#tsa_medium').attr('required', false);
                 } else {
                     $('.vhs').hide();
                     $('.tsa').show();
+
+                    $('#vhs_class_id').attr('required', false);
+                    $('#vhs_daycare').attr('required', false);
+
+                    $('#tsa_class_id').attr('required', true);
+                    $('#tsa_board').attr('required', true);
+                    $('#tsa_subjects').attr('required', true);
+                    $('#tsa_medium').attr('required', true);
                 }
 
                 $('#branch_id').val('');

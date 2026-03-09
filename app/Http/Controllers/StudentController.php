@@ -159,7 +159,11 @@ class StudentController extends Controller
                 if($request->unit_id == 1){
                     $tsa_subjects = json_encode(array());
                 } else {
-                    $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
+                    if(array_key_exists("tsa_subjects",$postData)){
+                        $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
+                    } else {
+                        $tsa_subjects = json_encode(array());
+                    }
                 }
                 // array_key_exists("tsa_subjects",$postData))
                 $fields = [
@@ -295,7 +299,11 @@ class StudentController extends Controller
                 if($request->unit_id == 1){
                     $tsa_subjects = json_encode(array());
                 } else {
-                    $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
+                    if(array_key_exists("tsa_subjects",$postData)){
+                        $tsa_subjects = (($request->tsa_subjects != '')?json_encode($request->tsa_subjects):[]);
+                    } else {
+                        $tsa_subjects = json_encode(array());
+                    }
                 }
                 $member->update([
                     'student_id_serial'         => $student_id_serial,
