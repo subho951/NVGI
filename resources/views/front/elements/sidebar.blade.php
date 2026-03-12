@@ -45,11 +45,11 @@ $role_id = session('user_data')['role_id'];
 
             <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['module', 'role', 'front-desk']) ? 'show' : '' ?>" id="AccessMenu">
                 <?php if(in_array(2, $moduleIds)){?>
-                    <li>
+                    <!-- <li>
                         <a href="<?= url('module/list') ?>" class="nav-link <?= (($pageSegment == 'module') ? 'active-link' : '') ?>">
                             <i class="fa-solid fa-arrow-right"></i> <span>Modules</span>
                         </a>
-                    </li>
+                    </li> -->
                 <?php }?>
                 <?php if(in_array(3, $moduleIds)){?>
                     <li>
