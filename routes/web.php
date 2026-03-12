@@ -1,14 +1,14 @@
 <?php
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BoardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FrontendController;
-use App\Http\Controllers\UnitController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\FrontdeskController;
+use App\Http\Controllers\LeadController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SessionController;
-use App\Http\Controllers\BoardController;
 use App\Http\Controllers\MediumController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\KnowAboutController;
@@ -17,6 +17,7 @@ use App\Http\Controllers\ReligionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesPersonController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\UnitController;
 use App\Http\Controllers\Common\TableController;
 
 /* Front Panel */
@@ -180,14 +181,21 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'student/student-print/{id}', [StudentController::class, 'studentPrint']);
                 Route::match(['get', 'post'], 'student/student-pdf/{id}', [StudentController::class, 'studentPDF']);
             /* student */
-            /* leads */
+            /* CRM */
                 /* sales person */
                     Route::match(['get', 'post'], 'sales-person/list', [SalesPersonController::class, 'list']);
                     Route::match(['get', 'post'], 'sales-person/edit/{id}', [SalesPersonController::class, 'edit']);
                     Route::get('sales-person/delete/{id}', [SalesPersonController::class, 'delete']);
                     Route::get('sales-person/change-status/{id}', [SalesPersonController::class, 'change_status']);
                 /* sales person */
-            /* leads */
+                /* leads */
+                    Route::match(['get', 'post'], 'lead/list', [LeadController::class, 'list']);
+                    Route::match(['get', 'post'], 'lead/add', [LeadController::class, 'add']);
+                    Route::match(['get', 'post'], 'lead/edit/{id}', [LeadController::class, 'edit']);
+                    Route::get('lead/delete/{id}', [LeadController::class, 'delete']);
+                    Route::get('lead/change-status/{id}', [LeadController::class, 'change_status']);
+                /* leads */
+            /* CRM */
         });
     // });
 /* Admin Panel */

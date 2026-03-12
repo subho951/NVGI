@@ -211,7 +211,7 @@ $role_id = session('user_data')['role_id'];
                 <?php } ?>
                 <?php if(in_array(18, $moduleIds)){?>
                     <li>
-                        <a href="<?= url('lead/add') ?>" class="nav-link <?= (($pageSegment == 'lead') ? 'active-link' : '') ?>">
+                        <a href="<?= url('lead/list') ?>" class="nav-link <?= (($pageSegment == 'lead') ? 'active-link' : '') ?>">
                             <i class="fa-solid fa-arrow-right"></i> <span>Leads</span>
                         </a>
                     </li>
