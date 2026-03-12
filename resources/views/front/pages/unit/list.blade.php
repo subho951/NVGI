@@ -53,7 +53,7 @@ $controllerRoute = $module['controller_route'];
     <div class="card-body">
         <h6 class="text-center alert alert-info alert-sm py-2 px-2">List of <?= $module['title'] ?></h6>
         <div class="table-responsive">
-            <table class="table table-bordered datatable">
+            <table id="example" class="table table-bordered datatable">
                 <thead>
                     <th>#</th>
                     <th>ID (Auto-generated)</th>

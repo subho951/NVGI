@@ -43,6 +43,15 @@ $controllerRoute = $module['controller_route'];
                 <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name" value="<?= (($single_row) ? $single_row->name : '') ?>" required>
                 @error('name') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
+
+            <div class="col-md-2">
+               Phone
+            </div>
+            <div class="col-md-3">
+                <input class="form-control form-control-sm" name="phone" id="phone" placeholder="Write Phone" value="<?= (($single_row) ? $single_row->phone : '') ?>">
+                @error('phone') <span class="text-danger">{{ $message }}</span> @enderror
+            </div>
+
             <div class="col-md-1">
                 <button type="submit" class="btn btn-success btn-sm w-100"><?= $action ?></button>
             </div>
@@ -55,17 +64,21 @@ $controllerRoute = $module['controller_route'];
         <div class="table-responsive">
             <table id="example" class="table table-bordered datatable">
                 <thead>
-                    <th>#</th>
-                    <th>Name of the <?= $module['title'] ?></th>
-                    <th>Action</th>
+                    <tr>
+                        <th>#</th>
+                        <th>Name of the <?= $module['title'] ?></th>
+                        <th>Phone</th>
+                        <th>Action</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    <?php if ($rows) {
+                    <?php if (count($rows) > 0) {
                         $sl = 1;
                         foreach ($rows as $row) { ?>
                             <tr>
                                 <td><?= $sl++ ?></td>
                                 <td><?= $row->name ?></td>
+                                <td><?= $row->phone ?></td>
                                 <td>
                                     <?php
                                     $encoded_id     = Helper::encoded($row->id);
@@ -84,8 +97,14 @@ $controllerRoute = $module['controller_route'];
                             <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>">Delete</a> -->
                                 </td>
                             </tr>
-                    <?php }
-                    } ?>
+                        <?php }
+                    } else { ?>
+                        <tr>
+                            <td colspan="4" class="text-danger text-center">
+                                No records found
+                            </td>
+                        </tr>
+                    <?php } ?>
                 </tbody>
             </table>
         </div>

@@ -10,9 +10,12 @@ use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\MediumController;
+use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\KnowAboutController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\ReligionController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SalesPersonController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\Common\TableController;
 
@@ -92,8 +95,7 @@ use App\Http\Controllers\Common\TableController;
 
             /* access & permission */
                 /* modules */
-                    Route::get('module/list', [ModuleController::class, 'list']);
-                    Route::match(['get', 'post'], 'module/add', [ModuleController::class, 'add']);
+                    Route::match(['get', 'post'], 'module/list', [ModuleController::class, 'list']);
                     Route::match(['get', 'post'], 'module/edit/{id}', [ModuleController::class, 'edit']);
                     Route::get('module/delete/{id}', [ModuleController::class, 'delete']);
                     Route::get('module/change-status/{id}', [ModuleController::class, 'change_status']);
@@ -105,75 +107,69 @@ use App\Http\Controllers\Common\TableController;
                     Route::get('role/delete/{id}', [RoleController::class, 'delete']);
                     Route::get('role/change-status/{id}', [RoleController::class, 'change_status']);
                 /* roles */
-                /* admin users */
-                    Route::get('admin-user/list', [AdminUserController::class, 'list']);
-                    Route::match(['get', 'post'], 'admin-user/add', [AdminUserController::class, 'add']);
-                    Route::match(['get', 'post'], 'admin-user/edit/{id}', [AdminUserController::class, 'edit']);
-                    Route::get('admin-user/delete/{id}', [AdminUserController::class, 'delete']);
-                    Route::get('admin-user/change-status/{id}', [AdminUserController::class, 'change_status']);
-                /* admin users */
+                /* front desk or users */
+                    Route::match(['get', 'post'], 'front-desk/list', [FrontdeskController::class, 'list']);
+                    Route::match(['get', 'post'], 'front-desk/edit/{id}', [FrontdeskController::class, 'edit']);
+                    Route::get('front-desk/delete/{id}', [FrontdeskController::class, 'delete']);
+                    Route::get('front-desk/change-status/{id}', [FrontdeskController::class, 'change_status']);
+                /* front desk or users */
             /* access & permission */
-
-            /* unit */
-                Route::match(['get', 'post'], 'unit/list', [UnitController::class, 'list']);
-                Route::match(['get', 'post'], 'unit/edit/{id}', [UnitController::class, 'edit']);
-                Route::get('unit/delete/{id}', [UnitController::class, 'delete']);
-                Route::get('unit/change-status/{id}', [UnitController::class, 'change_status']);
-            /* unit */
-            /* branch */
-                Route::match(['get', 'post'], 'branch/list', [BranchController::class, 'list']);
-                Route::match(['get', 'post'], 'branch/edit/{id}', [BranchController::class, 'edit']);
-                Route::get('branch/delete/{id}', [BranchController::class, 'delete']);
-                Route::get('branch/change-status/{id}', [BranchController::class, 'change_status']);
-            /* branch */
-            /* front desk */
-                Route::match(['get', 'post'], 'front-desk/list', [FrontdeskController::class, 'list']);
-                Route::match(['get', 'post'], 'front-desk/edit/{id}', [FrontdeskController::class, 'edit']);
-                Route::get('front-desk/delete/{id}', [FrontdeskController::class, 'delete']);
-                Route::get('front-desk/change-status/{id}', [FrontdeskController::class, 'change_status']);
-            /* front desk */
-            /* subject */
-                Route::match(['get', 'post'], 'subject/list', [SubjectController::class, 'list']);
-                Route::match(['get', 'post'], 'subject/edit/{id}', [SubjectController::class, 'edit']);
-                Route::get('subject/delete/{id}', [SubjectController::class, 'delete']);
-                Route::get('subject/change-status/{id}', [SubjectController::class, 'change_status']);
-            /* subject */
-            /* session */
-                Route::match(['get', 'post'], 'session/list', [SessionController::class, 'list']);
-                Route::match(['get', 'post'], 'session/edit/{id}', [SessionController::class, 'edit']);
-                Route::get('session/delete/{id}', [SessionController::class, 'delete']);
-                Route::get('session/change-status/{id}', [SessionController::class, 'change_status']);
-            /* session */
-            /* board */
-                Route::match(['get', 'post'], 'board/list', [BoardController::class, 'list']);
-                Route::match(['get', 'post'], 'board/edit/{id}', [BoardController::class, 'edit']);
-                Route::get('board/delete/{id}', [BoardController::class, 'delete']);
-                Route::get('board/change-status/{id}', [BoardController::class, 'change_status']);
-            /* board */
-            /* medium */
-                Route::match(['get', 'post'], 'medium/list', [MediumController::class, 'list']);
-                Route::match(['get', 'post'], 'medium/edit/{id}', [MediumController::class, 'edit']);
-                Route::get('medium/delete/{id}', [MediumController::class, 'delete']);
-                Route::get('medium/change-status/{id}', [MediumController::class, 'change_status']);
-            /* medium */
-            /* know about us */
-                Route::match(['get', 'post'], 'know-about/list', [KnowAboutController::class, 'list']);
-                Route::match(['get', 'post'], 'know-about/edit/{id}', [KnowAboutController::class, 'edit']);
-                Route::get('know-about/delete/{id}', [KnowAboutController::class, 'delete']);
-                Route::get('know-about/change-status/{id}', [KnowAboutController::class, 'change_status']);
-            /* know about us */
-            /* class */
-                Route::match(['get', 'post'], 'class/list', [ClassController::class, 'list']);
-                Route::match(['get', 'post'], 'class/edit/{id}', [ClassController::class, 'edit']);
-                Route::get('class/delete/{id}', [ClassController::class, 'delete']);
-                Route::get('class/change-status/{id}', [ClassController::class, 'change_status']);
-            /* class */
-            /* ReligionController */
-                Route::match(['get', 'post'], 'religion/list', [ReligionController::class, 'list']);
-                Route::match(['get', 'post'], 'religion/edit/{id}', [ReligionController::class, 'edit']);
-                Route::get('religion/delete/{id}', [ReligionController::class, 'delete']);
-                Route::get('religion/change-status/{id}', [ReligionController::class, 'change_status']);
-            /* ReligionController */
+            /* masters */
+                /* unit */
+                    Route::match(['get', 'post'], 'unit/list', [UnitController::class, 'list']);
+                    Route::match(['get', 'post'], 'unit/edit/{id}', [UnitController::class, 'edit']);
+                    Route::get('unit/delete/{id}', [UnitController::class, 'delete']);
+                    Route::get('unit/change-status/{id}', [UnitController::class, 'change_status']);
+                /* unit */
+                /* branch */
+                    Route::match(['get', 'post'], 'branch/list', [BranchController::class, 'list']);
+                    Route::match(['get', 'post'], 'branch/edit/{id}', [BranchController::class, 'edit']);
+                    Route::get('branch/delete/{id}', [BranchController::class, 'delete']);
+                    Route::get('branch/change-status/{id}', [BranchController::class, 'change_status']);
+                /* branch */
+                /* subject */
+                    Route::match(['get', 'post'], 'subject/list', [SubjectController::class, 'list']);
+                    Route::match(['get', 'post'], 'subject/edit/{id}', [SubjectController::class, 'edit']);
+                    Route::get('subject/delete/{id}', [SubjectController::class, 'delete']);
+                    Route::get('subject/change-status/{id}', [SubjectController::class, 'change_status']);
+                /* subject */
+                /* session */
+                    Route::match(['get', 'post'], 'session/list', [SessionController::class, 'list']);
+                    Route::match(['get', 'post'], 'session/edit/{id}', [SessionController::class, 'edit']);
+                    Route::get('session/delete/{id}', [SessionController::class, 'delete']);
+                    Route::get('session/change-status/{id}', [SessionController::class, 'change_status']);
+                /* session */
+                /* board */
+                    Route::match(['get', 'post'], 'board/list', [BoardController::class, 'list']);
+                    Route::match(['get', 'post'], 'board/edit/{id}', [BoardController::class, 'edit']);
+                    Route::get('board/delete/{id}', [BoardController::class, 'delete']);
+                    Route::get('board/change-status/{id}', [BoardController::class, 'change_status']);
+                /* board */
+                /* medium */
+                    Route::match(['get', 'post'], 'medium/list', [MediumController::class, 'list']);
+                    Route::match(['get', 'post'], 'medium/edit/{id}', [MediumController::class, 'edit']);
+                    Route::get('medium/delete/{id}', [MediumController::class, 'delete']);
+                    Route::get('medium/change-status/{id}', [MediumController::class, 'change_status']);
+                /* medium */
+                /* know about us */
+                    Route::match(['get', 'post'], 'know-about/list', [KnowAboutController::class, 'list']);
+                    Route::match(['get', 'post'], 'know-about/edit/{id}', [KnowAboutController::class, 'edit']);
+                    Route::get('know-about/delete/{id}', [KnowAboutController::class, 'delete']);
+                    Route::get('know-about/change-status/{id}', [KnowAboutController::class, 'change_status']);
+                /* know about us */
+                /* class */
+                    Route::match(['get', 'post'], 'class/list', [ClassController::class, 'list']);
+                    Route::match(['get', 'post'], 'class/edit/{id}', [ClassController::class, 'edit']);
+                    Route::get('class/delete/{id}', [ClassController::class, 'delete']);
+                    Route::get('class/change-status/{id}', [ClassController::class, 'change_status']);
+                /* class */
+                /* Religion */
+                    Route::match(['get', 'post'], 'religion/list', [ReligionController::class, 'list']);
+                    Route::match(['get', 'post'], 'religion/edit/{id}', [ReligionController::class, 'edit']);
+                    Route::get('religion/delete/{id}', [ReligionController::class, 'delete']);
+                    Route::get('religion/change-status/{id}', [ReligionController::class, 'change_status']);
+                /* Religion */
+            /* masters */
             /* student */
                 Route::match(['get', 'post'], 'student/list', [StudentController::class, 'list']);
                 Route::match(['get', 'post'], 'student/add', [StudentController::class, 'add']);
@@ -184,6 +180,14 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'student/student-print/{id}', [StudentController::class, 'studentPrint']);
                 Route::match(['get', 'post'], 'student/student-pdf/{id}', [StudentController::class, 'studentPDF']);
             /* student */
+            /* leads */
+                /* sales person */
+                    Route::match(['get', 'post'], 'sales-person/list', [SalesPersonController::class, 'list']);
+                    Route::match(['get', 'post'], 'sales-person/edit/{id}', [SalesPersonController::class, 'edit']);
+                    Route::get('sales-person/delete/{id}', [SalesPersonController::class, 'delete']);
+                    Route::get('sales-person/change-status/{id}', [SalesPersonController::class, 'change_status']);
+                /* sales person */
+            /* leads */
         });
     // });
 /* Admin Panel */

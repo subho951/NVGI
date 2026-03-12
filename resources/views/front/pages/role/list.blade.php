@@ -1,11 +1,16 @@
 @extends('front.layouts.afterlogin')
 @section('content')
 <?php
-
+use App\Models\Module;
 use App\Helpers\Helper;
 
 $controllerRoute = $module['controller_route'];
 ?>
+<style>
+    a{
+        text-decoration: none;
+    }
+</style>
 <h2>Manage <?= $module['title'] ?></h2>
 @if(session('success_message'))
 <div class="alert alert-success bg-success text-light border-0 alert-dismissible fade show autohide" role="alert">
@@ -30,34 +35,24 @@ $controllerRoute = $module['controller_route'];
     </ul>
 </div>
 @endif
-<!--<h6 class="mb-4 text-danger">Developer's Note : ID should be : NVGI/{Unit Name}{1st letter of branch}/1,2,3...</h6>-->
-<div class="card shadow bg-light mb-4">
-    <div class="card-body">
-        <h6 class="text-center alert alert-info alert-sm py-2 px-2"><?= $action ?> <?= $module['title'] ?></h6>
-        <form method="POST" action="" class="row g-3">
-            @csrf
-            <div class="col-md-2">
-                Name of the <?= $module['title'] ?>
-            </div>
-            <div class="col-md-3">
-                <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name" value="<?= (($single_row) ? $single_row->name : '') ?>" required>
-                @error('name') <span class="text-danger">{{ $message }}</span> @enderror
-            </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-success btn-sm w-100"><?= $action ?></button>
-            </div>
-        </form>
-    </div>
-</div>
+
 <div class="card shadow bg-light">
+    <div class="card-header">
+        <h5>
+            <a href="<?= url('role/add') ?>" class="btn btn-success btn-sm">Add New <?= $module['title'] ?></a>
+        </h5>
+    </div>
     <div class="card-body">
         <h6 class="text-center alert alert-info alert-sm py-2 px-2">List of <?= $module['title'] ?></h6>
         <div class="table-responsive">
-            <table id="example" class="table table-bordered datatable">
-                <thead>
-                    <th>#</th>
-                    <th>Name of the <?= $module['title'] ?></th>
-                    <th>Action</th>
+            <table id="example" class="table table-striped table-bordered align-middle text-center" style="width:100%">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="text-center">#</th>
+                        <th class="text-center">Name</th>
+                        <th class="text-center">Modules</th>
+                        <th class="text-center">Action</th>
+                    </tr>
                 </thead>
                 <tbody>
                     <?php if ($rows) {
@@ -67,21 +62,32 @@ $controllerRoute = $module['controller_route'];
                                 <td><?= $sl++ ?></td>
                                 <td><?= $row->name ?></td>
                                 <td>
+                                    <div class="row">
+                                        <?php
+                                        $module_id = (($row->module_id != '')?json_decode($row->module_id):[]);
+                                        if(!empty($module_id)){ for($m=0;$m<count($module_id);$m++){
+                                            $getModule = Module::select('name')->where('id', '=', $module_id[$m])->first();
+                                        ?>
+                                            <div class="col-md-3">
+                                                <span class="badge bg-primary"><?= (($getModule)?$getModule->name:'') ?></span>
+                                            </div>
+                                        <?php } }?>
+                                    </div>
+                                </td>
+                                <td>
                                     <?php
                                     $encoded_id     = Helper::encoded($row->id);
                                     $delete_url     = $controllerRoute . '/delete/';
                                     $status_url     = $controllerRoute . '/change-status/';
                                     $edit_url       = $controllerRoute . '/edit/';
                                     ?>
-                                    <a href="<?= url($controllerRoute . '/edit/' . Helper::encoded($row->id)) ?>" class="text-primary" title="Edit <?= $module['title'] ?>">Edit</a>
+                                    <a href="<?= url($controllerRoute . '/edit/' . Helper::encoded($row->id)) ?>" class="text-primary" title="Edit <?= $module['title'] ?>"><i class="fa fa-edit text-primary"></i></a>
                                     |
                                     <?php if ($row->status) { ?>
-                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to deactivate this record?')" class="text-success" title="Active <?= $module['title'] ?>">Active</a>
+                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to deactivate this record?')" class="text-success" title="Active <?= $module['title'] ?>"><i class="fa fa-check text-success"></i></a>
                                     <?php } else { ?>
-                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>">Blocked</a>
+                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>"><i class="fas fa-ban text-danger"></i></a>
                                     <?php } ?>
-                                    <!-- |
-                            <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>">Delete</a> -->
                                 </td>
                             </tr>
                     <?php }

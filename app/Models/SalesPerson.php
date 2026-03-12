@@ -1,15 +1,16 @@
 <?php
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Model;
 
-class Role extends Model
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class SalesPerson extends Model
 {
     use SoftDeletes;
-
+    protected $table = 'sales_persons';
     protected $fillable = [
         'name',
-        'module_id',
+        'phone'
     ];
 }

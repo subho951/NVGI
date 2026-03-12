@@ -54,12 +54,17 @@ $controllerRoute = $module['controller_route'];
                     @error('last_name') <span class="text-danger">{{ $message }}</span> @enderror
                 </div>
 
-                <!-- <div class="col-md-6 mb-3">
-                    <label for="country_code">Country Phone Code</label>
-                    <input type="text" class="form-control form-control-sm" name="country_code" id="country_code" placeholder="Write Country Phone Code" autocomplete="off" value="<?= (($single_row) ? $single_row->country_code : '') ?>" required>
-                    @error('country_code') <span class="text-danger">{{ $message }}</span> @enderror
-                </div> -->
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
+                    <label for="role_id">Role</label>
+                    <select class="form-select form-select-sm" name="role_id" id="role_id" required>
+                        <option selected value="">Select</option>
+                        <?php if($roles){ foreach($roles as $loop_row){?>
+                            <option value="<?= $loop_row->id ?>" <?= (($single_row) ? (($single_row->role_id == $loop_row->id)?'selected':'') : '') ?>><?= $loop_row->name ?></option>
+                        <?php } } ?>
+                    </select>
+                    @error('role_id') <span class="text-danger">{{ $message }}</span> @enderror
+                </div>
+                <div class="col-md-4 mb-3">
                     <label for="phone">Phone</label>
                     <input type="text" class="form-control form-control-sm" name="phone" id="phone" placeholder="Write Phone" autocomplete="off" value="<?= (($single_row) ? $single_row->phone : '') ?>" required>
                     @error('phone') <span class="text-danger">{{ $message }}</span> @enderror
@@ -70,7 +75,7 @@ $controllerRoute = $module['controller_route'];
                     <input type="email" class="form-control form-control-sm" name="email" id="email" placeholder="Write Email" autocomplete="off" value="<?= (($single_row) ? $single_row->email : '') ?>" required>
                     @error('email') <span class="text-danger">{{ $message }}</span> @enderror
                 </div> -->
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <label for="password">Password</label>
                     <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="Write Password" autocomplete="off" minlength="8" maxlength="15" value="<?= (($single_row) ? $single_row->original_password : '') ?>">
                     <small class="text-info">Leave blank if you dont want to change password</small>
@@ -88,10 +93,11 @@ $controllerRoute = $module['controller_route'];
     <div class="card-body">
         <h6 class="text-center alert alert-info alert-sm py-2 px-2">List of <?= $module['title'] ?></h6>
         <div class="table-responsive">
-            <table class="table table-bordered datatable">
+            <table id="example" class="table table-bordered datatable">
                 <thead>
                     <th>#</th>
                     <th>ID (Auto-generated)</th>
+                    <th>Role</th>
                     <th>Name</th>
                     <!-- <th>Email</th> -->
                     <th>Phone</th>
@@ -105,6 +111,7 @@ $controllerRoute = $module['controller_route'];
                             <tr>
                                 <td><?= $sl++ ?></td>
                                 <td><?= $row->serial_id ?></td>
+                                <td><?= $row->role_name ?></td>
                                 <td><?= $row->first_name . ' ' . $row->middle_name . ' ' . $row->last_name ?></td>
                                 <!-- <td><?= $row->email ?></td> -->
                                 <td><?= $row->phone ?></td>
@@ -130,7 +137,7 @@ $controllerRoute = $module['controller_route'];
                         <?php }
                     } else { ?>
                         <tr>
-                            <td colspan="5" class="text-danger text-center">
+                            <td colspan="7" class="text-danger text-center">
                                 No records found
                             </td>
                         </tr>
