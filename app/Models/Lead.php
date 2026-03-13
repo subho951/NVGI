@@ -16,6 +16,8 @@ class Lead extends Model
         'student_name',
         'guardian_name',
         'phone',
+        'address',
+        'age',
         'remarks1',
         'remarks2',
         'remarks3',

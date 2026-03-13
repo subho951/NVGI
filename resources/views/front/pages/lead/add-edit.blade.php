@@ -43,6 +43,8 @@ if ($row) {
     $student_name = $row->student_name;
     $guardian_name = $row->guardian_name;
     $phone = $row->phone;
+    $address = $row->address;
+    $age = $row->age;
     $remarks1 = $row->remarks1;
     $remarks2 = $row->remarks2;
     $remarks3 = $row->remarks3;
@@ -53,6 +55,8 @@ if ($row) {
     $student_name = '';
     $guardian_name = '';
     $phone = '';
+    $address = '';
+    $age = '';
     $remarks1 = '';
     $remarks2 = '';
     $remarks3 = '';
@@ -89,6 +93,15 @@ if ($row) {
         <input type="text" class="form-control form-control-sm" name="phone" id="phone" placeholder="Phone" value="<?= $phone ?>" minlength="10" maxlength="10" onkeypress="return isNumber(event)" required>
     </div>
     <div class="col-md-4">
+        <label for="age">Age <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-sm" name="age" id="age" placeholder="Age" value="<?= $age ?>">
+    </div>
+
+    <div class="col-md-6">
+        <label for="address">Address <span class="text-danger">*</span></label>
+        <textarea class="form-control form-control-sm" name="address" id="address" placeholder="Address" rows="3"><?= $address ?></textarea>
+    </div>
+    <div class="col-md-6">
         <label for="remarks1">Remarks 1 <span class="text-danger">*</span></label>
         <textarea class="form-control form-control-sm" name="remarks1" id="remarks1" placeholder="Remarks 1" rows="3" required><?= $remarks1 ?></textarea>
     </div>

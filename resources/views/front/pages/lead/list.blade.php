@@ -53,6 +53,8 @@ $controllerRoute = $module['controller_route'];
                         <th class="text-center">Student Name</th>
                         <th class="text-center">Guardian Name</th>
                         <th class="text-center">Phone</th>
+                        <th class="text-center">Address</th>
+                        <th class="text-center">Age</th>
                         <th class="text-center">Remarks</th>
                         <th class="text-center">Other Remarks</th>
                         <th class="text-center">Date Uploaded</th>
@@ -70,6 +72,8 @@ $controllerRoute = $module['controller_route'];
                                 <td><?= $row->student_name ?></td>
                                 <td><?= $row->guardian_name ?></td>
                                 <td><?= $row->phone ?></td>
+                                <td><?= $row->address ?></td>
+                                <td><?= $row->age ?></td>
                                 <td><?= $row->remarks1 ?></td>
                                 <td>
                                     <ul class="list-group">
@@ -115,7 +119,7 @@ $controllerRoute = $module['controller_route'];
                     <?php }
                     } else { ?>
                         <tr>
-                            <td colspan="10" class="text-danger text-center">
+                            <td colspan="12" class="text-danger text-center">
                                 No records found
                             </td>
                         </tr>
