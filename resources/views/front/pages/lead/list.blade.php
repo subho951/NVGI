@@ -42,6 +42,30 @@ $controllerRoute = $module['controller_route'];
         </h5>
     </div>
     <div class="card-body">
+        <form method="GET" action="<?= url('lead/generate-report') ?>" target="_blank">
+            <div class="row" style="border: 1px solid #1e293b24;padding: 10px;border-radius: 10px;margin-bottom: 15px;">
+                <div class="col-md-3">
+                    <label for="sales_person_id">Sales Person</label>
+                    <select class="form-select form-select-sm" name="sales_person_id" id="sales_person_id" required>
+                        <option selected value="ALL">ALL</option>
+                        <?php if($salesPersons){ foreach($salesPersons as $loop_row){?>
+                            <option value="<?= $loop_row->id ?>"><?= $loop_row->name ?></option>
+                        <?php } } ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="from_date">From Date</label>
+                    <input type="date" class="form-control form-control-sm" name="from_date" id="from_date" placeholder="From Date" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="to_date">To Date</label>
+                    <input type="date" class="form-control form-control-sm" name="to_date" id="to_date" placeholder="To Date" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-success btn-sm w-100" style="margin-top: 18px;">Generate</button>
+                </div>
+            </div>
+        </form>
         <h6 class="text-center alert alert-info alert-sm py-2 px-2">List of <?= $module['title'] ?></h6>
         <div class="table-responsive">
             <table id="example" class="table table-striped table-bordered align-middle text-center" style="width:100%">

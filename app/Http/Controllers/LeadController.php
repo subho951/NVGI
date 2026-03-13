@@ -48,6 +48,7 @@ class LeadController extends Controller
                                                     ->orderBy('leads.id', 'DESC')
                                                     ->get();
             
+            $data['salesPersons']           = SalesPerson::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             return view('front.pages.' . $page_name, $data);
         }
@@ -187,4 +188,48 @@ class LeadController extends Controller
             return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' '.$msg.' successfully !!!');
         }
     /* change status */
+    /* generate report */
+        public function generateReport(Request $request){
+            $data['module']         = $this->data;
+            $title                  = 'Lead Report';
+            $page_name              = 'lead.lead-report';
+                       
+            $sales_person_id        = $request->sales_person_id;
+            $from_date              = $request->from_date;
+            $to_date                = $request->to_date;
+
+            $data['from_date']      = $from_date;
+            $data['to_date']        = $to_date;
+
+            if($sales_person_id == 'ALL'){
+                $data['sales_person_name']      = $sales_person_id;
+                $data['rows']                   = Lead::select(
+                                                        'leads.*',
+                                                        'sales_persons.name as sales_person_name'
+                                                    )
+                                                    ->leftJoin('sales_persons', 'sales_persons.id', '=', 'leads.sales_person_id')
+                                                    ->where('leads.status', '=', 1)
+                                                    ->where('leads.created_at', '>=', $from_date)
+                                                    ->where('leads.created_at', '<=', $to_date)
+                                                    ->orderBy('leads.id', 'DESC')
+                                                    ->get();
+            } else {
+                $getSalesPerson           = SalesPerson::select('name')->where('id', '=', $sales_person_id)->first();
+                $data['sales_person_name']      = (($getSalesPerson)?$getSalesPerson->name:'');
+                $data['rows']                   = Lead::select(
+                                                        'leads.*',
+                                                        'sales_persons.name as sales_person_name'
+                                                    )
+                                                    ->leftJoin('sales_persons', 'sales_persons.id', '=', 'leads.sales_person_id')
+                                                    ->where('leads.status', '=', 1)
+                                                    ->where('leads.sales_person_id', '=', $sales_person_id)
+                                                    ->where('leads.created_at', '>=', $from_date)
+                                                    ->where('leads.created_at', '<=', $to_date)
+                                                    ->orderBy('leads.id', 'DESC')
+                                                    ->get();
+            }
+            $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+            return view('front.pages.' . $page_name, $data);
+        }
+    /* generate report */
 }

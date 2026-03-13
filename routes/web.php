@@ -194,6 +194,7 @@ use App\Http\Controllers\Common\TableController;
                     Route::match(['get', 'post'], 'lead/edit/{id}', [LeadController::class, 'edit']);
                     Route::get('lead/delete/{id}', [LeadController::class, 'delete']);
                     Route::get('lead/change-status/{id}', [LeadController::class, 'change_status']);
+                    Route::match(['get'], 'lead/generate-report', [LeadController::class, 'generateReport']);
                 /* leads */
             /* CRM */
         });
