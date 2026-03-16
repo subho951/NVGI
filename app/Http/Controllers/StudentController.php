@@ -565,4 +565,36 @@ class StudentController extends Controller
         $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
         return view('front.pages.' . $page_name, $data);
     }
+    /* fees collection */
+        public function feesCollection(Request $request){
+            $data['module']                 = $this->data;
+            $title                          = $this->data['title'].' List';
+            $page_name                      = 'student.fees-collection';
+            $data['rows']                   = Student::select(
+                                                                'students.*',
+                                                                'units.name as unit_name',
+                                                                'branches.name as branch_name',
+                                                                'users.first_name',
+                                                                'users.last_name',
+                                                                DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name")
+                                                            )
+                                                            ->leftJoin('units', 'units.id', '=', 'students.unit_id')
+                                                            ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                                                            ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                                                            ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                                                            ->leftJoin('users', 'users.id', '=', 'students.created_by')
+                                                            ->where(function ($q) {
+                                                                $q->where('students.status', '!=', 3)
+                                                                ->orWhereNull('students.status');
+                                                            })
+                                                            ->orderBy('students.id', 'DESC')
+                                                            ->get();
+            
+            $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
+            $data['branches']               = Branch::select('id', 'name', 'unit_id')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
+            
+            $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+            return view('front.pages.' . $page_name, $data);
+        }
+    /* fees collection */
 }

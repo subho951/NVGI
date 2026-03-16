@@ -148,12 +148,6 @@ $role_id = session('user_data')['role_id'];
                 <?php } ?>
             </ul>
         </li>
-
-        <!-- <li class="nav-item">
-            <a href="<?= url('front-desk/list') ?>" class="nav-link <?= (($pageSegment == 'front-desk') ? 'active-link' : '') ?>">
-                <i class="fa-solid fa-bell-concierge"></i> <span>Front-Desks</span>
-            </a>
-        </li> -->
     <?php } ?>
 
     <?php if((in_array(15, $moduleIds)) || (in_array(16, $moduleIds))){?>
@@ -181,6 +175,13 @@ $role_id = session('user_data')['role_id'];
                     <li>
                         <a href="<?= url('student/add') ?>" class="nav-link <?= (($pageSegment == 'student' && $pageFunction == 'add') ? 'active-link' : '') ?>">
                             <i class="fa-solid fa-arrow-right"></i> <span>Add Student</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(19, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('student/fees-collection') ?>" class="nav-link <?= (($pageSegment == 'student' && $pageFunction == 'fees-collection') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Fees Collection</span>
                         </a>
                     </li>
                 <?php } ?>

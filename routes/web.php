@@ -180,6 +180,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('student/details/{id}', [StudentController::class, 'details'])->name('student.details');
                 Route::match(['get', 'post'], 'student/student-print/{id}', [StudentController::class, 'studentPrint']);
                 Route::match(['get', 'post'], 'student/student-pdf/{id}', [StudentController::class, 'studentPDF']);
+                Route::match(['get', 'post'], 'student/fees-collection', [StudentController::class, 'feesCollection']);
             /* student */
             /* CRM */
                 /* sales person */
