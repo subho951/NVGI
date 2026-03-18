@@ -59,12 +59,19 @@ $pageSegment  = $pageName[0];
   <script>
     $(document).ready(function() {
       const isStudentListPage = @json(request()->is('student/list'));
-      const studentListExportColumns = function(idx) {
-        // On student list, skip the last "Action" column in exports.
-        if (!isStudentListPage) {
-          return true;
+      const exportColumnFilter = function(idx, data, node) {
+        // Exclude Action/Actions columns from all exports.
+        const headerText = (node && node.textContent ? node.textContent : '').trim().toLowerCase();
+        if (headerText === 'action' || headerText === 'actions') {
+          return false;
         }
-        return idx !== 12;
+
+        // Fallback for student list where action is the last column.
+        if (isStudentListPage && idx === 12) {
+          return false;
+        }
+
+        return true;
       };
 
       $('#example').DataTable({
@@ -73,16 +80,16 @@ $pageSegment  = $pageName[0];
             extend: 'excel',
             className: 'btn btn-success btn-sm',
             exportOptions: {
-              columns: studentListExportColumns
+              columns: exportColumnFilter
             }
           },
           {
             extend: 'pdfHtml5',
             className: 'btn btn-danger btn-sm',
-            orientation: isStudentListPage ? 'landscape' : 'portrait',
+            orientation: 'landscape',
             pageSize: isStudentListPage ? 'A3' : 'A4',
             exportOptions: {
-              columns: studentListExportColumns,
+              columns: exportColumnFilter,
               format: {
                 body: function(data) {
                   if (typeof data !== 'string') {
