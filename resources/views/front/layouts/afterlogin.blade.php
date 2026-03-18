@@ -59,12 +59,22 @@ $pageSegment  = $pageName[0];
   <script>
     $(document).ready(function() {
       const isStudentListPage = @json(request()->is('student/list'));
+      const studentListExportColumns = function(idx) {
+        // On student list, skip the last "Action" column in exports.
+        if (!isStudentListPage) {
+          return true;
+        }
+        return idx !== 12;
+      };
 
       $('#example').DataTable({
         dom: 'Bfrtip',
         buttons: [{
             extend: 'excel',
-            className: 'btn btn-success btn-sm'
+            className: 'btn btn-success btn-sm',
+            exportOptions: {
+              columns: studentListExportColumns
+            }
           },
           {
             extend: 'pdfHtml5',
@@ -72,7 +82,7 @@ $pageSegment  = $pageName[0];
             orientation: isStudentListPage ? 'landscape' : 'portrait',
             pageSize: isStudentListPage ? 'A3' : 'A4',
             exportOptions: {
-              columns: ':visible',
+              columns: studentListExportColumns,
               format: {
                 body: function(data) {
                   if (typeof data !== 'string') {
@@ -107,8 +117,10 @@ $pageSegment  = $pageName[0];
 
               if (tableNode && tableNode.table && tableNode.table.body && tableNode.table.body.length) {
                 const columnCount = tableNode.table.body[0].length;
-                // Student list has 13 columns; keep explicit widths so all columns fit on landscape A3.
-                if (columnCount === 13) {
+                // Student list export excludes "Action", so expected export columns are 12.
+                if (columnCount === 12) {
+                  tableNode.table.widths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52];
+                } else if (columnCount === 13) {
                   tableNode.table.widths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52, 44];
                 } else {
                   tableNode.table.widths = Array(columnCount).fill('*');
