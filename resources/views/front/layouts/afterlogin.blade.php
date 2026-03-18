@@ -58,6 +58,8 @@ $pageSegment  = $pageName[0];
   <!-- Initialize DataTable -->
   <script>
     $(document).ready(function() {
+      const isStudentListPage = @json(request()->is('student/list'));
+
       $('#example').DataTable({
         dom: 'Bfrtip',
         buttons: [{
@@ -66,7 +68,34 @@ $pageSegment  = $pageName[0];
           },
           {
             extend: 'pdf',
-            className: 'btn btn-danger btn-sm'
+            className: 'btn btn-danger btn-sm',
+            orientation: isStudentListPage ? 'landscape' : 'portrait',
+            pageSize: isStudentListPage ? 'A3' : 'A4',
+            exportOptions: {
+              columns: ':visible'
+            },
+            customize: function(doc) {
+              if (!isStudentListPage) {
+                return;
+              }
+
+              // Fit wide student list exports by reducing font and forcing equal column widths.
+              doc.pageMargins = [12, 18, 12, 18];
+              doc.defaultStyle.fontSize = 7;
+              doc.styles.tableHeader.fontSize = 8;
+              doc.styles.tableHeader.alignment = 'center';
+              doc.styles.tableHeader.fillColor = '#123a63';
+              doc.styles.tableHeader.color = '#ffffff';
+
+              const tableNode = doc.content.find(function(node) {
+                return node.table;
+              });
+
+              if (tableNode && tableNode.table && tableNode.table.body && tableNode.table.body.length) {
+                const columnCount = tableNode.table.body[0].length;
+                tableNode.table.widths = Array(columnCount).fill('*');
+              }
+            }
           }
         ],
         pageLength: 10
