@@ -119,7 +119,8 @@ $pageSegment  = $pageName[0];
                 const columnCount = tableNode.table.body[0].length;
                 // Student list export excludes "Action", so expected export columns are 12.
                 if (columnCount === 12) {
-                  const baseWidths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52];
+                  // Keep more width for fee columns, especially Monthly Fees (last column).
+                  const baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 110];
                   const totalBase = baseWidths.reduce((sum, width) => sum + width, 0);
                   const pageWidth = (doc.pageSize && typeof doc.pageSize === 'object' && doc.pageSize.width) ? doc.pageSize.width : 1190;
                   const availableWidth = Math.max(600, Math.floor(pageWidth - doc.pageMargins[0] - doc.pageMargins[2]));
@@ -128,7 +129,7 @@ $pageSegment  = $pageName[0];
                   scaled[scaled.length - 1] += (availableWidth - usedWidth);
                   tableNode.table.widths = scaled;
                 } else if (columnCount === 13) {
-                  const baseWidths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52, 44];
+                  const baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 96, 14];
                   const totalBase = baseWidths.reduce((sum, width) => sum + width, 0);
                   const pageWidth = (doc.pageSize && typeof doc.pageSize === 'object' && doc.pageSize.width) ? doc.pageSize.width : 1190;
                   const availableWidth = Math.max(600, Math.floor(pageWidth - doc.pageMargins[0] - doc.pageMargins[2]));
