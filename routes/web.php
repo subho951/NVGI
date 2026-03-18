@@ -181,6 +181,8 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'student/student-print/{id}', [StudentController::class, 'studentPrint']);
                 Route::match(['get', 'post'], 'student/student-pdf/{id}', [StudentController::class, 'studentPDF']);
                 Route::match(['get', 'post'], 'student/fees-collection', [StudentController::class, 'feesCollection']);
+                Route::post('student/fees-collection/update', [StudentController::class, 'updateFeesCollection'])->name('student.fees-collection.update');
+                Route::match(['get'], 'student/fees-entry', [StudentController::class, 'feesEntry']);
             /* student */
             /* CRM */
                 /* sales person */

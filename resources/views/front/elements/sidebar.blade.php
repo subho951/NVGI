@@ -12,14 +12,23 @@ if (count($pageName) > 1) {
     $pageFunction  = '';
 }
 $role_id = session('user_data')['role_id'];
+$siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : env('NO_IMAGE'));
 ?>
 <style>
     .active-link {
-        color: #99b138 !important;
+        color: #ffffff !important;
     }
 </style>
 
-<h4>Admin Panel 1.0</h4>
+<div class="sidebar-brand">
+    <img src="<?= $siteLogo ?>" class="sidebar-brand-logo" alt="logo">
+    <div class="sidebar-brand-meta">
+        <p class="sidebar-brand-title">NVGI Admin</p>
+        <p class="sidebar-brand-subtitle"><?= (Helper::getSettingValue('description') != '' ? Helper::getSettingValue('description') : 'Student Management System') ?></p>
+    </div>
+</div>
+
+<div class="sidebar-scroll-area">
 <ul class="nav flex-column sidebar-menu">
     <?php if(in_array(1, $moduleIds)){?>
         <!-- Dashboard -->
@@ -230,3 +239,4 @@ $role_id = session('user_data')['role_id'];
         </li>
     <?php } ?>
 </ul>
+</div>

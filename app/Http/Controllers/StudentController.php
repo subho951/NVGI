@@ -20,6 +20,7 @@ use App\Models\Medium;
 use App\Models\KnowAbout;
 use App\Models\Religion;
 use App\Models\Board;
+use App\Models\StudentPayment;
 
 use App\Helpers\Helper;
 use Auth;
@@ -570,31 +571,255 @@ class StudentController extends Controller
             $data['module']                 = $this->data;
             $title                          = $this->data['title'].' List';
             $page_name                      = 'student.fees-collection';
-            $data['rows']                   = Student::select(
-                                                                'students.*',
-                                                                'units.name as unit_name',
-                                                                'branches.name as branch_name',
-                                                                'users.first_name',
-                                                                'users.last_name',
-                                                                DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name")
-                                                            )
-                                                            ->leftJoin('units', 'units.id', '=', 'students.unit_id')
-                                                            ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
-                                                            ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
-                                                            ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
-                                                            ->leftJoin('users', 'users.id', '=', 'students.created_by')
-                                                            ->where(function ($q) {
-                                                                $q->where('students.status', '!=', 3)
-                                                                ->orWhereNull('students.status');
-                                                            })
-                                                            ->orderBy('students.id', 'DESC')
-                                                            ->get();
+
+            $data['search_unit']            = '';
+            $data['search_branch']          = '';
+            $data['search_collection_year'] = date('Y');
+            $data['is_search']              = 0;
+            $data['rows']                   = [];
+
+            if($request->isMethod('post')){
+                $unit_id            = $request->unit_id;
+                $branch_id          = $request->branch_id;
+                $collection_year    = $request->collection_year;
+
+                $data['search_unit']            = $unit_id;
+                $data['search_branch']          = $branch_id;
+                $data['search_collection_year'] = $collection_year;
+                $data['is_search']              = 1;
+
+                $paymentSubQuery = DB::table('student_payments')
+                                        ->select(
+                                            'student_id',
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 1 THEN payable_amount ELSE 0 END) as jan_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 1 THEN payment_amount ELSE 0 END) as jan_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 1 THEN due_amount ELSE 0 END) as jan_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 2 THEN payable_amount ELSE 0 END) as feb_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 2 THEN payment_amount ELSE 0 END) as feb_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 2 THEN due_amount ELSE 0 END) as feb_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 3 THEN payable_amount ELSE 0 END) as mar_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 3 THEN payment_amount ELSE 0 END) as mar_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 3 THEN due_amount ELSE 0 END) as mar_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 4 THEN payable_amount ELSE 0 END) as apr_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 4 THEN payment_amount ELSE 0 END) as apr_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 4 THEN due_amount ELSE 0 END) as apr_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 5 THEN payable_amount ELSE 0 END) as may_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 5 THEN payment_amount ELSE 0 END) as may_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 5 THEN due_amount ELSE 0 END) as may_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 6 THEN payable_amount ELSE 0 END) as jun_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 6 THEN payment_amount ELSE 0 END) as jun_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 6 THEN due_amount ELSE 0 END) as jun_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 7 THEN payable_amount ELSE 0 END) as jul_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 7 THEN payment_amount ELSE 0 END) as jul_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 7 THEN due_amount ELSE 0 END) as jul_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 8 THEN payable_amount ELSE 0 END) as aug_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 8 THEN payment_amount ELSE 0 END) as aug_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 8 THEN due_amount ELSE 0 END) as aug_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 9 THEN payable_amount ELSE 0 END) as sep_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 9 THEN payment_amount ELSE 0 END) as sep_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 9 THEN due_amount ELSE 0 END) as sep_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 10 THEN payable_amount ELSE 0 END) as oct_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 10 THEN payment_amount ELSE 0 END) as oct_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 10 THEN due_amount ELSE 0 END) as oct_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 11 THEN payable_amount ELSE 0 END) as nov_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 11 THEN payment_amount ELSE 0 END) as nov_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 11 THEN due_amount ELSE 0 END) as nov_due"),
+
+                                            DB::raw("SUM(CASE WHEN payable_month = 12 THEN payable_amount ELSE 0 END) as dec_payable"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 12 THEN payment_amount ELSE 0 END) as dec_paid"),
+                                            DB::raw("SUM(CASE WHEN payable_month = 12 THEN due_amount ELSE 0 END) as dec_due"),
+
+                                            DB::raw("SUM(payable_amount) as total_payable"),
+                                            DB::raw("SUM(payment_amount) as total_paid"),
+                                            DB::raw("SUM(payable_amount - payment_amount) as total_due")
+                                        )
+                                        ->where('payable_year', $collection_year)
+                                        ->groupBy('student_id');
+
+
+                                    $data['rows'] = Student::select(
+                                            'students.id',
+                                            'students.student_id_serial',
+                                            'students.full_name',
+                                            'students.father_mobile',
+                                            'students.photo',
+                                            'units.name as unit_name',
+                                            'branches.name as branch_name',
+                                            'users.first_name',
+                                            'users.last_name',
+                                            DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
+
+                                            'payments.*'
+                                        )
+
+                                        ->leftJoinSub($paymentSubQuery, 'payments', function ($join) {
+                                            $join->on('payments.student_id', '=', 'students.id');
+                                        })
+
+                                        ->leftJoin('units', 'units.id', '=', 'students.unit_id')
+                                        ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                                        ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                                        ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                                        ->leftJoin('users', 'users.id', '=', 'students.created_by')
+
+                                        ->where('students.status', '!=', 3)
+                                        ->where('students.unit_id', $unit_id)
+                                        ->where('students.branch_id', $branch_id)
+
+                                        ->orderBy('students.id', 'DESC')
+                                        ->get();
+
+                // Helper::pr($data['rows']);
+            }
+            
             
             $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
             $data['branches']               = Branch::select('id', 'name', 'unit_id')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
             
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             return view('front.pages.' . $page_name, $data);
+        }
+        public function updateFeesCollection(Request $request){
+            $validator = Validator::make($request->all(), [
+                'student_id'     => 'required|integer',
+                'payable_month'  => 'required|integer|min:1|max:12',
+                'payable_year'   => 'required|integer|min:2000|max:2100',
+                'payment_amount' => 'required|numeric|gt:0',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => $validator->errors()->first(),
+                    'errors'  => $validator->errors(),
+                ], 422);
+            }
+
+            $student = Student::select('id', 'full_name')
+                                ->where('id', $request->student_id)
+                                ->first();
+            if (!$student) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Student not found.',
+                ], 404);
+            }
+
+            $studentPayment = StudentPayment::where('student_id', $request->student_id)
+                                            ->where('payable_month', $request->payable_month)
+                                            ->where('payable_year', $request->payable_year)
+                                            ->first();
+            if (!$studentPayment) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Payment schedule not found for this month.',
+                ], 404);
+            }
+
+            $monthName       = date('F', mktime(0, 0, 0, (int)$request->payable_month, 1));
+            $payableAmount   = (float)$studentPayment->payable_amount;
+            $alreadyPaid     = (float)$studentPayment->payment_amount;
+            $enteredAmount   = (float)$request->payment_amount;
+            $currentDue      = max($payableAmount - $alreadyPaid, 0);
+
+            if ($currentDue <= 0) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'No due left for '.$student->full_name.' ('.$monthName.' '.$request->payable_year.').',
+                ], 422);
+            }
+
+            if ($enteredAmount > $payableAmount) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Payment amount cannot be greater than payable amount for '.$student->full_name.' ('.$monthName.' '.$request->payable_year.').',
+                ], 422);
+            }
+
+            if ($enteredAmount > $currentDue) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Payment amount cannot be greater than due amount for '.$student->full_name.' ('.$monthName.' '.$request->payable_year.').',
+                ], 422);
+            }
+
+            $newPaidAmount   = $alreadyPaid + $enteredAmount;
+            $newDueAmount    = max($payableAmount - $newPaidAmount, 0);
+            $updatedBy       = ((session()->has('user_data') && array_key_exists('user_id', session('user_data')))?session('user_data')['user_id']:((Auth::check())?Auth::id():0));
+
+            $studentPayment->update([
+                'payment_amount' => $newPaidAmount,
+                'payment_date'   => date('Y-m-d'),
+                'due_amount'     => $newDueAmount,
+                'updated_by'     => $updatedBy,
+            ]);
+
+            $totals = StudentPayment::select(
+                                        DB::raw("COALESCE(SUM(payable_amount), 0) as total_payable"),
+                                        DB::raw("COALESCE(SUM(payment_amount), 0) as total_paid"),
+                                        DB::raw("COALESCE(SUM(due_amount), 0) as total_due")
+                                    )
+                                    ->where('student_id', $request->student_id)
+                                    ->where('payable_year', $request->payable_year)
+                                    ->first();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Fees collection successfull for '.$student->full_name.' ('.$monthName.' '.$request->payable_year.').',
+                'student' => [
+                    'id'   => $student->id,
+                    'name' => $student->full_name,
+                ],
+                'month' => [
+                    'name'    => $monthName,
+                    'year'    => (int)$request->payable_year,
+                    'payable' => number_format($payableAmount, 2),
+                    'paid'    => number_format($newPaidAmount, 2),
+                    'due'     => number_format($newDueAmount, 2),
+                    'payable_numeric' => $payableAmount,
+                    'paid_numeric'    => $newPaidAmount,
+                    'due_numeric'     => $newDueAmount,
+                ],
+                'total' => [
+                    'payable' => number_format((float)$totals->total_payable, 2),
+                    'paid'    => number_format((float)$totals->total_paid, 2),
+                    'due'     => number_format((float)$totals->total_due, 2),
+                ],
+            ]);
+        }
+        public function feesEntry(){
+            $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')->get();
+            if($students){
+                foreach($students as $student){
+                    for($month=1; $month<=12; $month++){
+                        $fields = [
+                            'student_id'        => $student->id,
+                            'unit_id'           => $student->unit_id,
+                            'branch_id'         => $student->branch_id,
+                            'branch_id'         => $student->session_id,
+                            'payable_month'     => $month,
+                            'payable_year'      => date('Y'),
+                            'payable_amount'    => $student->monthly_fees,
+                            'due_amount'        => $student->monthly_fees,
+                        ];
+                        // Helper::pr($fields,0);
+                        StudentPayment::insert($fields);
+                    }
+                }
+            }
+            // die;
+            echo 'Student payment schedule created';
         }
     /* fees collection */
 }
