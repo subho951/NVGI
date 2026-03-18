@@ -53,15 +53,12 @@ class StudentController extends Controller
                                                                 'students.*',
                                                                 'units.name as unit_name',
                                                                 'branches.name as branch_name',
-                                                                'users.first_name',
-                                                                'users.last_name',
                                                                 DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name")
                                                             )
                                                             ->leftJoin('units', 'units.id', '=', 'students.unit_id')
                                                             ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
                                                             ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
                                                             ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
-                                                            ->leftJoin('users', 'users.id', '=', 'students.created_by')
                                                             ->where(function ($q) {
                                                                 $q->where('students.status', '!=', 3)
                                                                 ->orWhereNull('students.status');

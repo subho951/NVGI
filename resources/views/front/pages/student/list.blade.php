@@ -10,8 +10,67 @@ $controllerRoute = $module['controller_route'];
     a{
         text-decoration: none;
     }
+    .student-page-title{
+        font-weight: 700;
+        color: #1f2937;
+        letter-spacing: 0.2px;
+    }
+    .student-list-card{
+        border: 0;
+        border-radius: 14px;
+        overflow: hidden;
+        background: linear-gradient(180deg, #f6fbff 0%, #ffffff 35%);
+    }
+    .student-list-card .card-header{
+        background: linear-gradient(90deg, #ffffff 0%, #eaf4ff 100%);
+        border-bottom: 1px solid #d8e6f4;
+    }
+    .student-list-card .card-body{
+        padding-top: 1rem;
+    }
+    .student-list-note{
+        border: 1px solid #c8def6;
+        background: linear-gradient(90deg, #dbeafe 0%, #e0f2fe 100%);
+        color: #0f172a;
+        font-weight: 600;
+    }
+    .student-table-wrap{
+        border: 1px solid #d8e6f4;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ffffff;
+    }
+    #example{
+        margin-bottom: 0 !important;
+    }
+    #example thead th{
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    #example tbody td{
+        font-size: 0.9rem;
+        color: #1f2937;
+        vertical-align: middle;
+    }
+    #example tbody tr:hover{
+        background-color: #f0f7ff;
+    }
+    .student-photo{
+        width: 52px;
+        height: 52px;
+        object-fit: cover;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+    }
+    .fee-value{
+        font-weight: 700;
+        color: #0f766e;
+    }
 </style>
-<h2>Manage <?= $module['title'] ?></h2>
+<h2 class="student-page-title mb-3">Manage <?= $module['title'] ?></h2>
 @if(session('success_message'))
 <div class="alert alert-success bg-success text-light border-0 alert-dismissible fade show autohide" role="alert">
     {{ session('success_message') }}
@@ -36,15 +95,15 @@ $controllerRoute = $module['controller_route'];
 </div>
 @endif
 
-<div class="card shadow bg-light">
+<div class="card shadow-sm student-list-card">
     <div class="card-header">
         <h5>
             <a href="<?= url('student/add') ?>" class="btn btn-success btn-sm">Add New <?= $module['title'] ?></a>
         </h5>
     </div>
     <div class="card-body">
-        <h6 class="text-center alert alert-info alert-sm py-2 px-2">List of <?= $module['title'] ?></h6>
-        <div class="table-responsive">
+        <h6 class="text-center alert alert-sm py-2 px-2 student-list-note">List of <?= $module['title'] ?></h6>
+        <div class="table-responsive student-table-wrap">
             <table id="example" class="table table-striped table-bordered align-middle text-center" style="width:100%">
                 <thead class="table-dark">
                     <tr>
@@ -55,8 +114,9 @@ $controllerRoute = $module['controller_route'];
                         <th class="text-center">Unit</th>
                         <th class="text-center">Branch</th>
                         <th class="text-center">Class</th>
-                        <th class="text-center">Admitted On</th>
-                        <th class="text-center">Added By</th>
+                        <th class="text-center">DOB</th>
+                        <th class="text-center">Parent Name</th>
+                        <th class="text-center">Address & Pincode</th>
                         <th class="text-center">Admission Fees</th>
                         <th class="text-center">Monthly Fees</th>
                         <th class="text-center">Action</th>
@@ -71,21 +131,30 @@ $controllerRoute = $module['controller_route'];
                                 <td><?= $row->student_id_serial ?></td>
                                 <td>
                                     <?php if ($row->photo != '') { ?>
-                                        <img src="<?= config('constants.app_url') . config('constants.uploads_url_path') . $row->photo ?>" style="width:50px; height:50px; border:1px solid #CCCCCC;">
+                                        <img src="<?= config('constants.app_url') . config('constants.uploads_url_path') . $row->photo ?>" class="student-photo">
                                     <?php } else { ?>
-                                        <img src="{{ config('constants.no_image_avatar') }}" style="width:50px; height:50px; border:1px solid #CCCCCC; border-radius:50%;">
+                                        <img src="{{ config('constants.no_image_avatar') }}" class="student-photo">
                                     <?php } ?>
                                     <br>
-                                    <?= $row->full_name ?>
+                                    <?= (!empty(trim((string)$row->full_name)) && strcasecmp(trim((string)$row->full_name), 'No Name') !== 0) ? $row->full_name : '-' ?>
                                 </td>
-                                <td><?= $row->father_mobile ?></td>
-                                <td><?= $row->unit_name ?></td>
-                                <td><?= $row->branch_name ?></td>
-                                <td><?= $row->class_name ?></td>
-                                <td><?= date_format(date_create($row->admission_date), "d-m-Y") ?></td>
-                                <td><?= $row->first_name . ' ' . $row->last_name ?></td>
-                                <td><?= $row->admission_fees ?></td>
-                                <td><?= $row->monthly_fees ?></td>
+                                <td><?= !empty($row->father_mobile) ? $row->father_mobile : '-' ?></td>
+                                <td><?= !empty($row->unit_name) ? $row->unit_name : '-' ?></td>
+                                <td><?= !empty($row->branch_name) ? $row->branch_name : '-' ?></td>
+                                <td><?= !empty($row->class_name) ? $row->class_name : '-' ?></td>
+                                <td><?= (!empty($row->dob) && strtotime($row->dob)) ? date("d-m-Y", strtotime($row->dob)) : '-' ?></td>
+                                <td>
+                                    <strong>Father:</strong> <?= (!empty(trim((string)$row->father_name)) && strcasecmp(trim((string)$row->father_name), 'No Name') !== 0) ? $row->father_name : '-' ?>
+                                    <br>
+                                    <strong>Mother:</strong> <?= (!empty(trim((string)$row->mother_name)) && strcasecmp(trim((string)$row->mother_name), 'No Name') !== 0) ? $row->mother_name : '-' ?>
+                                </td>
+                                <td>
+                                    <?= !empty($row->permanent_address) ? $row->permanent_address : '-' ?>
+                                    <br>
+                                    PIN: <?= !empty($row->permanent_pincode) ? $row->permanent_pincode : '-' ?>
+                                </td>
+                                <td><span class="fee-value"><?= is_numeric($row->admission_fees) ? number_format((float)$row->admission_fees, 2) : '-' ?></span></td>
+                                <td><span class="fee-value"><?= is_numeric($row->monthly_fees) ? number_format((float)$row->monthly_fees, 2) : '-' ?></span></td>
                                 <td>
                                     <?php
                                     $encoded_id     = Helper::encoded($row->id);
