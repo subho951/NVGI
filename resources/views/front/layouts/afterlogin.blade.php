@@ -67,22 +67,36 @@ $pageSegment  = $pageName[0];
             className: 'btn btn-success btn-sm'
           },
           {
-            extend: 'pdf',
+            extend: 'pdfHtml5',
             className: 'btn btn-danger btn-sm',
             orientation: isStudentListPage ? 'landscape' : 'portrait',
             pageSize: isStudentListPage ? 'A3' : 'A4',
             exportOptions: {
-              columns: ':visible'
+              columns: ':visible',
+              format: {
+                body: function(data) {
+                  if (typeof data !== 'string') {
+                    return data;
+                  }
+                  // Strip HTML and normalize spaces so long markup does not bloat PDF widths.
+                  return data
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/\u00a0/g, ' ')
+                    .replace(/[ \t]+/g, ' ')
+                    .trim();
+                }
+              }
             },
             customize: function(doc) {
               if (!isStudentListPage) {
                 return;
               }
 
-              // Fit wide student list exports by reducing font and forcing equal column widths.
-              doc.pageMargins = [12, 18, 12, 18];
-              doc.defaultStyle.fontSize = 7;
-              doc.styles.tableHeader.fontSize = 8;
+              // Fit wide student list exports by reducing font and forcing compact column widths.
+              doc.pageMargins = [8, 12, 8, 12];
+              doc.defaultStyle.fontSize = 6;
+              doc.styles.tableHeader.fontSize = 7;
               doc.styles.tableHeader.alignment = 'center';
               doc.styles.tableHeader.fillColor = '#123a63';
               doc.styles.tableHeader.color = '#ffffff';
@@ -93,7 +107,19 @@ $pageSegment  = $pageName[0];
 
               if (tableNode && tableNode.table && tableNode.table.body && tableNode.table.body.length) {
                 const columnCount = tableNode.table.body[0].length;
-                tableNode.table.widths = Array(columnCount).fill('*');
+                // Student list has 13 columns; keep explicit widths so all columns fit on landscape A3.
+                if (columnCount === 13) {
+                  tableNode.table.widths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52, 44];
+                } else {
+                  tableNode.table.widths = Array(columnCount).fill('*');
+                }
+
+                tableNode.layout = {
+                  paddingLeft: function() { return 2; },
+                  paddingRight: function() { return 2; },
+                  paddingTop: function() { return 1; },
+                  paddingBottom: function() { return 1; }
+                };
               }
             }
           }
