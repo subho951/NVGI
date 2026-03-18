@@ -37,7 +37,9 @@ $controllerRoute = $module['controller_route'];
     .student-table-wrap{
         border: 1px solid #d8e6f4;
         border-radius: 12px;
-        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
         background: #ffffff;
     }
     #example{

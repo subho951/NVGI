@@ -58,6 +58,11 @@ $pageSegment  = $pageName[0];
   <!-- Initialize DataTable -->
   <script>
     $(document).ready(function() {
+      const tableElement = $('#example');
+      if (!tableElement.length) {
+        return;
+      }
+
       const isStudentListPage = @json(request()->is('student/list'));
       const exportColumnFilter = function(idx, data, node) {
         // Exclude Action/Actions columns from all exports.
@@ -74,7 +79,7 @@ $pageSegment  = $pageName[0];
         return true;
       };
 
-      $('#example').DataTable({
+      tableElement.DataTable({
         dom: 'Bfrtip',
         buttons: [{
             extend: 'excel',
@@ -158,7 +163,9 @@ $pageSegment  = $pageName[0];
             }
           }
         ],
-        pageLength: 10
+        pageLength: 10,
+        scrollX: true,
+        autoWidth: false
       });
     });
   </script>
