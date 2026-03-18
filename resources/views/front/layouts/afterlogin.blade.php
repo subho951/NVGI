@@ -119,9 +119,23 @@ $pageSegment  = $pageName[0];
                 const columnCount = tableNode.table.body[0].length;
                 // Student list export excludes "Action", so expected export columns are 12.
                 if (columnCount === 12) {
-                  tableNode.table.widths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52];
+                  const baseWidths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52];
+                  const totalBase = baseWidths.reduce((sum, width) => sum + width, 0);
+                  const pageWidth = (doc.pageSize && typeof doc.pageSize === 'object' && doc.pageSize.width) ? doc.pageSize.width : 1190;
+                  const availableWidth = Math.max(600, Math.floor(pageWidth - doc.pageMargins[0] - doc.pageMargins[2]));
+                  const scaled = baseWidths.map((width) => Math.max(20, Math.floor((width / totalBase) * availableWidth)));
+                  const usedWidth = scaled.reduce((sum, width) => sum + width, 0);
+                  scaled[scaled.length - 1] += (availableWidth - usedWidth);
+                  tableNode.table.widths = scaled;
                 } else if (columnCount === 13) {
-                  tableNode.table.widths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52, 44];
+                  const baseWidths = [16, 56, 84, 50, 42, 42, 42, 42, 78, 120, 52, 52, 44];
+                  const totalBase = baseWidths.reduce((sum, width) => sum + width, 0);
+                  const pageWidth = (doc.pageSize && typeof doc.pageSize === 'object' && doc.pageSize.width) ? doc.pageSize.width : 1190;
+                  const availableWidth = Math.max(600, Math.floor(pageWidth - doc.pageMargins[0] - doc.pageMargins[2]));
+                  const scaled = baseWidths.map((width) => Math.max(20, Math.floor((width / totalBase) * availableWidth)));
+                  const usedWidth = scaled.reduce((sum, width) => sum + width, 0);
+                  scaled[scaled.length - 1] += (availableWidth - usedWidth);
+                  tableNode.table.widths = scaled;
                 } else {
                   tableNode.table.widths = Array(columnCount).fill('*');
                 }
