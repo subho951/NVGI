@@ -21,10 +21,10 @@
 </button> -->
 
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <div>
-        <label for="{{ $containerId }}-perPage" class="form-label me-2" style="font-size: 12px;">Show</label>
+    <div class="table-toolbox-left">
+        <label for="{{ $containerId }}-perPage" class="form-label me-2 table-toolbox-label">Show</label>
         <select id="{{ $containerId }}-perPage" class="form-select d-inline-block"
-            style="width: 70px !important;padding: 2px !important;font-size: 12px;">
+            style="width: 78px !important;">
             <option value="10">10</option>
             <option value="25">25</option>
             <option value="50" selected>50</option>
@@ -32,10 +32,9 @@
             <option value="250">250</option>
             <option value="500">500</option>
         </select>
-        <span style="font-size: 12px;">entries</span>
+        <span class="table-toolbox-label">entries</span>
     </div>
-    <input type="text" id="{{ $searchId }}" placeholder="Search..."
-        style="float:right;padding: 3px;margin-bottom: 10px;width: 30%;">
+    <input type="text" id="{{ $searchId }}" class="table-toolbox-search" placeholder="Search...">
 </div>
 
 

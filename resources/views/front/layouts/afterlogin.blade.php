@@ -88,6 +88,19 @@ $pageSegment  = $pageName[0];
       $('.autohide').delay(5000).fadeOut('slow');
     });
   </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Ensure every module table is responsive, even if a view missed table-responsive wrapper.
+      document.querySelectorAll('.content table').forEach(function(table) {
+        if (!table.closest('.table-responsive') && !table.classList.contains('out')) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'table-responsive';
+          table.parentNode.insertBefore(wrapper, table);
+          wrapper.appendChild(table);
+        }
+      });
+    });
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>

@@ -20,19 +20,22 @@ use App\Helpers\Helper;
         </button>
     </div>
 <?php } ?>
-<h4 class="text-success text-center"><img src="<?=((Helper::getSettingValue('site_logo') != '')?config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo'):env('NO_IMAGE'))?>" style="width:100%; height:100px;"><br><?=Helper::getSettingValue('description')?></h4>
-<form action="{{ url('signin') }}" method="POST">
+<div class="auth-form-header">
+    <h4 class="auth-form-title">Sign In</h4>
+    <p class="auth-form-subtitle">Access your dashboard securely</p>
+</div>
+<form action="{{ url('signin') }}" method="POST" class="auth-main-form">
     @csrf
     <div class="mb-3">
-        <label for="phone" class="form-label">Phone Number</label>
-        <input type="text" class="form-control" id="phone" name="phone" placeholder="Enter Phone Number" required>
+        <label for="phone" class="form-label auth-form-label">Phone Number</label>
+        <input type="text" class="form-control auth-form-control" id="phone" name="phone" placeholder="Enter Phone Number" required>
     </div>
     <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
-        <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
+        <label for="password" class="form-label auth-form-label">Password</label>
+        <input type="password" class="form-control auth-form-control" id="password" name="password" placeholder="Enter Password" required>
     </div>
     <div class="d-grid">
-        <button type="submit" class="btn btn-success">Login</button>
+        <button type="submit" class="btn btn-success auth-login-btn">Login</button>
     </div>
 </form>
 @endsection

@@ -563,3 +563,359 @@ body, html{
     font-size:11px;
   }
 }
+
+/* ===== Global Premium Module UI ===== */
+body, html{
+  font-family:'Plus Jakarta Sans', Nunito Sans, sans-serif;
+}
+
+.content h2{
+  font-size:28px;
+  font-weight:800;
+  letter-spacing:-0.02em;
+  color:#12324c;
+  margin-bottom:14px;
+}
+
+.content .card{
+  border:1px solid #d8e5f2;
+  border-radius:14px;
+  box-shadow:0 8px 22px rgba(18,50,76,0.07);
+  overflow:hidden;
+}
+
+.content .card .card-body{
+  padding:18px;
+}
+
+.content .alert.alert-info{
+  border:none;
+  background:linear-gradient(90deg,#0f4c81,#1f7fb6) !important;
+  color:#ffffff !important;
+  border-radius:10px;
+}
+
+.content .table-responsive{
+  border:1px solid #dce8f4;
+  border-radius:12px;
+  overflow:auto;
+  background:#ffffff;
+}
+
+.content table.table{
+  margin-bottom:0;
+  width:100%;
+}
+
+.content table.table thead th{
+  background:#12324c;
+  color:#f4f9ff;
+  border-color:#1f4a6c;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+
+.content table.table tbody td{
+  font-size:12px;
+  color:#1f3b53;
+  border-color:#e4edf6;
+  vertical-align:middle;
+}
+
+.content table.table tbody tr:hover td{
+  background:#f6fbff;
+}
+
+.content table.table a.text-primary,
+.content table.table a.text-success,
+.content table.table a.text-warning,
+.content table.table a.text-danger{
+  font-weight:600;
+}
+
+.content form:not(.fee-payment-form) .form-control.form-control-sm,
+.content form:not(.fee-payment-form) .form-select.form-select-sm,
+.content form:not(.fee-payment-form) .form-control,
+.content form:not(.fee-payment-form) .form-select,
+.content form:not(.fee-payment-form) textarea.form-control{
+  border-radius:10px;
+  border:1px solid #ccdae8;
+  min-height:40px;
+  font-size:13px;
+}
+
+.content form:not(.fee-payment-form) textarea.form-control{
+  min-height:96px;
+}
+
+.content form:not(.fee-payment-form) .form-control:focus,
+.content form:not(.fee-payment-form) .form-select:focus,
+.content form:not(.fee-payment-form) textarea:focus{
+  border-color:#1b8ec7 !important;
+  box-shadow:0 0 0 0.18rem rgba(27,142,199,0.16) !important;
+}
+
+.content form:not(.fee-payment-form) .btn.btn-sm,
+.content form:not(.fee-payment-form) .btn{
+  border-radius:10px;
+  min-height:40px;
+  font-weight:700;
+  font-size:13px;
+}
+
+.content label{
+  font-size:12px;
+  font-weight:700;
+  color:#153d5a;
+}
+
+.content .dataTables_wrapper .dataTables_filter input{
+  border:1px solid #c9d9e8;
+  border-radius:10px;
+  padding:6px 10px;
+}
+
+.content .dataTables_wrapper .dataTables_length select{
+  border:1px solid #c9d9e8;
+  border-radius:10px;
+  padding:4px 8px;
+}
+
+.content .dataTables_wrapper .paginate_button{
+  border-radius:8px !important;
+}
+
+.table-toolbox-label{
+  font-size:12px;
+  color:#335875;
+  font-weight:600;
+}
+
+.table-toolbox-search{
+  min-height:36px;
+  border:1px solid #c9d9e8;
+  border-radius:10px;
+  padding:6px 10px;
+  width:min(320px, 100%);
+}
+
+.table-toolbox-search:focus{
+  outline:none;
+  border-color:#1f8abc;
+  box-shadow:0 0 0 0.18rem rgba(31,138,188,0.14);
+}
+
+.footer{
+  margin-left:260px;
+  padding:8px 0 16px;
+  color:#4d667f;
+}
+
+.footer h6{
+  font-size:12px;
+  font-weight:600;
+}
+
+/* ===== Before Login Premium UI ===== */
+.auth-body{
+  min-height:100vh;
+  margin:0;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(36,160,174,0.28), transparent 48%),
+    radial-gradient(circle at 85% 78%, rgba(153,177,56,0.22), transparent 50%),
+    linear-gradient(120deg,#0d2438 0%, #153a57 55%, #174867 100%);
+}
+
+.auth-shell{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:minmax(300px,1.2fr) minmax(320px,0.8fr);
+}
+
+.auth-brand-panel{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:36px;
+}
+
+.auth-brand-inner{
+  max-width:560px;
+  color:#ffffff;
+}
+
+.auth-brand-logo{
+  width:96px;
+  height:96px;
+  border-radius:18px;
+  object-fit:cover;
+  border:2px solid rgba(255,255,255,0.45);
+  box-shadow:0 12px 24px rgba(0,0,0,0.25);
+  margin-bottom:16px;
+}
+
+.auth-brand-eyebrow{
+  margin:0;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+  opacity:0.76;
+}
+
+.auth-brand-title{
+  margin:8px 0 10px;
+  font-size:36px;
+  font-weight:800;
+  letter-spacing:-0.02em;
+  line-height:1.08;
+}
+
+.auth-brand-subtitle{
+  margin:0;
+  font-size:15px;
+  opacity:0.9;
+  max-width:440px;
+}
+
+.auth-form-panel{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 18px;
+}
+
+.auth-card{
+  width:100%;
+  max-width:430px;
+  background:rgba(255,255,255,0.95);
+  border:1px solid rgba(255,255,255,0.55);
+  border-radius:18px;
+  box-shadow:0 16px 36px rgba(0,0,0,0.2);
+  padding:26px 22px;
+}
+
+.auth-form-header{
+  margin-bottom:14px;
+}
+
+.auth-form-title{
+  margin:0;
+  font-size:26px;
+  font-weight:800;
+  color:#12324c;
+}
+
+.auth-form-subtitle{
+  margin:4px 0 0;
+  font-size:13px;
+  color:#55708a;
+}
+
+.auth-form-label{
+  font-size:12px;
+  font-weight:700;
+  color:#12324c;
+}
+
+.auth-form-control{
+  border-radius:11px;
+  border:1px solid #c8d9e8;
+  min-height:44px;
+  font-size:14px;
+}
+
+.auth-form-control:focus{
+  border-color:#1f8abc;
+  box-shadow:0 0 0 0.18rem rgba(31,138,188,0.16);
+}
+
+.auth-login-btn{
+  min-height:44px;
+  border-radius:11px;
+  font-weight:700;
+}
+
+@media (max-width: 1200px){
+  .auth-shell{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .auth-brand-title{
+    font-size:30px;
+  }
+}
+
+@media (max-width: 991px){
+  .content{
+    padding:14px;
+  }
+
+  .content h2{
+    font-size:22px;
+  }
+
+  .content .card .card-body{
+    padding:14px;
+  }
+
+  .content .table-responsive{
+    border-radius:10px;
+  }
+
+  .content table.table{
+    min-width:780px;
+  }
+
+  .footer{
+    margin-left:0;
+    padding-left:12px;
+    padding-right:12px;
+  }
+
+  .auth-shell{
+    grid-template-columns:1fr;
+    padding:16px 0;
+  }
+
+  .auth-brand-panel{
+    order:2;
+    padding:14px 18px 4px;
+    justify-content:flex-start;
+  }
+
+  .auth-brand-inner{
+    max-width:100%;
+  }
+
+  .auth-brand-logo{
+    width:64px;
+    height:64px;
+    border-radius:12px;
+    margin-bottom:10px;
+  }
+
+  .auth-brand-title{
+    font-size:24px;
+  }
+
+  .auth-brand-subtitle{
+    font-size:13px;
+  }
+
+  .auth-form-panel{
+    order:1;
+    padding:18px;
+  }
+
+  .auth-card{
+    max-width:none;
+    padding:20px 16px;
+    border-radius:14px;
+  }
+
+  .auth-form-title{
+    font-size:22px;
+  }
+}
