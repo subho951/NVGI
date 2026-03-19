@@ -589,6 +589,30 @@ class AuthController extends Controller
                 return redirect()->back()->with('error_message', 'All Fields Required');
             }
         }
+        public function application_settings(Request $request){
+            $postData = $request->all();
+            $rules = [
+                'overtime_hours'            => 'required',
+                'employer_pf_percentage'    => 'required',
+                'employee_pf_percentage'    => 'required',
+                'employer_esi_percentage'   => 'required',
+                'employee_esi_percentage'   => 'required',
+            ];
+            if($this->validate($request, $rules)){
+                unset($postData['_token']);
+                if(!empty($postData)){
+                    foreach($postData as $key => $value){
+                        $fields = [
+                            'value'            => strip_tags($postData[$key])
+                        ];
+                        GeneralSetting::where('key', '=', $key)->where('is_active', '=', 1)->update($fields);
+                    }
+                }
+                return redirect()->back()->with('success_message', 'Application Settings Updated Successfully');
+            } else {
+                return redirect()->back()->with('error_message', 'All Fields Required');
+            }
+        }
         public function footer_settings(Request $request){
             $postData = $request->all();
             // Helper::pr($postData);

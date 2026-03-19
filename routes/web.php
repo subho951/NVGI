@@ -86,6 +86,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::post('general-settings', [AuthController::class, 'general_settings']);
                 Route::post('change-password', [AuthController::class, 'change_password']);
                 Route::post('email-settings', [AuthController::class, 'email_settings']);
+                Route::post('application-settings', [AuthController::class, 'application_settings']);
                 // Route::get('test-email', [AuthController::class, 'testEmail']);
                 // Route::post('email-template', [AuthController::class, 'email_template']);
                 Route::post('sms-settings', [AuthController::class, 'sms_settings']);

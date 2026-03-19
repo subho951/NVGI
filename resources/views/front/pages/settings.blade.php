@@ -47,6 +47,9 @@ use App\Helpers\Helper;
                         <button class="nav-link" id="pills-profile-tab" data-bs-toggle="pill" data-bs-target="#pills-profile" type="button" role="tab" aria-controls="pills-profile" aria-selected="false">General Setting</button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-application-tab" data-bs-toggle="pill" data-bs-target="#pills-application" type="button" role="tab" aria-controls="pills-application" aria-selected="false">Application Setting</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="pills-contact-tab" data-bs-toggle="pill" data-bs-target="#pills-contact" type="button" role="tab" aria-controls="pills-contact" aria-selected="false">Change Password</button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -153,6 +156,42 @@ use App\Helpers\Helper;
                                     <img src="<?=((Helper::getSettingValue('site_favicon') != '')?config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_favicon'):env('NO_IMAGE'))?>" alt="<?=Helper::getSettingValue('site_name')?>" class="mt-3 d-block" style="width: 120px;height: 120px;border: 1px solid #343a402e;border-radius: 10px;" />
                                 </div>
 
+                                <div class="col-sm-6 offset-sm-3 col-md-4 offset-md-4 text-center">
+                                    <button type="submit" class="btn btn-success btn-sm w-100">Submit</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="pills-application" role="tabpanel" aria-labelledby="pills-application-tab">
+                        <h6 class="text-center alert alert-info alert-sm py-2 px-2">SMS Setting</h6>
+                        <form method="POST" action="<?= url('application-settings') ?>" class="row g-3" enctype="multipart/form-data">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="overtime_hours">Overtime Hours</label>
+                                    <input type="text" class="form-control form-control-sm" name="overtime_hours" id="overtime_hours" placeholder="Write Overtime Hours" autocomplete="off" value="<?=Helper::getSettingValue('overtime_hours')?>" required>
+                                    @error('overtime_hours') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="employer_pf_percentage">Employer PF Percentage</label>
+                                    <input type="text" class="form-control form-control-sm" name="employer_pf_percentage" id="employer_pf_percentage" placeholder="Write Employer PF Percentage" autocomplete="off" value="<?=Helper::getSettingValue('employer_pf_percentage')?>" required>
+                                    @error('employer_pf_percentage') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="employee_pf_percentage">Employee PF Percentage</label>
+                                    <input type="text" class="form-control form-control-sm" name="employee_pf_percentage" id="employee_pf_percentage" placeholder="Write Employee PF Percentage" autocomplete="off" value="<?=Helper::getSettingValue('employee_pf_percentage')?>" required>
+                                    @error('employee_pf_percentage') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="employer_esi_percentage">Employer ESI Percentage</label>
+                                    <input type="text" class="form-control form-control-sm" name="employer_esi_percentage" id="employer_esi_percentage" placeholder="Write Employer ESI Percentage" autocomplete="off" value="<?=Helper::getSettingValue('employer_esi_percentage')?>" required>
+                                    @error('employer_esi_percentage') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="employee_esi_percentage">Employee ESI Percentage</label>
+                                    <input type="text" class="form-control form-control-sm" name="employee_esi_percentage" id="employee_esi_percentage" placeholder="Write Employee ESI Percentage" autocomplete="off" value="<?=Helper::getSettingValue('employee_esi_percentage')?>" required>
+                                    @error('employee_esi_percentage') <span class="text-danger">{{ $message }}</span> @enderror
+                                </div>
                                 <div class="col-sm-6 offset-sm-3 col-md-4 offset-md-4 text-center">
                                     <button type="submit" class="btn btn-success btn-sm w-100">Submit</button>
                                 </div>

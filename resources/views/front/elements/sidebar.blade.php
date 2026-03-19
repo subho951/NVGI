@@ -188,11 +188,11 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                     </li>
                 <?php } ?>
                 <?php if(in_array(19, $moduleIds)){?>
-                    <!-- <li>
+                    <li>
                         <a href="<?= url('student/fees-collection') ?>" class="nav-link <?= (($pageSegment == 'student' && $pageFunction == 'fees-collection') ? 'active-link' : '') ?>">
                             <i class="fa-solid fa-arrow-right"></i> <span>Fees Collection</span>
                         </a>
-                    </li> -->
+                    </li>
                 <?php } ?>
             </ul>
         </li>
