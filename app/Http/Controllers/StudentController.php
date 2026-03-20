@@ -207,7 +207,25 @@ class StudentController extends Controller
                     'updated_by'                => session('user_data')['user_id'],
                 ];
                 // Helper::pr($fields);
-                Student::create($fields);
+                $student = Student::create($fields);
+
+                $id = $student->id;
+
+                /* student fees schedule generate */
+                    for($month=1; $month<=12; $month++){
+                        $fields = [
+                            'student_id'        => $id,
+                            'unit_id'           => $request->unit_id,
+                            'branch_id'         => $request->branch_id,
+                            'branch_id'         => $request->session_id,
+                            'payable_month'     => $month,
+                            'payable_year'      => date('Y'),
+                            'payable_amount'    => $request->monthly_fees,
+                            'due_amount'        => $request->monthly_fees,
+                        ];
+                        StudentPayment::insert($fields);
+                    }
+                /* student fees schedule generate */
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
             }
 
@@ -926,7 +944,7 @@ class StudentController extends Controller
             ]);
         }
         public function feesEntry(){
-            $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')->get();
+            $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')->where('id', '>', 167)->get();
             if($students){
                 foreach($students as $student){
                     for($month=1; $month<=12; $month++){
