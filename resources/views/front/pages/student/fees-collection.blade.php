@@ -6,7 +6,58 @@ use App\Helpers\Helper;
 
 $controllerRoute = $module['controller_route'];
 ?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.css">
+<script src="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.js"></script>
+
 <style>
+    .choices__list--multiple .choices__item {
+        background-color: #48974e;
+        border: 1px solid #48974e;
+    }
+    .fees-months-group .choices {
+        margin-bottom: 0;
+        transition: margin-bottom .2s ease;
+    }
+    .fees-months-group .choices.is-open {
+        margin-bottom: 195px;
+    }
+    .fees-months-group .choices__inner {
+        min-height: 40px;
+        height: 40px;
+        border-radius: 10px;
+        border: 1px solid #dbe5ef;
+        padding: 3px 8px 3px 6px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+    }
+    .fees-months-group .choices__list--multiple {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 5px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        scrollbar-width: thin;
+    }
+    .fees-months-group .choices__list--multiple .choices__item {
+        margin: 0;
+        flex: 0 0 auto;
+        font-size: 12px;
+        line-height: 1;
+    }
+    .fees-months-group .choices__input {
+        min-width: 56px !important;
+        margin: 0 !important;
+        padding: 0 4px !important;
+        font-size: 12px;
+    }
+    .fees-months-group .choices__list--dropdown,
+    .fees-months-group .choices__list[aria-expanded] {
+        max-height: 190px;
+        overflow-y: auto;
+        z-index: 5;
+    }
     a {
         text-decoration: none;
     }
@@ -98,6 +149,10 @@ $controllerRoute = $module['controller_route'];
     .fees-action-btn {
         height: 40px;
         border-radius: 10px !important;
+    }
+    .fees-multi-select {
+        height: 40px !important;
+        min-height: 40px;
     }
     .fees-select-control {
         font-size: 13px;
@@ -448,6 +503,64 @@ $controllerRoute = $module['controller_route'];
         </form>
     </div>
 
+    <div class="fees-panel">
+        <h6 class="fees-panel-title">Due Students Report (Excel)</h6>
+        <form method="POST" action="{{ route('student.fees-collection.due-report') }}">
+            @csrf
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-2 col-md-6">
+                    <label class="fees-label" for="report_unit_id">Unit</label>
+                    <select class="form-select form-select-sm fees-select-control" name="report_unit_id" id="report_unit_id" required>
+                        <option selected value="">Select</option>
+                        <?php if($units){ foreach($units as $loop_row){?>
+                        <option value="<?= $loop_row->id ?>" <?= (($report_unit == $loop_row->id)?'selected':'') ?>><?= $loop_row->name ?></option>
+                        <?php } } ?>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="fees-label" for="report_branch_id">Branch</label>
+                    <select class="form-select form-select-sm fees-select-control" name="report_branch_id" id="report_branch_id" required>
+                        <option selected value="">Select</option>
+                        <?php if($branches){ foreach($branches as $loop_row){?>
+                        <option class="report-branch unit<?= $loop_row->unit_id ?>" value="<?= $loop_row->id ?>" <?= (($report_branch == $loop_row->id)?'selected':'') ?>><?= $loop_row->name ?></option>
+                        <?php } } ?>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="fees-label" for="report_class_id">Class</label>
+                    <select class="form-select form-select-sm fees-select-control" name="report_class_id" id="report_class_id">
+                        <option class="all-option" selected value="">ALL</option>
+                        <?php if($classes){ foreach($classes as $loop_row){?>
+                        <option class="report-class unit<?= $loop_row->unit_id ?>" value="<?= $loop_row->id ?>" <?= (($report_class == $loop_row->id)?'selected':'') ?>><?= $loop_row->name ?></option>
+                        <?php } } ?>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="fees-label" for="report_collection_year">Year</label>
+                    <select class="form-select form-select-sm fees-select-control" name="report_collection_year" id="report_collection_year" required>
+                        <option selected value="">Select</option>
+                        <?php for($y=date('Y');$y>=2020;$y--){?>
+                        <option value="<?= $y ?>" <?= (($report_collection_year == $y)?'selected':'') ?>><?= $y ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div class="col-lg-3 col-md-12 fees-months-group">
+                    <label class="fees-label" for="choices-multiple-remove-button">Collection Months (Multiple)</label>
+                    <select class="form-select form-select-sm fees-select-control fees-multi-select fees-months-input" name="report_months[]" id="choices-multiple-remove-button" multiple required>
+                        <?php for ($m = 1; $m <= 12; $m++) { ?>
+                        <option value="<?= $m ?>" <?= ((in_array($m, $report_months))?'selected':'') ?>><?= date("F", mktime(0, 0, 0, $m, 1)) ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div class="col-lg-1 col-md-12">
+                    <button type="submit" class="btn btn-primary fees-action-btn w-100">
+                        <i class="fa-solid fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <div class="fees-table-panel">
         <div class="fees-table-header">
             <div>
@@ -624,18 +737,61 @@ $controllerRoute = $module['controller_route'];
     $(function(){
         var search_unit = '<?= $search_unit ?>';
         var search_branch = '<?= $search_branch ?>';
+        var report_unit = '<?= $report_unit ?>';
+        var report_branch = '<?= $report_branch ?>';
+        var report_class = '<?= $report_class ?>';
 
-        $('#branch_id').val('');
-        $('#branch_id .branch').hide();
-        $('#branch_id .unit' + search_unit).show();
-        $('#branch_id').val(search_branch);
+        function bindUnitWiseBranch(unitId, branchSelector, optionClass, selectedBranch){
+            var branchSelect = $(branchSelector);
+            branchSelect.val('');
+            branchSelect.find('.' + optionClass).hide();
+            if (unitId !== '') {
+                branchSelect.find('.unit' + unitId).show();
+            }
+            if (selectedBranch !== '') {
+                branchSelect.val(selectedBranch);
+            }
+        }
+
+        function bindUnitWiseClass(unitId, classSelector, optionClass, selectedClass){
+            var classSelect = $(classSelector);
+            classSelect.val('');
+            classSelect.find('.' + optionClass).hide();
+            classSelect.find('.all-option').show();
+            if (unitId !== '') {
+                classSelect.find('.unit' + unitId).show();
+            }
+            if (selectedClass !== '') {
+                classSelect.val(selectedClass);
+            }
+        }
+
+        bindUnitWiseBranch(search_unit, '#branch_id', 'branch', search_branch);
+        bindUnitWiseBranch(report_unit, '#report_branch_id', 'report-branch', report_branch);
+        bindUnitWiseClass(report_unit, '#report_class_id', 'report-class', report_class);
 
         $('#unit_id').on('change', function(){
-            var unit_id = $('#unit_id').val();
-            $('#branch_id').val('');
-            $('#branch_id .branch').hide();
-            $('#branch_id .unit' + unit_id).show();
+            bindUnitWiseBranch($('#unit_id').val(), '#branch_id', 'branch', '');
         });
+
+        $('#report_unit_id').on('change', function(){
+            var selectedUnit = $('#report_unit_id').val();
+            bindUnitWiseBranch(selectedUnit, '#report_branch_id', 'report-branch', '');
+            bindUnitWiseClass(selectedUnit, '#report_class_id', 'report-class', '');
+        });
+
+        if ($('#choices-multiple-remove-button').length) {
+            new Choices('#choices-multiple-remove-button', {
+                removeItemButton: true,
+                maxItemCount: 12,
+                searchResultLimit: 12,
+                renderChoiceLimit: 12,
+                closeDropdownOnSelect: true,
+                shouldSort: false,
+                itemSelectText: '',
+                searchEnabled: false
+            });
+        }
 
         function showFeesToast(message, type){
             var toast = $('#fees-toast');
@@ -742,4 +898,3 @@ $controllerRoute = $module['controller_route'];
     })
 </script>
 @endsection
-

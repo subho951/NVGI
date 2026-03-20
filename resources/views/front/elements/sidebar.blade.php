@@ -198,6 +198,38 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
         </li>
     <?php } ?>
 
+    <?php if((in_array(20, $moduleIds)) || (in_array(21, $moduleIds))){?>
+        <!-- Finance -->
+        <li class="nav-item">
+            <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['finance']) ? 'active-link' : '' ?>"
+                data-bs-toggle="collapse"
+                href="#financeMenu"
+                role="button"
+                aria-expanded="<?= in_array($pageSegment, ['finance']) ? 'true' : 'false' ?>"
+                aria-controls="financeMenu">
+                <span><i class="fas fa-wallet"></i> Finance</span>
+                <i class="fa-solid fa-angle-down menu-arrow"></i>
+            </a>
+
+            <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['finance']) ? 'show' : '' ?>" id="financeMenu">
+                <?php if(in_array(20, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('finance/list') ?>" class="nav-link <?= (($pageSegment == 'finance' && $pageFunction == 'list') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Transactions</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(21, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('finance/add') ?>" class="nav-link <?= (($pageSegment == 'finance' && $pageFunction == 'add') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Add New Transaction</span>
+                        </a>
+                    </li>
+                <?php } ?>
+            </ul>
+        </li>
+    <?php } ?>
+
     <?php if((in_array(17, $moduleIds)) || (in_array(18, $moduleIds))){?>
         <!-- CRM -->
         <li class="nav-item">

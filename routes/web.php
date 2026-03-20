@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FrontendController;
+use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\FrontdeskController;
 use App\Http\Controllers\LeadController;
@@ -183,6 +184,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'student/student-pdf/{id}', [StudentController::class, 'studentPDF']);
                 Route::match(['get', 'post'], 'student/fees-collection', [StudentController::class, 'feesCollection']);
                 Route::post('student/fees-collection/update', [StudentController::class, 'updateFeesCollection'])->name('student.fees-collection.update');
+                Route::post('student/fees-collection/due-report', [StudentController::class, 'feesCollectionDueReport'])->name('student.fees-collection.due-report');
                 Route::match(['get'], 'student/fees-entry', [StudentController::class, 'feesEntry']);
             /* student */
             /* CRM */
@@ -201,6 +203,13 @@ use App\Http\Controllers\Common\TableController;
                     Route::match(['get'], 'lead/generate-report', [LeadController::class, 'generateReport']);
                 /* leads */
             /* CRM */
+            /* finance */
+                Route::match(['get', 'post'], 'finance/list', [FinanceController::class, 'list']);
+                Route::match(['get', 'post'], 'finance/add', [FinanceController::class, 'add']);
+                Route::match(['get', 'post'], 'finance/edit/{id}', [FinanceController::class, 'edit']);
+                Route::get('finance/delete/{id}', [FinanceController::class, 'delete']);
+                Route::get('finance/invoice/{id}', [FinanceController::class, 'invoice']);
+            /* finance */
         });
     // });
 /* Admin Panel */

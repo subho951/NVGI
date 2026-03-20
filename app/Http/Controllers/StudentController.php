@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Services\SiteAuthService;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\GeneralSetting;
 use App\Models\User;
@@ -21,10 +22,10 @@ use App\Models\KnowAbout;
 use App\Models\Religion;
 use App\Models\Board;
 use App\Models\StudentPayment;
+use App\Models\Transaction;
 
 use App\Helpers\Helper;
 use Auth;
-use DB;
 use Hash;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -574,6 +575,11 @@ class StudentController extends Controller
             $data['search_collection_year'] = date('Y');
             $data['is_search']              = 0;
             $data['rows']                   = [];
+            $data['report_unit']            = '';
+            $data['report_branch']          = '';
+            $data['report_class']           = '';
+            $data['report_collection_year'] = date('Y');
+            $data['report_months']          = [];
 
             if($request->isMethod('post')){
                 $unit_id            = $request->unit_id;
@@ -584,6 +590,9 @@ class StudentController extends Controller
                 $data['search_branch']          = $branch_id;
                 $data['search_collection_year'] = $collection_year;
                 $data['is_search']              = 1;
+                $data['report_unit']            = $unit_id;
+                $data['report_branch']          = $branch_id;
+                $data['report_collection_year'] = $collection_year;
 
                 $paymentSubQuery = DB::table('student_payments')
                                         ->select(
@@ -678,14 +687,113 @@ class StudentController extends Controller
                                         ->get();
 
                 // Helper::pr($data['rows']);
-            }
-            
+            }            
             
             $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
             $data['branches']               = Branch::select('id', 'name', 'unit_id')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
+            $data['classes']                = Classes::select('id', 'name', 'unit_id')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
             
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             return view('front.pages.' . $page_name, $data);
+        }
+        public function feesCollectionDueReport(Request $request){
+            $validator = Validator::make($request->all(), [
+                'report_unit_id'          => 'required|integer|min:1',
+                'report_branch_id'        => 'required|integer|min:1',
+                'report_class_id'         => 'nullable|integer|min:1',
+                'report_collection_year'  => 'required|integer|min:2000|max:2100',
+                'report_months'           => 'required|array|min:1',
+                'report_months.*'         => 'integer|min:1|max:12',
+            ]);
+
+            if ($validator->fails()) {
+                return redirect('student/fees-collection')->with('error_message', $validator->errors()->first());
+            }
+
+            $unitId             = (int)$request->report_unit_id;
+            $branchId           = (int)$request->report_branch_id;
+            $classId            = (($request->report_class_id != '')?(int)$request->report_class_id:'');
+            $collectionYear     = (int)$request->report_collection_year;
+            $selectedMonths     = array_values(array_unique(array_map('intval', (array)$request->report_months)));
+            sort($selectedMonths);
+
+            if (count($selectedMonths) == 0) {
+                return redirect('student/fees-collection')->with('error_message', 'Please select at least one month for due report.');
+            }
+
+            $paymentSubQuery = DB::table('student_payments')->select('student_id');
+
+            $monthColumns = [];
+            foreach ($selectedMonths as $monthNumber) {
+                $monthAlias      = 'month_' . $monthNumber . '_due';
+                $monthShortName  = date('M', mktime(0, 0, 0, $monthNumber, 1));
+                $monthColumns[]  = [
+                    'month'      => $monthNumber,
+                    'name'       => $monthShortName,
+                    'alias'      => $monthAlias,
+                ];
+
+                $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN payable_month = {$monthNumber} THEN due_amount ELSE 0 END) as {$monthAlias}"));
+            }
+
+            $monthList = implode(',', $selectedMonths);
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN payable_month IN ({$monthList}) THEN due_amount ELSE 0 END) as total_due"))
+                            ->where('payable_year', $collectionYear)
+                            ->groupBy('student_id');
+
+            $reportQuery = Student::select(
+                                    'students.student_id_serial',
+                                    'students.full_name',
+                                    'students.father_mobile',
+                                    'units.name as unit_name',
+                                    'branches.name as branch_name',
+                                    DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
+                                    'payment_due.*'
+                                )
+                                ->leftJoinSub($paymentSubQuery, 'payment_due', function ($join) {
+                                    $join->on('payment_due.student_id', '=', 'students.id');
+                                })
+                                ->leftJoin('units', 'units.id', '=', 'students.unit_id')
+                                ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                                ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                                ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                                ->where('students.status', '!=', 3)
+                                ->where('students.unit_id', $unitId)
+                                ->where('students.branch_id', $branchId)
+                                ->whereRaw('COALESCE(payment_due.total_due, 0) > 0');
+
+            if ($classId != '') {
+                $reportQuery->where(function ($query) use ($classId) {
+                    $query->where('students.tsa_class_id', '=', $classId)
+                          ->orWhere('students.vhs_class_id', '=', $classId);
+                });
+            }
+
+            $reportRows = $reportQuery->orderBy('students.full_name', 'ASC')->get();
+
+            $unitName   = (($getUnit = Unit::select('name')->where('id', '=', $unitId)->first()) ? $getUnit->name : '');
+            $branchName = (($getBranch = Branch::select('name')->where('id', '=', $branchId)->first()) ? $getBranch->name : '');
+            $className  = 'ALL';
+            if ($classId != '') {
+                $className = (($getClass = Classes::select('name')->where('id', '=', $classId)->first()) ? $getClass->name : 'ALL');
+            }
+
+            $reportData = [
+                'rows'               => $reportRows,
+                'month_columns'      => $monthColumns,
+                'collection_year'    => $collectionYear,
+                'unit_name'          => $unitName,
+                'branch_name'        => $branchName,
+                'class_name'         => $className,
+                'generated_at'       => date('d-m-Y h:i A'),
+            ];
+
+            $fileName = 'due-student-report-' . $collectionYear . '-' . date('YmdHis') . '.xls';
+            $html = view('front.pages.student.fees-due-report-excel', $reportData)->render();
+
+            return response("\xEF\xBB\xBF" . $html)
+                    ->header('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
+                    ->header('Content-Disposition', 'attachment; filename=' . $fileName);
         }
         public function updateFeesCollection(Request $request){
             $validator = Validator::make($request->all(), [
@@ -754,13 +862,35 @@ class StudentController extends Controller
             $newPaidAmount   = $alreadyPaid + $enteredAmount;
             $newDueAmount    = max($payableAmount - $newPaidAmount, 0);
             $updatedBy       = ((session()->has('user_data') && array_key_exists('user_id', session('user_data')))?session('user_data')['user_id']:((Auth::check())?Auth::id():0));
+            $transactionAmount = number_format($enteredAmount, 2, '.', '');
 
-            $studentPayment->update([
-                'payment_amount' => $newPaidAmount,
-                'payment_date'   => date('Y-m-d'),
-                'due_amount'     => $newDueAmount,
-                'updated_by'     => $updatedBy,
-            ]);
+            DB::transaction(function () use ($studentPayment, $newPaidAmount, $newDueAmount, $updatedBy, $student, $monthName, $request, $transactionAmount) {
+                $studentPayment->update([
+                    'payment_amount' => $newPaidAmount,
+                    'payment_date'   => date('Y-m-d'),
+                    'due_amount'     => $newDueAmount,
+                    'updated_by'     => $updatedBy,
+                ]);
+
+                $lastTransaction = Transaction::withTrashed()->select('sl_no')
+                                                ->orderBy('sl_no', 'DESC')
+                                                ->lockForUpdate()
+                                                ->first();
+                $nextSlNo       = (($lastTransaction)?((int)$lastTransaction->sl_no + 1):1);
+                $nextTxnNo      = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
+
+                Transaction::create([
+                    'sl_no'                  => $nextSlNo,
+                    'txn_no'                 => $nextTxnNo,
+                    'fee_id'                 => $studentPayment->id,
+                    'type'                   => 'INCOME',
+                    'transaction_timestamp'  => Carbon::now(),
+                    'transaction_amount'     => $transactionAmount,
+                    'particulars'            => 'Fees collection for '.$student->full_name.' '.$monthName.' '.$request->payable_year.' with amount '.$transactionAmount,
+                    'created_by'             => $updatedBy,
+                    'updated_by'             => $updatedBy,
+                ]);
+            });
 
             $totals = StudentPayment::select(
                                         DB::raw("COALESCE(SUM(payable_amount), 0) as total_payable"),
