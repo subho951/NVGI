@@ -8,7 +8,10 @@ use App\Helpers\Helper;
             <i class="fa-solid fa-bars"></i>
         </button>
         <div class="topbar-brand">
-            <h5 class="topbar-brand-title"><i class="fa-solid fa-shield-halved"></i> <?= Helper::getSettingValue('site_name') ?></h5>
+            <h5 class="topbar-brand-title">
+                <!-- <i class="fa-solid fa-shield-halved"></i> -->
+                <?= Helper::getSettingValue('site_name') ?>
+            </h5>
             <p class="topbar-brand-subtitle">Administration Console</p>
         </div>
     </div>
