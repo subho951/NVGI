@@ -116,8 +116,8 @@ class StudentController extends Controller
                     'emergency_relation'        => 'required|string',
                     'know_about_us'             => 'required|string',
                     'blood_group'               => 'required|string',
-                    'admission_fees'            => 'required',
-                    'monthly_fees'              => 'required',
+                    'admission_fees'            => 'required|numeric|gt:0',
+                    'monthly_fees'              => 'required|numeric|gt:0',
                 ]);
 
                 if($request->middle_name != ''){
@@ -152,11 +152,12 @@ class StudentController extends Controller
                         } else {
                             return redirect()->back()->with(['error_message' => $uploadedFile['message']]);
                         }
-                    } else {
-                        $photo = '';
-                    }
+                } else {
+                    $photo = '';
+                }
                 /* photo */
                 $postData               = $request->all();
+                $updatedBy              = $this->currentUserId();
                 if($request->unit_id == 1){
                     $tsa_subjects = json_encode(array());
                 } else {
@@ -205,30 +206,58 @@ class StudentController extends Controller
                     'admission_fees'            => $request->admission_fees,
                     'monthly_fees'              => $request->monthly_fees,
                     'photo'                     => $photo,
-                    'created_by'                => session('user_data')['user_id'],
-                    'updated_by'                => session('user_data')['user_id'],
+                    'created_by'                => $updatedBy,
+                    'updated_by'                => $updatedBy,
                 ];
                 // Helper::pr($fields);
-                $student = Student::create($fields);
+                DB::transaction(function () use ($fields, $request, $updatedBy, $full_name) {
+                    $student = Student::create($fields);
+                    $id = $student->id;
 
-                $id = $student->id;
+                    /* student fees schedule generate */
+                        for($month=1; $month<=12; $month++){
+                            $fields = [
+                                'student_id'        => $id,
+                                'unit_id'           => $request->unit_id,
+                                'branch_id'         => $request->branch_id,
+                                'payable_month'     => $month,
+                                'payable_year'      => date('Y'),
+                                'payable_amount'    => $request->monthly_fees,
+                                'due_amount'        => $request->monthly_fees,
+                                'created_by'        => $updatedBy,
+                                'updated_by'        => $updatedBy,
+                            ];
+                            StudentPayment::insert($fields);
+                        }
+                    /* student fees schedule generate */
 
-                /* student fees schedule generate */
-                    for($month=1; $month<=12; $month++){
-                        $fields = [
-                            'student_id'        => $id,
-                            'unit_id'           => $request->unit_id,
-                            'branch_id'         => $request->branch_id,
-                            'branch_id'         => $request->session_id,
-                            'payable_month'     => $month,
-                            'payable_year'      => date('Y'),
-                            'payable_amount'    => $request->monthly_fees,
-                            'due_amount'        => $request->monthly_fees,
-                        ];
-                        StudentPayment::insert($fields);
-                    }
-                /* student fees schedule generate */
-                return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
+                    $lastTransaction = Transaction::withTrashed()->select('sl_no')
+                                                ->orderBy('sl_no', 'DESC')
+                                                ->lockForUpdate()
+                                                ->first();
+                    $nextSlNo       = (($lastTransaction)?((int)$lastTransaction->sl_no + 1):1);
+                    $nextTxnNo      = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
+
+                    Transaction::create([
+                        'sl_no'                  => $nextSlNo,
+                        'txn_no'                 => $nextTxnNo,
+                        'fee_id'                 => 0,
+                        'unit_id'                => (int)$request->unit_id,
+                        'branch_id'              => (int)$request->branch_id,
+                        'payment_mode'           => 'Cash',
+                        'payment_reference'      => null,
+                        'type'                   => 'INCOME',
+                        'transaction_timestamp'  => Carbon::now(),
+                        'transaction_amount'     => number_format((float)$request->admission_fees, 2, '.', ''),
+                        'particulars'            => 'Admission fee collected for '.$full_name.' during new admission',
+                        'note'                   => 'New student admission',
+                        'status'                 => 1,
+                        'created_by'             => $updatedBy,
+                        'updated_by'             => $updatedBy,
+                    ]);
+                });
+
+                return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' added successfully !!!');
             }
 
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
@@ -311,8 +340,8 @@ class StudentController extends Controller
                     'emergency_relation'        => 'required|string',
                     'know_about_us'             => 'required|string',
                     'blood_group'               => 'required|string',
-                    'admission_fees'            => 'required',
-                    'monthly_fees'              => 'required',
+                    'admission_fees'            => 'required|numeric|gt:0',
+                    'monthly_fees'              => 'required|numeric|gt:0',
                 ]);
                 $postData               = $request->all();
                 if($request->unit_id == 1){
@@ -1097,7 +1126,6 @@ class StudentController extends Controller
                             'student_id'        => $student->id,
                             'unit_id'           => $student->unit_id,
                             'branch_id'         => $student->branch_id,
-                            'branch_id'         => $student->session_id,
                             'payable_month'     => $month,
                             'payable_year'      => date('Y'),
                             'payable_amount'    => $student->monthly_fees,
