@@ -183,6 +183,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('student/details/{id}', [StudentController::class, 'details'])->name('student.details');
                 Route::match(['get', 'post'], 'student/student-print/{id}', [StudentController::class, 'studentPrint']);
                 Route::match(['get', 'post'], 'student/student-pdf/{id}', [StudentController::class, 'studentPDF']);
+                Route::match(['get'], 'student/admission-fees-entry', [StudentController::class, 'admissionFeesEntry']);
                 Route::match(['get', 'post'], 'student/fees-collection', [StudentController::class, 'feesCollection']);
                 Route::post('student/fees-collection/update', [StudentController::class, 'updateFeesCollection'])->name('student.fees-collection.update');
                 Route::post('student/fees-collection/due-report', [StudentController::class, 'feesCollectionDueReport'])->name('student.fees-collection.due-report');
