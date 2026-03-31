@@ -1200,25 +1200,7 @@ class StudentController extends Controller
                     $transactionTimestamp = (!empty($student->admission_date))
                                                 ? $student->admission_date . ' ' . date('H:i:s')
                                                 : date('Y-m-d H:i:s');
-                    $txnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
-
-                    Helper::pr([
-                        'sl_no'                  => $nextSlNo,
-                        'txn_no'                 => $txnNo,
-                        'fee_id'                 => 0,
-                        'unit_id'                => (int)$student->unit_id,
-                        'branch_id'              => (int)$student->branch_id,
-                        'payment_mode'           => 'Cash',
-                        'payment_reference'      => null,
-                        'type'                   => 'INCOME',
-                        'transaction_timestamp'  => $transactionTimestamp,
-                        'transaction_amount'     => $admissionFeeAmount,
-                        'particulars'            => 'Admission fee collected for '.$student->full_name.' ('.$student->student_id_serial.') during backfill',
-                        'note'                   => 'Admission fee backfill for '.$student->student_id_serial,
-                        'status'                 => 1,
-                        'created_by'             => $updatedBy,
-                        'updated_by'             => $updatedBy,
-                    ]);
+                    $txnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);                    
 
                     Transaction::create([
                         'sl_no'                  => $nextSlNo,
