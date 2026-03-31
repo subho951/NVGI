@@ -5,6 +5,7 @@
 use App\Helpers\Helper;
 
 $controllerRoute = $module['controller_route'];
+$financialMonths = ((isset($financial_months) && is_array($financial_months) && count($financial_months) > 0) ? $financial_months : []);
 ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.css">
 <script src="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.js"></script>
@@ -421,7 +422,7 @@ $controllerRoute = $module['controller_route'];
         <div>
             <p class="fees-eyebrow">Student Finance Desk</p>
             <h2><?= $module['title'] ?> Fees Collection</h2>
-            <p class="fees-subtitle">Collect monthly fees, track due balances, and monitor yearly totals in one place.</p>
+            <p class="fees-subtitle">Collect monthly fees, track due balances, and monitor session totals in one place.</p>
         </div>
         <div class="fees-hero-stats">
             <div class="fees-stat">
@@ -429,8 +430,8 @@ $controllerRoute = $module['controller_route'];
                 <p class="fees-stat-value"><?= count($rows) ?></p>
             </div>
             <div class="fees-stat">
-                <p class="fees-stat-label">Collection Year</p>
-                <p class="fees-stat-value"><?= $search_collection_year ?></p>
+                <p class="fees-stat-label">Collection Session</p>
+                <p class="fees-stat-value"><?= (($search_session_name != '') ? $search_session_name : '-') ?></p>
             </div>
         </div>
     </div>
@@ -483,12 +484,12 @@ $controllerRoute = $module['controller_route'];
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-4">
-                    <label class="fees-label" for="collection_year">Year</label>
-                    <select class="form-select form-select-sm fees-select-control" name="collection_year" id="collection_year" required>
+                    <label class="fees-label" for="collection_session_id">Session</label>
+                    <select class="form-select form-select-sm fees-select-control" name="collection_session_id" id="collection_session_id" required>
                         <option selected value="">Select</option>
-                        <?php for($y=date('Y');$y>=2020;$y--){?>
-                        <option value="<?= $y ?>" <?= (($search_collection_year == $y)?'selected':'') ?>><?= $y ?></option>
-                        <?php } ?>
+                        <?php if($sessions){ foreach($sessions as $loop_row){?>
+                        <option value="<?= $loop_row->id ?>" <?= (($search_session == $loop_row->id)?'selected':'') ?>><?= $loop_row->name ?></option>
+                        <?php } } ?>
                     </select>
                 </div>
                 <div class="col-lg-4 col-md-8">
@@ -536,19 +537,19 @@ $controllerRoute = $module['controller_route'];
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-6">
-                    <label class="fees-label" for="report_collection_year">Year</label>
-                    <select class="form-select form-select-sm fees-select-control" name="report_collection_year" id="report_collection_year" required>
+                    <label class="fees-label" for="report_session_id">Session</label>
+                    <select class="form-select form-select-sm fees-select-control" name="report_session_id" id="report_session_id" required>
                         <option selected value="">Select</option>
-                        <?php for($y=date('Y');$y>=2020;$y--){?>
-                        <option value="<?= $y ?>" <?= (($report_collection_year == $y)?'selected':'') ?>><?= $y ?></option>
-                        <?php } ?>
+                        <?php if($sessions){ foreach($sessions as $loop_row){?>
+                        <option value="<?= $loop_row->id ?>" <?= (($report_session == $loop_row->id)?'selected':'') ?>><?= $loop_row->name ?></option>
+                        <?php } } ?>
                     </select>
                 </div>
                 <div class="col-lg-3 col-md-12 fees-months-group">
                     <label class="fees-label" for="choices-multiple-remove-button">Collection Months (Multiple)</label>
                     <select class="form-select form-select-sm fees-select-control fees-multi-select fees-months-input" name="report_months[]" id="choices-multiple-remove-button" multiple required>
-                        <?php for ($m = 1; $m <= 12; $m++) { ?>
-                        <option value="<?= $m ?>" <?= ((in_array($m, $report_months))?'selected':'') ?>><?= date("F", mktime(0, 0, 0, $m, 1)) ?></option>
+                        <?php foreach ($financialMonths as $monthInfo) { ?>
+                        <option value="<?= $monthInfo['month'] ?>" <?= ((in_array($monthInfo['month'], $report_months))?'selected':'') ?>><?= date("F", mktime(0, 0, 0, $monthInfo['month'], 1)) ?></option>
                         <?php } ?>
                     </select>
                 </div>
@@ -576,8 +577,11 @@ $controllerRoute = $module['controller_route'];
                     <tr>
                         <th class="text-center fees-col-index">#</th>
                         <th class="text-center fees-col-student">Student Info</th>
-                        <?php for ($m = 1; $m <= 12; $m++) { ?>
-                        <th class="text-center"><?= date("M", mktime(0, 0, 0, $m, 1)) ?></th>
+                        <?php foreach ($financialMonths as $monthInfo) { ?>
+                        <th class="text-center">
+                            <?= $monthInfo['short'] ?><br>
+                            <small><?= $monthInfo['year'] ?></small>
+                        </th>
                         <?php } ?>
                         <th class="text-center fees-col-total">Total Amount</th>
                     </tr>
@@ -601,76 +605,16 @@ $controllerRoute = $module['controller_route'];
                             <span class="student-extra"><?= $row->class_name ?></span>
                         </td>
 
-                        <?php for ($m = 1; $m <= 12; $m++) { ?>
+                        <?php foreach ($financialMonths as $monthInfo) { ?>
                         <?php
-                            $month_payable  = 0.00;
-                            $month_paid     = 0.00;
-                            $month_due      = 0.00;
-                            if($m == 1){
-                                $month_payable  = $row->jan_payable;
-                                $month_paid     = $row->jan_paid;
-                                $month_due      = $row->jan_due;
-                            }
-                            if($m == 2){
-                                $month_payable  = $row->feb_payable;
-                                $month_paid     = $row->feb_paid;
-                                $month_due      = $row->feb_due;
-                            }
-                            if($m == 3){
-                                $month_payable  = $row->mar_payable;
-                                $month_paid     = $row->mar_paid;
-                                $month_due      = $row->mar_due;
-                            }
-                            if($m == 4){
-                                $month_payable  = $row->apr_payable;
-                                $month_paid     = $row->apr_paid;
-                                $month_due      = $row->apr_due;
-                            }
-                            if($m == 5){
-                                $month_payable  = $row->may_payable;
-                                $month_paid     = $row->may_paid;
-                                $month_due      = $row->may_due;
-                            }
-                            if($m == 6){
-                                $month_payable  = $row->jun_payable;
-                                $month_paid     = $row->jun_paid;
-                                $month_due      = $row->jun_due;
-                            }
-                            if($m == 7){
-                                $month_payable  = $row->jul_payable;
-                                $month_paid     = $row->jul_paid;
-                                $month_due      = $row->jul_due;
-                            }
-                            if($m == 8){
-                                $month_payable  = $row->aug_payable;
-                                $month_paid     = $row->aug_paid;
-                                $month_due      = $row->aug_due;
-                            }
-                            if($m == 9){
-                                $month_payable  = $row->sep_payable;
-                                $month_paid     = $row->sep_paid;
-                                $month_due      = $row->sep_due;
-                            }
-                            if($m == 10){
-                                $month_payable  = $row->oct_payable;
-                                $month_paid     = $row->oct_paid;
-                                $month_due      = $row->oct_due;
-                            }
-                            if($m == 11){
-                                $month_payable  = $row->nov_payable;
-                                $month_paid     = $row->nov_paid;
-                                $month_due      = $row->nov_due;
-                            }
-                            if($m == 12){
-                                $month_payable  = $row->dec_payable;
-                                $month_paid     = $row->dec_paid;
-                                $month_due      = $row->dec_due;
-                            }
-
-                            $monthName   = date("F", mktime(0, 0, 0, $m, 1));
-                            $isMonthPaid = ((float)$month_due <= 0);
+                            $monthAlias  = $monthInfo['alias'];
+                            $month_payable = (isset($row->{$monthAlias . '_payable'}) ? $row->{$monthAlias . '_payable'} : 0);
+                            $month_paid    = (isset($row->{$monthAlias . '_paid'}) ? $row->{$monthAlias . '_paid'} : 0);
+                            $month_due     = (isset($row->{$monthAlias . '_due'}) ? $row->{$monthAlias . '_due'} : 0);
+                            $monthName     = date("F", mktime(0, 0, 0, $monthInfo['month'], 1));
+                            $isMonthPaid   = ((float)$month_due <= 0);
                         ?>
-                        <td class="month-cell" data-student-id="<?= $row->id ?>" data-month="<?= $m ?>">
+                        <td class="month-cell" data-student-id="<?= $row->id ?>" data-month="<?= $monthInfo['month'] ?>">
                             <div class="fee-line payable">Payable <span class="month-payable"><?= number_format((float)$month_payable,2) ?></span></div>
                             <div class="fee-line paid">Paid <span class="month-paid"><?= number_format((float)$month_paid,2) ?></span></div>
                             <div class="fee-line due">Due <span class="month-due"><?= number_format((float)$month_due,2) ?></span></div>
@@ -680,9 +624,9 @@ $controllerRoute = $module['controller_route'];
                                 class="fee-payment-form <?= ($isMonthPaid ? 'd-none' : '') ?>"
                                 data-student-id="<?= $row->id ?>"
                                 data-student-name="<?= htmlspecialchars($row->full_name, ENT_QUOTES) ?>"
-                                data-month="<?= $m ?>"
+                                data-month="<?= $monthInfo['month'] ?>"
                                 data-month-name="<?= $monthName ?>"
-                                data-year="<?= $search_collection_year ?>"
+                                data-year="<?= $monthInfo['year'] ?>"
                                 data-payable="<?= number_format((float)$month_payable, 2, '.', '') ?>"
                                 data-due="<?= number_format((float)$month_due, 2, '.', '') ?>">
                                 @csrf
@@ -713,7 +657,7 @@ $controllerRoute = $module['controller_route'];
                     <?php }
                     } else { ?>
                     <tr>
-                        <td colspan="15" class="no-data-message">No students found !!!</td>
+                        <td colspan="<?= 3 + count($financialMonths) ?>" class="no-data-message">No students found !!!</td>
                     </tr>
                     <?php }?>
                 </tbody>

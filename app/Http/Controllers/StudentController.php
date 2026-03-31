@@ -215,13 +215,16 @@ class StudentController extends Controller
                     $id = $student->id;
 
                     /* student fees schedule generate */
-                        for($month=1; $month<=12; $month++){
+                        $sessionData = $this->getFinancialSessionData($request->session_id);
+                        $financialMonths = $this->buildFinancialMonths($sessionData['start_year'], $sessionData['end_year']);
+
+                        foreach ($financialMonths as $monthConfig) {
                             $fields = [
                                 'student_id'        => $id,
                                 'unit_id'           => $request->unit_id,
                                 'branch_id'         => $request->branch_id,
-                                'payable_month'     => $month,
-                                'payable_year'      => date('Y'),
+                                'payable_month'     => $monthConfig['month'],
+                                'payable_year'      => $monthConfig['year'],
                                 'payable_amount'    => $request->monthly_fees,
                                 'due_amount'        => $request->monthly_fees,
                                 'created_by'        => $updatedBy,
@@ -476,9 +479,9 @@ class StudentController extends Controller
             ]);
 
             $promotedClassId = (int)$request->promoted_class_id;
-            if ($currentClassId > 0 && $promotedClassId === $currentClassId) {
-                return redirect()->back()->with('error_message', 'Promoted class must be different from the present class !!!')->withInput();
-            }
+            // if ($currentClassId > 0 && $promotedClassId === $currentClassId) {
+            //     return redirect()->back()->with('error_message', 'Promoted class must be different from the present class !!!')->withInput();
+            // }
 
             $promotedClass = Classes::select('id', 'name')
                                     ->where('id', '=', $promotedClassId)
@@ -493,11 +496,25 @@ class StudentController extends Controller
             $monthlyFeesValue    = number_format((float)$request->monthly_fees, 2, '.', '');
             $currentYear         = (int)Carbon::now()->year;
             $currentMonth        = (int)Carbon::now()->month;
+            $nextSessionData     = $this->getNextFinancialSessionData($student->session_id);
+            $financialMonths     = $this->buildFinancialMonths($nextSessionData['start_year'], $nextSessionData['end_year']);
+            $financialMonths     = array_values(array_filter($financialMonths, function ($monthConfig) use ($currentYear, $currentMonth) {
+                if ((int)$monthConfig['year'] > $currentYear) {
+                    return true;
+                }
 
-            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $currentYear, $currentMonth) {
+                if ((int)$monthConfig['year'] === $currentYear && (int)$monthConfig['month'] >= $currentMonth) {
+                    return true;
+                }
+
+                return false;
+            }));
+
+            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $financialMonths, $nextSessionData) {
                 $studentUpdate = [
                     'admission_fees'    => $admissionFeesValue,
                     'monthly_fees'      => $monthlyFeesValue,
+                    'session_id'        => $nextSessionData['session_id'],
                     'updated_by'        => $updatedBy,
                 ];
 
@@ -509,11 +526,11 @@ class StudentController extends Controller
 
                 Student::where('id', '=', $student->id)->update($studentUpdate);
 
-                for ($month = $currentMonth; $month <= 12; $month++) {
+                foreach ($financialMonths as $monthConfig) {
                     $studentPayment = StudentPayment::firstOrNew([
                         'student_id'    => $student->id,
-                        'payable_month' => $month,
-                        'payable_year'  => $currentYear,
+                        'payable_month' => $monthConfig['month'],
+                        'payable_year'  => $monthConfig['year'],
                     ]);
 
                     $alreadyPaid = (float)((isset($studentPayment->payment_amount)) ? $studentPayment->payment_amount : 0);
@@ -521,8 +538,8 @@ class StudentController extends Controller
                     $studentPayment->student_id      = $student->id;
                     $studentPayment->unit_id         = $student->unit_id;
                     $studentPayment->branch_id       = $student->branch_id;
-                    $studentPayment->payable_month   = $month;
-                    $studentPayment->payable_year    = $currentYear;
+                    $studentPayment->payable_month   = $monthConfig['month'];
+                    $studentPayment->payable_year    = $monthConfig['year'];
                     $studentPayment->payable_amount  = $monthlyFeesValue;
                     $studentPayment->due_amount      = max(((float)$monthlyFeesValue - $alreadyPaid), 0);
                     $studentPayment->updated_by      = $updatedBy;
@@ -757,124 +774,73 @@ class StudentController extends Controller
             $data['module']                 = $this->data;
             $title                          = $this->data['title'].' List';
             $page_name                      = 'student.fees-collection';
+            $data['sessions']               = Session::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
 
+            $defaultSessionData             = $this->getFinancialSessionData();
             $data['search_unit']            = '';
             $data['search_branch']          = '';
-            $data['search_collection_year'] = date('Y');
+            $data['search_session']         = $defaultSessionData['session_id'];
+            $data['search_session_name']    = $defaultSessionData['session_name'];
+            $data['financial_months']       = $this->buildFinancialMonths($defaultSessionData['start_year'], $defaultSessionData['end_year']);
             $data['is_search']              = 0;
             $data['rows']                   = [];
             $data['report_unit']            = '';
             $data['report_branch']          = '';
             $data['report_class']           = '';
-            $data['report_collection_year'] = date('Y');
+            $data['report_session']         = $defaultSessionData['session_id'];
+            $data['report_session_name']    = $defaultSessionData['session_name'];
             $data['report_months']          = [];
 
             if($request->isMethod('post')){
                 $unit_id            = $request->unit_id;
                 $branch_id          = $request->branch_id;
-                $collection_year    = $request->collection_year;
+                $session_id         = $request->collection_session_id;
+                $sessionData        = $this->getFinancialSessionData($session_id);
+                $financialMonths    = $this->buildFinancialMonths($sessionData['start_year'], $sessionData['end_year']);
 
                 $data['search_unit']            = $unit_id;
                 $data['search_branch']          = $branch_id;
-                $data['search_collection_year'] = $collection_year;
+                $data['search_session']         = $sessionData['session_id'];
+                $data['search_session_name']    = $sessionData['session_name'];
+                $data['financial_months']       = $financialMonths;
                 $data['is_search']              = 1;
                 $data['report_unit']            = $unit_id;
                 $data['report_branch']          = $branch_id;
-                $data['report_collection_year'] = $collection_year;
+                $data['report_session']         = $sessionData['session_id'];
+                $data['report_session_name']    = $sessionData['session_name'];
 
-                $paymentSubQuery = DB::table('student_payments')
-                                        ->select(
-                                            'student_id',
+                $paymentSubQuery = $this->buildFinancialPaymentSummarySubQuery($sessionData['session_id'], $financialMonths);
 
-                                            DB::raw("SUM(CASE WHEN payable_month = 1 THEN payable_amount ELSE 0 END) as jan_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 1 THEN payment_amount ELSE 0 END) as jan_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 1 THEN due_amount ELSE 0 END) as jan_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 2 THEN payable_amount ELSE 0 END) as feb_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 2 THEN payment_amount ELSE 0 END) as feb_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 2 THEN due_amount ELSE 0 END) as feb_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 3 THEN payable_amount ELSE 0 END) as mar_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 3 THEN payment_amount ELSE 0 END) as mar_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 3 THEN due_amount ELSE 0 END) as mar_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 4 THEN payable_amount ELSE 0 END) as apr_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 4 THEN payment_amount ELSE 0 END) as apr_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 4 THEN due_amount ELSE 0 END) as apr_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 5 THEN payable_amount ELSE 0 END) as may_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 5 THEN payment_amount ELSE 0 END) as may_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 5 THEN due_amount ELSE 0 END) as may_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 6 THEN payable_amount ELSE 0 END) as jun_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 6 THEN payment_amount ELSE 0 END) as jun_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 6 THEN due_amount ELSE 0 END) as jun_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 7 THEN payable_amount ELSE 0 END) as jul_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 7 THEN payment_amount ELSE 0 END) as jul_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 7 THEN due_amount ELSE 0 END) as jul_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 8 THEN payable_amount ELSE 0 END) as aug_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 8 THEN payment_amount ELSE 0 END) as aug_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 8 THEN due_amount ELSE 0 END) as aug_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 9 THEN payable_amount ELSE 0 END) as sep_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 9 THEN payment_amount ELSE 0 END) as sep_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 9 THEN due_amount ELSE 0 END) as sep_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 10 THEN payable_amount ELSE 0 END) as oct_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 10 THEN payment_amount ELSE 0 END) as oct_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 10 THEN due_amount ELSE 0 END) as oct_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 11 THEN payable_amount ELSE 0 END) as nov_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 11 THEN payment_amount ELSE 0 END) as nov_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 11 THEN due_amount ELSE 0 END) as nov_due"),
-
-                                            DB::raw("SUM(CASE WHEN payable_month = 12 THEN payable_amount ELSE 0 END) as dec_payable"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 12 THEN payment_amount ELSE 0 END) as dec_paid"),
-                                            DB::raw("SUM(CASE WHEN payable_month = 12 THEN due_amount ELSE 0 END) as dec_due"),
-
-                                            DB::raw("SUM(payable_amount) as total_payable"),
-                                            DB::raw("SUM(payment_amount) as total_paid"),
-                                            DB::raw("SUM(payable_amount - payment_amount) as total_due")
-                                        )
-                                        ->where('payable_year', $collection_year)
-                                        ->groupBy('student_id');
-
-
-                                    $data['rows'] = Student::select(
-                                            'students.id',
-                                            'students.student_id_serial',
-                                            'students.full_name',
-                                            'students.father_mobile',
-                                            'students.photo',
-                                            'units.name as unit_name',
-                                            'branches.name as branch_name',
-                                            'users.first_name',
-                                            'users.last_name',
-                                            DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
-
-                                            'payments.*'
-                                        )
-
-                                        ->leftJoinSub($paymentSubQuery, 'payments', function ($join) {
-                                            $join->on('payments.student_id', '=', 'students.id');
-                                        })
-
-                                        ->leftJoin('units', 'units.id', '=', 'students.unit_id')
-                                        ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
-                                        ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
-                                        ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
-                                        ->leftJoin('users', 'users.id', '=', 'students.created_by')
-
-                                        ->where('students.status', '!=', 3)
-                                        ->where('students.unit_id', $unit_id)
-                                        ->where('students.branch_id', $branch_id)
-
-                                        ->orderBy('students.id', 'DESC')
-                                        ->get();
-
-                // Helper::pr($data['rows']);
+                $data['rows'] = Student::select(
+                                        'students.id',
+                                        'students.student_id_serial',
+                                        'students.full_name',
+                                        'students.father_mobile',
+                                        'students.photo',
+                                        'students.session_id',
+                                        'units.name as unit_name',
+                                        'branches.name as branch_name',
+                                        'sessions.name as session_name',
+                                        'users.first_name',
+                                        'users.last_name',
+                                        DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
+                                        'payments.*'
+                                    )
+                                    ->leftJoinSub($paymentSubQuery, 'payments', function ($join) {
+                                        $join->on('payments.student_id', '=', 'students.id');
+                                    })
+                                    ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
+                                    ->leftJoin('units', 'units.id', '=', 'students.unit_id')
+                                    ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                                    ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                                    ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                                    ->leftJoin('users', 'users.id', '=', 'students.created_by')
+                                    ->where('students.status', '!=', 3)
+                                    ->where('students.session_id', '=', $sessionData['session_id'])
+                                    ->where('students.unit_id', $unit_id)
+                                    ->where('students.branch_id', $branch_id)
+                                    ->orderBy('students.id', 'DESC')
+                                    ->get();
             }            
             
             $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
@@ -886,48 +852,49 @@ class StudentController extends Controller
         }
         public function feesCollectionDueReport(Request $request){
             $validator = Validator::make($request->all(), [
-                'report_unit_id'          => 'required|integer|min:1',
-                'report_branch_id'        => 'required|integer|min:1',
-                'report_class_id'         => 'nullable|integer|min:1',
-                'report_collection_year'  => 'required|integer|min:2000|max:2100',
-                'report_months'           => 'required|array|min:1',
-                'report_months.*'         => 'integer|min:1|max:12',
+                'report_unit_id'     => 'required|integer|min:1',
+                'report_branch_id'   => 'required|integer|min:1',
+                'report_class_id'    => 'nullable|integer|min:1',
+                'report_session_id'   => 'required|integer|min:1',
+                'report_months'      => 'required|array|min:1',
+                'report_months.*'    => 'integer|min:1|max:12',
             ]);
 
             if ($validator->fails()) {
                 return redirect('student/fees-collection')->with('error_message', $validator->errors()->first());
             }
 
-            $unitId             = (int)$request->report_unit_id;
-            $branchId           = (int)$request->report_branch_id;
-            $classId            = (($request->report_class_id != '')?(int)$request->report_class_id:'');
-            $collectionYear     = (int)$request->report_collection_year;
-            $selectedMonths     = array_values(array_unique(array_map('intval', (array)$request->report_months)));
-            sort($selectedMonths);
+            $unitId          = (int)$request->report_unit_id;
+            $branchId        = (int)$request->report_branch_id;
+            $classId         = (($request->report_class_id != '') ? (int)$request->report_class_id : '');
+            $sessionData     = $this->getFinancialSessionData($request->report_session_id);
+            $financialMonths = $this->buildFinancialMonths($sessionData['start_year'], $sessionData['end_year']);
+            $selectedMonths  = array_values(array_unique(array_map('intval', (array)$request->report_months)));
 
             if (count($selectedMonths) == 0) {
                 return redirect('student/fees-collection')->with('error_message', 'Please select at least one month for due report.');
             }
 
-            $paymentSubQuery = DB::table('student_payments')->select('student_id');
-
+            $selectedMonthLookup = array_flip($selectedMonths);
             $monthColumns = [];
-            foreach ($selectedMonths as $monthNumber) {
-                $monthAlias      = 'month_' . $monthNumber . '_due';
-                $monthShortName  = date('M', mktime(0, 0, 0, $monthNumber, 1));
-                $monthColumns[]  = [
-                    'month'      => $monthNumber,
-                    'name'       => $monthShortName,
-                    'alias'      => $monthAlias,
-                ];
+            foreach ($financialMonths as $monthConfig) {
+                if (!array_key_exists($monthConfig['month'], $selectedMonthLookup)) {
+                    continue;
+                }
 
-                $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN payable_month = {$monthNumber} THEN due_amount ELSE 0 END) as {$monthAlias}"));
+                $monthColumns[] = [
+                    'month' => $monthConfig['month'],
+                    'year'  => $monthConfig['year'],
+                    'name'  => $monthConfig['short'],
+                    'alias'  => $monthConfig['alias'] . '_due',
+                ];
             }
 
-            $monthList = implode(',', $selectedMonths);
-            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN payable_month IN ({$monthList}) THEN due_amount ELSE 0 END) as total_due"))
-                            ->where('payable_year', $collectionYear)
-                            ->groupBy('student_id');
+            if (count($monthColumns) == 0) {
+                return redirect('student/fees-collection')->with('error_message', 'Please select at least one valid month for the selected session.');
+            }
+
+            $paymentSubQuery = $this->buildFinancialDueSubQuery($sessionData['session_id'], $monthColumns);
 
             $reportQuery = Student::select(
                                     'students.student_id_serial',
@@ -935,17 +902,20 @@ class StudentController extends Controller
                                     'students.father_mobile',
                                     'units.name as unit_name',
                                     'branches.name as branch_name',
+                                    'sessions.name as session_name',
                                     DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
                                     'payment_due.*'
                                 )
                                 ->leftJoinSub($paymentSubQuery, 'payment_due', function ($join) {
                                     $join->on('payment_due.student_id', '=', 'students.id');
                                 })
+                                ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
                                 ->leftJoin('units', 'units.id', '=', 'students.unit_id')
                                 ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
                                 ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
                                 ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
                                 ->where('students.status', '!=', 3)
+                                ->where('students.session_id', '=', $sessionData['session_id'])
                                 ->where('students.unit_id', $unitId)
                                 ->where('students.branch_id', $branchId)
                                 ->whereRaw('COALESCE(payment_due.total_due, 0) > 0');
@@ -967,16 +937,22 @@ class StudentController extends Controller
             }
 
             $reportData = [
-                'rows'               => $reportRows,
-                'month_columns'      => $monthColumns,
-                'collection_year'    => $collectionYear,
-                'unit_name'          => $unitName,
-                'branch_name'        => $branchName,
-                'class_name'         => $className,
-                'generated_at'       => date('d-m-Y h:i A'),
+                'rows'                => $reportRows,
+                'month_columns'       => $monthColumns,
+                'collection_session'  => $sessionData['session_name'],
+                'unit_name'           => $unitName,
+                'branch_name'         => $branchName,
+                'class_name'          => $className,
+                'generated_at'        => date('d-m-Y h:i A'),
             ];
 
-            $fileName = 'due-student-report-' . $collectionYear . '-' . date('YmdHis') . '.xls';
+            $safeSessionName = preg_replace('/[^A-Za-z0-9]+/', '-', $sessionData['session_name']);
+            $safeSessionName = trim($safeSessionName, '-');
+            if ($safeSessionName == '') {
+                $safeSessionName = 'session';
+            }
+
+            $fileName = 'due-student-report-' . $safeSessionName . '-' . date('YmdHis') . '.xls';
             $html = view('front.pages.student.fees-due-report-excel', $reportData)->render();
 
             return response("\xEF\xBB\xBF" . $html)
@@ -1118,26 +1094,67 @@ class StudentController extends Controller
             ]);
         }
         public function feesEntry(){
-            $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')->where('id', '>', 167)->get();
+            $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')
+                                                ->where(function ($query) {
+                                                    $query->where('status', '!=', 3)
+                                                          ->orWhereNull('status');
+                                                })
+                                                ->get();
             if($students){
-                foreach($students as $student){
-                    for($month=1; $month<=12; $month++){
-                        $fields = [
-                            'student_id'        => $student->id,
-                            'unit_id'           => $student->unit_id,
-                            'branch_id'         => $student->branch_id,
-                            'payable_month'     => $month,
-                            'payable_year'      => date('Y'),
-                            'payable_amount'    => $student->monthly_fees,
-                            'due_amount'        => $student->monthly_fees,
-                        ];
-                        // Helper::pr($fields,0);
-                        StudentPayment::insert($fields);
+                $targetMonths = [
+                    ['month' => 1, 'year' => 2027],
+                    ['month' => 2, 'year' => 2027],
+                    ['month' => 3, 'year' => 2027],
+                ];
+                $updatedBy = $this->currentUserId();
+                $createdCount = 0;
+                $updatedCount = 0;
+                $skippedCount  = 0;
+
+                DB::transaction(function () use ($students, $targetMonths, $updatedBy, &$createdCount, &$updatedCount, &$skippedCount) {
+                    foreach($students as $student){
+                        if ((float)$student->monthly_fees <= 0) {
+                            $skippedCount++;
+                            continue;
+                        }
+
+                        foreach($targetMonths as $monthConfig){
+                            $studentPayment = StudentPayment::firstOrNew([
+                                'student_id'    => $student->id,
+                                'payable_month' => $monthConfig['month'],
+                                'payable_year'  => $monthConfig['year'],
+                            ]);
+
+                            $alreadyPaid = (float)((isset($studentPayment->payment_amount)) ? $studentPayment->payment_amount : 0);
+
+                            $studentPayment->student_id      = $student->id;
+                            $studentPayment->unit_id         = $student->unit_id;
+                            $studentPayment->branch_id       = $student->branch_id;
+                            $studentPayment->payable_month   = $monthConfig['month'];
+                            $studentPayment->payable_year    = $monthConfig['year'];
+                            $studentPayment->payable_amount  = $student->monthly_fees;
+                            $studentPayment->due_amount      = max(((float)$student->monthly_fees - $alreadyPaid), 0);
+                            $studentPayment->updated_by      = $updatedBy;
+
+                            if (!$studentPayment->exists) {
+                                $studentPayment->payment_amount = 0;
+                                $studentPayment->payment_date   = null;
+                                $studentPayment->created_by     = $updatedBy;
+                                $createdCount++;
+                            } else {
+                                $updatedCount++;
+                            }
+
+                            $studentPayment->save();
+                        }
                     }
-                }
+                });
+
+                echo 'Student payment schedule updated for January 2027 to March 2027. Created: '.$createdCount.'. Updated: '.$updatedCount.'. Skipped: '.$skippedCount.'.';
+                return;
             }
             // die;
-            echo 'Student payment schedule created';
+            echo 'No active students found';
         }
     /* fees collection */
 
@@ -1229,6 +1246,170 @@ class StudentController extends Controller
 
             echo 'Admission fee transactions created: '.$createdCount.'. Skipped: '.$skippedCount.'.';
         }
+
+    private function getFinancialSessionData($sessionId = null)
+    {
+        $session = null;
+        if ($sessionId !== null && $sessionId !== '') {
+            $session = Session::select('id', 'name')
+                                ->where('id', '=', (int)$sessionId)
+                                ->first();
+        }
+
+        $currentYear  = (int)Carbon::now()->year;
+        $currentMonth = (int)Carbon::now()->month;
+        $startYear    = (($currentMonth >= 4) ? $currentYear : ($currentYear - 1));
+        $endYear      = $startYear + 1;
+
+        if (!$session) {
+            $activeSessions = Session::select('id', 'name')
+                                        ->where('status', '=', 1)
+                                        ->orderBy('name', 'ASC')
+                                        ->get();
+
+            foreach ($activeSessions as $sessionItem) {
+                $sessionName = trim((string)$sessionItem->name);
+                if ($sessionName !== '' && preg_match('/(\d{4})\D+(\d{4})/', $sessionName, $matches)) {
+                    if ((int)$matches[1] === $startYear && (int)$matches[2] === $endYear) {
+                        $session = $sessionItem;
+                        break;
+                    }
+                }
+            }
+
+            if (!$session && $activeSessions->count() > 0) {
+                $session = $activeSessions->first();
+            }
+        }
+
+        if ($session) {
+            $sessionName = trim((string)$session->name);
+            if ($sessionName !== '' && preg_match('/(\d{4})\D+(\d{4})/', $sessionName, $matches)) {
+                $startYear = (int)$matches[1];
+                $endYear   = (int)$matches[2];
+
+                return [
+                    'session_id'   => (int)$session->id,
+                    'session_name' => $sessionName,
+                    'start_year'   => $startYear,
+                    'end_year'     => $endYear,
+                ];
+            }
+        }
+
+        return [
+            'session_id'   => (($session) ? (int)$session->id : 0),
+            'session_name' => (($session && trim((string)$session->name) != '') ? trim((string)$session->name) : ($startYear . '-' . $endYear)),
+            'start_year'   => $startYear,
+            'end_year'     => $endYear,
+        ];
+    }
+
+    private function findSessionByFinancialYear($startYear, $endYear)
+    {
+        $sessions = Session::select('id', 'name')
+                            ->where('status', '=', 1)
+                            ->orderBy('name', 'ASC')
+                            ->get();
+
+        foreach ($sessions as $sessionItem) {
+            $sessionName = trim((string)$sessionItem->name);
+            if ($sessionName !== '' && preg_match('/(\d{4})\D+(\d{4})/', $sessionName, $matches)) {
+                if ((int)$matches[1] === (int)$startYear && (int)$matches[2] === (int)$endYear) {
+                    return $sessionItem;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function getNextFinancialSessionData($sessionId = null)
+    {
+        $currentSessionData = $this->getFinancialSessionData($sessionId);
+        $nextStartYear      = ((int)$currentSessionData['start_year']) + 1;
+        $nextEndYear        = ((int)$currentSessionData['end_year']) + 1;
+        $nextSession        = $this->findSessionByFinancialYear($nextStartYear, $nextEndYear);
+
+        return [
+            'session_id'   => (($nextSession) ? (int)$nextSession->id : ((int)$currentSessionData['session_id'])),
+            'session_name' => (($nextSession && trim((string)$nextSession->name) != '') ? trim((string)$nextSession->name) : ($nextStartYear . '-' . $nextEndYear)),
+            'start_year'   => $nextStartYear,
+            'end_year'     => $nextEndYear,
+        ];
+    }
+
+    private function buildFinancialMonths($startYear, $endYear)
+    {
+        return [
+            ['month' => 4,  'year' => (int)$startYear, 'alias' => 'apr', 'short' => 'Apr'],
+            ['month' => 5,  'year' => (int)$startYear, 'alias' => 'may', 'short' => 'May'],
+            ['month' => 6,  'year' => (int)$startYear, 'alias' => 'jun', 'short' => 'Jun'],
+            ['month' => 7,  'year' => (int)$startYear, 'alias' => 'jul', 'short' => 'Jul'],
+            ['month' => 8,  'year' => (int)$startYear, 'alias' => 'aug', 'short' => 'Aug'],
+            ['month' => 9,  'year' => (int)$startYear, 'alias' => 'sep', 'short' => 'Sep'],
+            ['month' => 10, 'year' => (int)$startYear, 'alias' => 'oct', 'short' => 'Oct'],
+            ['month' => 11, 'year' => (int)$startYear, 'alias' => 'nov', 'short' => 'Nov'],
+            ['month' => 12, 'year' => (int)$startYear, 'alias' => 'dec', 'short' => 'Dec'],
+            ['month' => 1,  'year' => (int)$endYear,   'alias' => 'jan', 'short' => 'Jan'],
+            ['month' => 2,  'year' => (int)$endYear,   'alias' => 'feb', 'short' => 'Feb'],
+            ['month' => 3,  'year' => (int)$endYear,   'alias' => 'mar', 'short' => 'Mar'],
+        ];
+    }
+
+    private function buildFinancialPaymentSummarySubQuery($sessionId, array $financialMonths)
+    {
+        $paymentSubQuery = DB::table('student_payments as sp')
+                                ->join('students as st', 'st.id', '=', 'sp.student_id')
+                                ->select('sp.student_id')
+                                ->where('st.session_id', '=', (int)$sessionId);
+
+        $sessionMonthConditions = [];
+        foreach ($financialMonths as $monthConfig) {
+            $monthNumber = (int)$monthConfig['month'];
+            $monthYear   = (int)$monthConfig['year'];
+            $monthAlias  = $monthConfig['alias'];
+
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.payable_amount ELSE 0 END) as {$monthAlias}_payable"));
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.payment_amount ELSE 0 END) as {$monthAlias}_paid"));
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.due_amount ELSE 0 END) as {$monthAlias}_due"));
+
+            $sessionMonthConditions[] = "(sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear})";
+        }
+
+        $sessionMonthCondition = implode(' OR ', $sessionMonthConditions);
+
+        $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN {$sessionMonthCondition} THEN sp.payable_amount ELSE 0 END) as total_payable"))
+                        ->addSelect(DB::raw("SUM(CASE WHEN {$sessionMonthCondition} THEN sp.payment_amount ELSE 0 END) as total_paid"))
+                        ->addSelect(DB::raw("SUM(CASE WHEN {$sessionMonthCondition} THEN sp.due_amount ELSE 0 END) as total_due"))
+                        ->groupBy('sp.student_id');
+
+        return $paymentSubQuery;
+    }
+
+    private function buildFinancialDueSubQuery($sessionId, array $monthColumns)
+    {
+        $paymentSubQuery = DB::table('student_payments as sp')
+                                ->join('students as st', 'st.id', '=', 'sp.student_id')
+                                ->select('sp.student_id')
+                                ->where('st.session_id', '=', (int)$sessionId);
+
+        $monthConditions = [];
+        foreach ($monthColumns as $monthConfig) {
+            $monthNumber = (int)$monthConfig['month'];
+            $monthYear   = (int)$monthConfig['year'];
+            $monthAlias  = $monthConfig['alias'];
+
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.due_amount ELSE 0 END) as {$monthAlias}"));
+            $monthConditions[] = "(sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear})";
+        }
+
+        $monthCondition = implode(' OR ', $monthConditions);
+        $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN {$monthCondition} THEN sp.due_amount ELSE 0 END) as total_due"))
+                        ->groupBy('sp.student_id');
+
+        return $paymentSubQuery;
+    }
 
     private function currentUserId()
     {

@@ -53,8 +53,8 @@
             <td>{{ $branch_name }}</td>
             <td class="meta-key">Class</td>
             <td>{{ $class_name }}</td>
-            <td class="meta-key">Collection Year</td>
-            <td>{{ $collection_year }}</td>
+            <td class="meta-key">Collection Session</td>
+            <td>{{ $collection_session ?? '-' }}</td>
         </tr>
         <tr>
             <td class="meta-key">Generated At</td>
