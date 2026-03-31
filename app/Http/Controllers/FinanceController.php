@@ -93,6 +93,10 @@ class FinanceController extends Controller
                         ->orderBy('transactions.id', 'DESC')
                         ->get();
 
+        $rows->each(function ($row) {
+            $row->can_edit = $this->isEditableTransaction($row);
+        });
+
         $data['rows'] = $rows;
         $data['users'] = User::select('id', 'first_name', 'last_name')
                                 ->where('status', '!=', 3)
@@ -274,6 +278,10 @@ class FinanceController extends Controller
             return redirect($this->data['controller_route'] . "/list")->with('error_message', 'Transaction not found !!!');
         }
 
+        if (!$this->isEditableTransaction($data['row'])) {
+            return redirect($this->data['controller_route'] . "/list")->with('error_message', 'This transaction cannot be edited !!!');
+        }
+
         $data['users'] = User::select('id', 'first_name', 'last_name')
                                 ->where('status', '!=', 3)
                                 ->orderBy('first_name', 'ASC')
@@ -378,6 +386,29 @@ class FinanceController extends Controller
         return view('front.pages.finance.invoice', $data);
     }
     /* invoice */
+
+    private function isEditableTransaction($transaction)
+    {
+        if (!$transaction) {
+            return false;
+        }
+
+        if ((int)$transaction->fee_id > 0) {
+            return false;
+        }
+
+        $particulars = trim((string)($transaction->particulars ?? ''));
+        if ($particulars !== '' && str_starts_with($particulars, 'Admission fee collected for ')) {
+            return false;
+        }
+
+        $note = trim((string)($transaction->note ?? ''));
+        if ($note !== '' && str_starts_with($note, 'Promotion from ')) {
+            return false;
+        }
+
+        return true;
+    }
 
     private function normalizePaymentReference($paymentMode, $paymentReference)
     {

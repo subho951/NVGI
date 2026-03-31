@@ -1,4 +1,4 @@
-@extends('front.layouts.afterlogin')
+﻿@extends('front.layouts.afterlogin')
 @section('content')
 <?php
 use App\Helpers\Helper;
@@ -488,7 +488,7 @@ $controllerRoute = $module['controller_route'];
                                            title="Invoice">
                                             <i class="fa-solid fa-file-invoice-dollar"></i>
                                         </a>
-                                        <?php if($row->fee_id <= 0){?>
+                                        <?php if($row->can_edit){?>
                                             <a href="{{ url($controllerRoute.'/edit/'.$encodedId) }}"
                                             class="action-link"
                                             title="Edit">
@@ -538,3 +538,4 @@ $controllerRoute = $module['controller_route'];
     });
 </script>
 @endsection
+
