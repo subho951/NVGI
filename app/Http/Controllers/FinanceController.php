@@ -425,7 +425,7 @@ class FinanceController extends Controller
         $data['title']       = 'Transaction Invoice';
         $data['transaction'] = $transaction;
 
-        return view('front.pages.finance-invoice', $data);
+        return view('front.pages.finance.finance-invoice', $data);
     }
     /* invoice */
 
