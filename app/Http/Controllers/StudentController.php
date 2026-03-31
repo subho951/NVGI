@@ -1202,7 +1202,7 @@ class StudentController extends Controller
                                                 : date('Y-m-d H:i:s');
                     $txnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
 
-                    Helper::pr([
+                    $fields1 = [
                         'sl_no'                  => $nextSlNo,
                         'txn_no'                 => $txnNo,
                         'fee_id'                 => 0,
@@ -1218,25 +1218,9 @@ class StudentController extends Controller
                         'status'                 => 1,
                         'created_by'             => $updatedBy,
                         'updated_by'             => $updatedBy,
-                    ]);
+                    ];
 
-                    Transaction::create([
-                        'sl_no'                  => $nextSlNo,
-                        'txn_no'                 => $txnNo,
-                        'fee_id'                 => 0,
-                        'unit_id'                => (int)$student->unit_id,
-                        'branch_id'              => (int)$student->branch_id,
-                        'payment_mode'           => 'Cash',
-                        'payment_reference'      => null,
-                        'type'                   => 'INCOME',
-                        'transaction_timestamp'  => $transactionTimestamp,
-                        'transaction_amount'     => $admissionFeeAmount,
-                        'particulars'            => 'Admission fee collected for '.$student->full_name.' ('.$student->student_id_serial.') during backfill',
-                        'note'                   => 'Admission fee backfill for '.$student->student_id_serial,
-                        'status'                 => 1,
-                        'created_by'             => $updatedBy,
-                        'updated_by'             => $updatedBy,
-                    ]);
+                    Transaction::insert($fields1);
 
                     $nextSlNo++;
                     $createdCount++;
