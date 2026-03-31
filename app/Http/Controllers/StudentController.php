@@ -1198,8 +1198,8 @@ class StudentController extends Controller
                     }
 
                     $transactionTimestamp = (!empty($student->admission_date))
-                                                ? Carbon::parse($student->admission_date)
-                                                : Carbon::now();
+                                                ? $student->admission_date . ' ' . date('H:i:s')
+                                                : date('Y-m-d H:i:s');
                     $txnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
 
                     Helper::pr([
