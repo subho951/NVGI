@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Transaction extends Model
 {
@@ -18,6 +19,7 @@ class Transaction extends Model
         'payment_mode',
         'payment_reference',
         'type',
+        'ledger_id',
         'transaction_timestamp',
         'transaction_amount',
         'particulars',
@@ -26,4 +28,9 @@ class Transaction extends Model
         'created_by',
         'updated_by',
     ];
+
+    public function ledger(): BelongsTo
+    {
+        return $this->belongsTo(Ledger::class, 'ledger_id');
+    }
 }

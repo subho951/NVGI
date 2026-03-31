@@ -198,7 +198,7 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
         </li>
     <?php } ?>
 
-    <?php if((in_array(20, $moduleIds)) || (in_array(21, $moduleIds))){?>
+    <?php if((in_array(20, $moduleIds)) || (in_array(21, $moduleIds)) || (in_array(22, $moduleIds))){?>
         <!-- Finance -->
         <li class="nav-item">
             <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['finance']) ? 'active-link' : '' ?>"
@@ -212,6 +212,13 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
             </a>
 
             <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['finance']) ? 'show' : '' ?>" id="financeMenu">
+                <?php if(in_array(22, $moduleIds)){?>
+                <li>
+                    <a href="<?= url('finance/ledger/list') ?>" class="nav-link <?= (($pageSegment == 'finance' && $pageFunction == 'ledger') ? 'active-link' : '') ?>">
+                        <i class="fa-solid fa-arrow-right"></i> <span>Ledgers</span>
+                    </a>
+                </li>
+                <?php } ?>
                 <?php if(in_array(20, $moduleIds)){?>
                     <li>
                         <a href="<?= url('finance/list') ?>" class="nav-link <?= (($pageSegment == 'finance' && $pageFunction == 'list') ? 'active-link' : '') ?>">

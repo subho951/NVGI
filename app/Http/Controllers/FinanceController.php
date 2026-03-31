@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
 use App\Models\Branch;
+use App\Models\Ledger;
 use App\Models\Transaction;
 use App\Models\Unit;
 use App\Models\User;
@@ -43,6 +44,7 @@ class FinanceController extends Controller
         $createdBy              = $request->created_by;
         $unitId                 = $request->unit_id;
         $branchId               = $request->branch_id;
+        $ledgerId               = $request->ledger_id;
 
         $data['from_date']      = $fromDate;
         $data['to_date']        = $toDate;
@@ -50,14 +52,17 @@ class FinanceController extends Controller
         $data['created_by']     = $createdBy;
         $data['unit_id']        = $unitId;
         $data['branch_id']      = $branchId;
+        $data['ledger_id']      = $ledgerId;
 
         $query = Transaction::select(
                                 'transactions.*',
+                                DB::raw("COALESCE(tx_ledgers.name, '') as ledger_name"),
                                 DB::raw("COALESCE(tx_units.name, fee_units.name) as unit_name"),
                                 DB::raw("COALESCE(tx_branches.name, fee_branches.name) as branch_name"),
                                 DB::raw("CONCAT(COALESCE(creator.first_name,''), ' ', COALESCE(creator.last_name,'')) as creator_name")
                             )
                             ->leftJoin('student_payments as fee_payments', 'fee_payments.id', '=', 'transactions.fee_id')
+                            ->leftJoin('ledgers as tx_ledgers', 'tx_ledgers.id', '=', 'transactions.ledger_id')
                             ->leftJoin('users as creator', 'creator.id', '=', 'transactions.created_by')
                             ->leftJoin('units as tx_units', 'tx_units.id', '=', 'transactions.unit_id')
                             ->leftJoin('branches as tx_branches', 'tx_branches.id', '=', 'transactions.branch_id')
@@ -89,6 +94,10 @@ class FinanceController extends Controller
             $query->whereRaw('COALESCE(NULLIF(transactions.branch_id, 0), fee_payments.branch_id) = ?', [(int)$branchId]);
         }
 
+        if ($ledgerId != '' && is_numeric($ledgerId) && (int)$ledgerId > 0) {
+            $query->where('transactions.ledger_id', '=', (int)$ledgerId);
+        }
+
         $rows = $query->orderByRaw('CAST(transactions.txn_no AS UNSIGNED) DESC')
                         ->orderBy('transactions.id', 'DESC')
                         ->get();
@@ -111,6 +120,7 @@ class FinanceController extends Controller
                                     ->where('status', '!=', 3)
                                     ->orderBy('name', 'ASC')
                                     ->get();
+        $data['ledgers'] = $this->ledgerOptions($ledgerId);
 
         $data['total_income']   = (float)$rows->where('type', 'INCOME')->sum('transaction_amount');
         $data['total_expense']  = (float)$rows->where('type', 'EXPENSE')->sum('transaction_amount');
@@ -167,7 +177,7 @@ class FinanceController extends Controller
     public function add(Request $request)
     {
         $data['module']                 = $this->data;
-        $title                          = $this->data['title'] . ' Update';
+        $title                          = $this->data['title'] . ' Add';
         $page_name                      = 'finance.add-edit';
         $data['row']                    = [];
         $data['action']                 = 'Add';
@@ -180,6 +190,7 @@ class FinanceController extends Controller
                                     ->where('status', '!=', 3)
                                     ->orderBy('name', 'ASC')
                                     ->get();
+        $data['ledgers'] = $this->ledgerOptions();
 
         $data['users'] = User::select('id', 'first_name', 'last_name')
                                 ->where('status', '!=', 3)
@@ -188,8 +199,18 @@ class FinanceController extends Controller
                                 ->get();
 
         if ($request->isMethod('post')) {
+            $transactionType = $request->type;
+
             $request->validate([
                 'type'                  => 'required|in:INCOME,EXPENSE',
+                'ledger_id'             => [
+                    'required_if:type,INCOME,EXPENSE',
+                    'integer',
+                    Rule::exists('ledgers', 'id')->where(function ($query) use ($transactionType) {
+                        $query->where('status', '!=', 3)
+                                ->where('type', '=', $transactionType);
+                    }),
+                ],
                 'transaction_timestamp' => 'required|date',
                 'transaction_amount'    => 'required|numeric|gt:0',
                 'unit_id'               => [
@@ -212,6 +233,9 @@ class FinanceController extends Controller
                 'particulars'           => 'required|string|max:1000',
                 'note'                  => 'nullable|string|max:2000',
                 'created_by'            => 'required|integer|exists:users,id',
+            ], [
+                'ledger_id.required_if' => 'Please select a ledger for the selected transaction type.',
+                'ledger_id.exists'      => 'Selected ledger is not valid for the chosen transaction type.',
             ]);
 
             $updatedBy = $this->currentUserId();
@@ -230,6 +254,7 @@ class FinanceController extends Controller
                     'sl_no'                  => $nextSlNo,
                     'txn_no'                 => $nextTxnNo,
                     'fee_id'                 => 0,
+                    'ledger_id'              => (int)$request->ledger_id,
                     'unit_id'                => (int)$request->unit_id,
                     'branch_id'              => (int)$request->branch_id,
                     'payment_mode'           => $request->payment_mode,
@@ -258,7 +283,7 @@ class FinanceController extends Controller
     {
         $data['module']                 = $this->data;
         $id                             = Helper::decoded($id);
-        $title                          = $this->data['title'] . ' Update';
+        $title                          = $this->data['title'] . ' Edit';
         $page_name                      = 'finance.add-edit';
         $data['row']                    = Transaction::where($this->data['primary_key'], '=', $id)
                                                     ->where('status', '!=', 3)
@@ -273,6 +298,7 @@ class FinanceController extends Controller
                                     ->where('status', '!=', 3)
                                     ->orderBy('name', 'ASC')
                                     ->get();
+        $data['ledgers'] = $this->ledgerOptions(($data['row']->ledger_id ?? null));
 
         if (!$data['row']) {
             return redirect($this->data['controller_route'] . "/list")->with('error_message', 'Transaction not found !!!');
@@ -289,8 +315,18 @@ class FinanceController extends Controller
                                 ->get();
 
         if ($request->isMethod('post')) {
+            $transactionType = $request->type;
+
             $request->validate([
                 'type'                  => 'required|in:INCOME,EXPENSE',
+                'ledger_id'             => [
+                    'required_if:type,INCOME,EXPENSE',
+                    'integer',
+                    Rule::exists('ledgers', 'id')->where(function ($query) use ($transactionType) {
+                        $query->where('status', '!=', 3)
+                                ->where('type', '=', $transactionType);
+                    }),
+                ],
                 'transaction_timestamp' => 'required|date',
                 'transaction_amount'    => 'required|numeric|gt:0',
                 'unit_id'               => [
@@ -313,12 +349,16 @@ class FinanceController extends Controller
                 'particulars'           => 'required|string|max:1000',
                 'note'                  => 'nullable|string|max:2000',
                 'created_by'            => 'required|integer|exists:users,id',
+            ], [
+                'ledger_id.required_if' => 'Please select a ledger for the selected transaction type.',
+                'ledger_id.exists'      => 'Selected ledger is not valid for the chosen transaction type.',
             ]);
 
             $member = Transaction::findOrFail($id);
             $member->update([
                 'unit_id'                => (int)$request->unit_id,
                 'branch_id'              => (int)$request->branch_id,
+                'ledger_id'              => (int)$request->ledger_id,
                 'payment_mode'           => $request->payment_mode,
                 'payment_reference'      => $this->normalizePaymentReference($request->payment_mode, $request->payment_reference),
                 'type'                   => $request->type,
@@ -360,12 +400,14 @@ class FinanceController extends Controller
 
         $transaction = Transaction::select(
                                     'transactions.*',
+                                    DB::raw("COALESCE(tx_ledgers.name, '') as ledger_name"),
                                     DB::raw("COALESCE(tx_units.name, fee_units.name) as unit_name"),
                                     DB::raw("COALESCE(tx_branches.name, fee_branches.name) as branch_name"),
                                     DB::raw("CONCAT(COALESCE(creator.first_name,''), ' ', COALESCE(creator.last_name,'')) as creator_name"),
                                     DB::raw("CONCAT(COALESCE(updater.first_name,''), ' ', COALESCE(updater.last_name,'')) as updater_name")
                                 )
                                 ->leftJoin('student_payments as fee_payments', 'fee_payments.id', '=', 'transactions.fee_id')
+                                ->leftJoin('ledgers as tx_ledgers', 'tx_ledgers.id', '=', 'transactions.ledger_id')
                                 ->leftJoin('users as creator', 'creator.id', '=', 'transactions.created_by')
                                 ->leftJoin('users as updater', 'updater.id', '=', 'transactions.updated_by')
                                 ->leftJoin('units as tx_units', 'tx_units.id', '=', 'transactions.unit_id')
@@ -383,7 +425,7 @@ class FinanceController extends Controller
         $data['title']       = 'Transaction Invoice';
         $data['transaction'] = $transaction;
 
-        return view('front.pages.finance.invoice', $data);
+        return view('front.pages.finance-invoice', $data);
     }
     /* invoice */
 
@@ -428,5 +470,28 @@ class FinanceController extends Controller
         }
 
         return ((Auth::check()) ? (int)Auth::id() : 0);
+    }
+
+    private function ledgerOptions($selectedLedgerId = null)
+    {
+        $ledgers = Ledger::select('id', 'name', 'type', 'status')
+                        ->where('status', '=', 1)
+                        ->orderBy('name', 'ASC')
+                        ->get();
+
+        $selectedLedgerId = (int) $selectedLedgerId;
+
+        if ($selectedLedgerId > 0 && !$ledgers->pluck('id')->contains($selectedLedgerId)) {
+            $selectedLedger = Ledger::select('id', 'name', 'type', 'status')
+                                    ->where('id', '=', $selectedLedgerId)
+                                    ->where('status', '!=', 3)
+                                    ->first();
+
+            if ($selectedLedger) {
+                $ledgers->push($selectedLedger);
+            }
+        }
+
+        return $ledgers->sortBy('name')->values();
     }
 }

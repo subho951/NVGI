@@ -389,6 +389,19 @@ $controllerRoute = $module['controller_route'];
                         </select>
                     </div>
                     <div class="col-lg-2 col-md-4">
+                        <label for="ledger_id" class="form-label">Ledger</label>
+                        <select class="form-select" name="ledger_id" id="ledger_id">
+                            <option value="">All Ledgers</option>
+                            @foreach($ledgers as $ledger)
+                                <option class="ledger-option ledger-type-{{ ($ledger->type ?: 'ALL') }}"
+                                        value="{{ $ledger->id }}"
+                                        {{ ((string)$ledger_id === (string)$ledger->id)?'selected':'' }}>
+                                    {{ $ledger->name }}{{ ($ledger->type ? ' - '.$ledger->type : '') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
                         <label for="unit_id" class="form-label">Unit</label>
                         <select class="form-select" name="unit_id" id="unit_id">
                             <option value="">All Units</option>
@@ -445,6 +458,7 @@ $controllerRoute = $module['controller_route'];
                             <th>Txn No</th>
                             <th>Date & Time</th>
                             <th>Type</th>
+                            <th>Ledger</th>
                             <th>Amount</th>
                             <th>Particulars</th>
                             <th>Note</th>
@@ -472,6 +486,7 @@ $controllerRoute = $module['controller_route'];
                                     <td>
                                         <span class="txn-type {{ $typeClass }}">{{ $row->type }}</span>
                                     </td>
+                                    <td>{{ (($row->ledger_name != '') ? $row->ledger_name : '--') }}</td>
                                     <td class="amount {{ $amountClass }}">INR {{ number_format((float)$row->transaction_amount, 2) }}</td>
                                     <td>{{ $row->particulars }}</td>
                                     <td>{{ (($row->note != '')?$row->note:'--') }}</td>
@@ -530,12 +545,42 @@ $controllerRoute = $module['controller_route'];
             }
         }
 
+        function filterLedgerOptions(type) {
+            var select = $('#ledger_id');
+            var selectedValue = select.val();
+            var options = select.find('option.ledger-option');
+
+            options.hide().prop('disabled', true);
+
+            if (type === '') {
+                options.show().prop('disabled', false);
+            } else {
+                select.find('option.ledger-type-' + type).show().prop('disabled', false);
+            }
+
+            if (selectedValue !== '' && type !== '') {
+                var selectedOption = select.find('option[value="' + selectedValue + '"]');
+                if (selectedOption.length && !selectedOption.hasClass('ledger-type-' + type)) {
+                    select.val('');
+                }
+            }
+        }
+
         bindUnitWiseBranch($('#unit_id').val(), '#branch_id', 'branch', $('#branch_id').val());
+        filterLedgerOptions($('#type').val());
 
         $('#unit_id').on('change', function () {
             bindUnitWiseBranch($(this).val(), '#branch_id', 'branch', '');
         });
+
+        $('#type').on('change', function () {
+            filterLedgerOptions($(this).val());
+        });
     });
 </script>
 @endsection
+
+
+
+
 

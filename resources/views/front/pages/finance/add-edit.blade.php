@@ -1,4 +1,4 @@
-@extends('front.layouts.afterlogin')
+﻿@extends('front.layouts.afterlogin')
 @section('content')
 <?php
 $controllerRoute = $module['controller_route'];
@@ -7,6 +7,7 @@ $isEdit = (!empty($row));
 $type = old('type', (($isEdit) ? $row->type : ''));
 $transactionTimestamp = old('transaction_timestamp', (($isEdit && $row->transaction_timestamp) ? date('Y-m-d\TH:i', strtotime($row->transaction_timestamp)) : date('Y-m-d\TH:i')));
 $transactionAmount = old('transaction_amount', (($isEdit) ? number_format((float)$row->transaction_amount, 2, '.', '') : ''));
+$ledgerId = old('ledger_id', (($isEdit) ? $row->ledger_id : ''));
 $unitId = old('unit_id', (($isEdit) ? $row->unit_id : ''));
 $branchId = old('branch_id', (($isEdit) ? $row->branch_id : ''));
 $paymentMode = old('payment_mode', (($isEdit) ? $row->payment_mode : ''));
@@ -177,15 +178,27 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
             <form method="POST" action="" class="row g-3">
                 @csrf
                 <input type="hidden" name="created_by" value="<?= session('user_data')['user_id'] ?>">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="type" class="form-label">Type <span class="text-danger">*</span></label>
                     <select class="form-select" name="type" id="type" required>
-                        <option value="" selected>Select Type</option>
+                        <option value="" {{ (($type === '') ? 'selected' : '') }}>Select Type</option>
                         <option value="INCOME" {{ (($type == 'INCOME')?'selected':'') }}>INCOME</option>
                         <option value="EXPENSE" {{ (($type == 'EXPENSE')?'selected':'') }}>EXPENSE</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3 ledger-group {{ (in_array($type, ['INCOME', 'EXPENSE'])) ? '' : 'd-none' }}" id="ledger_group">
+                    <label for="ledger_id" class="form-label">Ledger <span class="text-danger">*</span></label>
+                    <select class="form-select" name="ledger_id" id="ledger_id" {{ (!in_array($type, ['INCOME', 'EXPENSE'])) ? 'disabled' : '' }} required>
+                        <option value="" {{ (($ledgerId === '') ? 'selected' : '') }}>Select Ledger</option>
+                        @foreach($ledgers as $ledgerRow)
+                            <option class="ledger-option ledger-type-{{ ($ledgerRow->type ?: 'ALL') }}"
+                                    value="{{ $ledgerRow->id }}" {{ ((string)$ledgerId === (string)$ledgerRow->id) ? 'selected' : '' }}>
+                                {{ $ledgerRow->name }}{{ ((int)($ledgerRow->status ?? 1) === 0) ? ' (Blocked)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
                     <label for="transaction_timestamp" class="form-label">Transaction Date & Time <span class="text-danger">*</span></label>
                     <input type="datetime-local"
                            class="form-control"
@@ -194,7 +207,7 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
                            value="{{ $transactionTimestamp }}"
                            required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="transaction_amount" class="form-label">Amount <span class="text-danger">*</span></label>
                     <input type="number"
                            step="1"
@@ -304,8 +317,47 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
                 }
             }
 
+            function filterLedgerOptions(type) {
+                var select = $('#ledger_id');
+                var selectedValue = select.val();
+                var options = select.find('option.ledger-option');
+
+                options.hide().prop('disabled', true);
+
+                if (type === '') {
+                    options.show().prop('disabled', false);
+                } else {
+                    select.find('option.ledger-type-' + type).show().prop('disabled', false);
+                }
+
+                if (selectedValue !== '' && type !== '') {
+                    var selectedOption = select.find('option[value="' + selectedValue + '"]');
+                    if (selectedOption.length && !selectedOption.hasClass('ledger-type-' + type)) {
+                        select.val('');
+                    }
+                }
+            }
+
+            function toggleLedgerField(type) {
+                var group = $('#ledger_group');
+                var input = $('#ledger_id');
+                var shouldShow = (type === 'INCOME' || type === 'EXPENSE');
+
+                if (shouldShow) {
+                    group.removeClass('d-none');
+                    input.prop('disabled', false);
+                    filterLedgerOptions(type);
+                } else {
+                    group.addClass('d-none');
+                    input.prop('disabled', true);
+                    input.val('');
+                    filterLedgerOptions('');
+                }
+            }
+
             bindUnitWiseBranch($('#unit_id').val(), '#branch_id', 'branch', $('#branch_id').val());
             togglePaymentReference($('#payment_mode').val());
+            toggleLedgerField($('#type').val());
 
             $('#unit_id').on('change', function () {
                 bindUnitWiseBranch($(this).val(), '#branch_id', 'branch', '');
@@ -314,6 +366,14 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
             $('#payment_mode').on('change', function () {
                 togglePaymentReference($(this).val());
             });
+
+            $('#type').on('change', function () {
+                toggleLedgerField($(this).val());
+            });
         });
     </script>
 @endsection
+
+
+
+
