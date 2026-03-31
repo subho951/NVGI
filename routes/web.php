@@ -179,6 +179,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'student/edit/{id}', [StudentController::class, 'edit']);
                 Route::get('student/delete/{id}', [StudentController::class, 'delete']);
                 Route::get('student/change-status/{id}', [StudentController::class, 'change_status']);
+                Route::post('student/promote', [StudentController::class, 'promote'])->name('student.promote');
                 Route::get('student/details/{id}', [StudentController::class, 'details'])->name('student.details');
                 Route::match(['get', 'post'], 'student/student-print/{id}', [StudentController::class, 'studentPrint']);
                 Route::match(['get', 'post'], 'student/student-pdf/{id}', [StudentController::class, 'studentPDF']);

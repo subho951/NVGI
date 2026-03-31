@@ -66,6 +66,8 @@ class StudentController extends Controller
                                                             })
                                                             ->orderBy('students.id', 'DESC')
                                                             ->get();
+            $data['vhs_classes']            = Classes::select('id', 'name')->where('status', '=', 1)->where('unit_id', '=', 1)->orderBy('name', 'ASC')->get();
+            $data['tsa_classes']            = Classes::select('id', 'name')->where('status', '=', 1)->where('unit_id', '=', 2)->orderBy('name', 'ASC')->get();
             // Helper::pr($data['rows']);
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             return view('front.pages.' . $page_name, $data);
@@ -390,11 +392,150 @@ class StudentController extends Controller
             } else {
                 $model->status  = 1;
                 $msg            = 'activated';
-            }            
+            }
             $model->save();
             return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' '.$msg.' successfully !!!');
         }
     /* change status */
+    /* promote */
+        public function promote(Request $request){
+            $request->validate([
+                'student_id'            => 'required|integer|exists:students,id',
+                'admission_fees'        => 'required|numeric|gt:0',
+                'monthly_fees'          => 'required|numeric|gt:0',
+            ]);
+
+            $student = Student::select(
+                                'students.id',
+                                'students.unit_id',
+                                'students.branch_id',
+                                'students.full_name',
+                                'students.admission_fees as current_admission_fees',
+                                'students.monthly_fees as current_monthly_fees',
+                                'students.vhs_class_id',
+                                'students.tsa_class_id',
+                                'units.name as unit_name',
+                                'branches.name as branch_name',
+                                DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as current_class_name")
+                            )
+                            ->leftJoin('units', 'units.id', '=', 'students.unit_id')
+                            ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                            ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                            ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                            ->where('students.id', '=', (int)$request->student_id)
+                            ->where(function ($q) {
+                                $q->where('students.status', '!=', 3)
+                                  ->orWhereNull('students.status');
+                            })
+                            ->first();
+
+            if (!$student) {
+                return redirect()->back()->with('error_message', 'Student not found !!!')->withInput();
+            }
+
+            $currentClassId = ((int)$student->unit_id === 1) ? (int)$student->vhs_class_id : (int)$student->tsa_class_id;
+
+            $request->validate([
+                'promoted_class_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('classes', 'id')->where(function ($query) use ($student) {
+                        $query->where('status', '=', 1)
+                              ->where('unit_id', (int)$student->unit_id);
+                    }),
+                ],
+            ]);
+
+            $promotedClassId = (int)$request->promoted_class_id;
+            if ($currentClassId > 0 && $promotedClassId === $currentClassId) {
+                return redirect()->back()->with('error_message', 'Promoted class must be different from the present class !!!')->withInput();
+            }
+
+            $promotedClass = Classes::select('id', 'name')
+                                    ->where('id', '=', $promotedClassId)
+                                    ->where('status', '=', 1)
+                                    ->first();
+            if (!$promotedClass) {
+                return redirect()->back()->with('error_message', 'Promoted class not found !!!')->withInput();
+            }
+
+            $updatedBy          = $this->currentUserId();
+            $admissionFeesValue  = number_format((float)$request->admission_fees, 2, '.', '');
+            $monthlyFeesValue    = number_format((float)$request->monthly_fees, 2, '.', '');
+            $currentYear         = (int)Carbon::now()->year;
+            $currentMonth        = (int)Carbon::now()->month;
+
+            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $currentYear, $currentMonth) {
+                $studentUpdate = [
+                    'admission_fees'    => $admissionFeesValue,
+                    'monthly_fees'      => $monthlyFeesValue,
+                    'updated_by'        => $updatedBy,
+                ];
+
+                if ((int)$student->unit_id === 1) {
+                    $studentUpdate['vhs_class_id'] = $promotedClassId;
+                } else {
+                    $studentUpdate['tsa_class_id'] = $promotedClassId;
+                }
+
+                Student::where('id', '=', $student->id)->update($studentUpdate);
+
+                for ($month = $currentMonth; $month <= 12; $month++) {
+                    $studentPayment = StudentPayment::firstOrNew([
+                        'student_id'    => $student->id,
+                        'payable_month' => $month,
+                        'payable_year'  => $currentYear,
+                    ]);
+
+                    $alreadyPaid = (float)((isset($studentPayment->payment_amount)) ? $studentPayment->payment_amount : 0);
+
+                    $studentPayment->student_id      = $student->id;
+                    $studentPayment->unit_id         = $student->unit_id;
+                    $studentPayment->branch_id       = $student->branch_id;
+                    $studentPayment->payable_month   = $month;
+                    $studentPayment->payable_year    = $currentYear;
+                    $studentPayment->payable_amount  = $monthlyFeesValue;
+                    $studentPayment->due_amount      = max(((float)$monthlyFeesValue - $alreadyPaid), 0);
+                    $studentPayment->updated_by      = $updatedBy;
+
+                    if (!$studentPayment->exists) {
+                        $studentPayment->payment_amount = 0;
+                        $studentPayment->payment_date   = null;
+                        $studentPayment->created_by     = $updatedBy;
+                    }
+
+                    $studentPayment->save();
+                }
+
+                $lastTransaction = Transaction::withTrashed()->select('sl_no')
+                                            ->orderBy('sl_no', 'DESC')
+                                            ->lockForUpdate()
+                                            ->first();
+                $nextSlNo       = (($lastTransaction)?((int)$lastTransaction->sl_no + 1):1);
+                $nextTxnNo      = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
+
+                Transaction::create([
+                    'sl_no'                  => $nextSlNo,
+                    'txn_no'                 => $nextTxnNo,
+                    'fee_id'                 => 0,
+                    'unit_id'                => (int)$student->unit_id,
+                    'branch_id'              => (int)$student->branch_id,
+                    'payment_mode'           => 'Cash',
+                    'payment_reference'      => null,
+                    'type'                   => 'INCOME',
+                    'transaction_timestamp'  => Carbon::now(),
+                    'transaction_amount'     => $admissionFeesValue,
+                    'particulars'            => 'Admission fee collected for '.$student->full_name.' during promotion to '.$promotedClass->name,
+                    'note'                   => 'Promotion from '.(($student->current_class_name != '') ? $student->current_class_name : '-').' to '.$promotedClass->name,
+                    'status'                 => 1,
+                    'created_by'             => $updatedBy,
+                    'updated_by'             => $updatedBy,
+                ]);
+            });
+
+            return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' promoted successfully !!!');
+        }
+    /* promote */
     public function details($id)
     {
         $id = Helper::decoded($id);
@@ -897,10 +1038,14 @@ class StudentController extends Controller
                 $nextSlNo       = (($lastTransaction)?((int)$lastTransaction->sl_no + 1):1);
                 $nextTxnNo      = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
 
-                Transaction::create([
+                                Transaction::create([
                     'sl_no'                  => $nextSlNo,
                     'txn_no'                 => $nextTxnNo,
                     'fee_id'                 => $studentPayment->id,
+                    'unit_id'                => (int)$studentPayment->unit_id,
+                    'branch_id'              => (int)$studentPayment->branch_id,
+                    'payment_mode'           => 'Cash',
+                    'payment_reference'      => null,
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
                     'transaction_amount'     => $transactionAmount,
@@ -967,4 +1112,13 @@ class StudentController extends Controller
             echo 'Student payment schedule created';
         }
     /* fees collection */
+
+    private function currentUserId()
+    {
+        if (session()->has('user_data') && array_key_exists('user_id', session('user_data'))) {
+            return (int) session('user_data')['user_id'];
+        }
+
+        return (Auth::check()) ? (int) Auth::id() : 0;
+    }
 }

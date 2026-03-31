@@ -128,6 +128,10 @@ $controllerRoute = $module['controller_route'];
                     <?php if ($rows) {
                         $sl = 1;
                         foreach ($rows as $row) { ?>
+                            <?php
+                                $studentNameDisplay = (!empty(trim((string)$row->full_name)) && strcasecmp(trim((string)$row->full_name), 'No Name') !== 0) ? $row->full_name : '-';
+                                $currentClassId = (($row->unit_id == 1) ? $row->vhs_class_id : $row->tsa_class_id);
+                            ?>
                             <tr>
                                 <td><?= $sl++ ?></td>
                                 <td><?= $row->student_id_serial ?></td>
@@ -138,7 +142,7 @@ $controllerRoute = $module['controller_route'];
                                         <img src="{{ config('constants.no_image_avatar') }}" class="student-photo">
                                     <?php } ?>
                                     <br>
-                                    <?= (!empty(trim((string)$row->full_name)) && strcasecmp(trim((string)$row->full_name), 'No Name') !== 0) ? $row->full_name : '-' ?>
+                                    <?= $studentNameDisplay ?>
                                 </td>
                                 <td><?= !empty($row->father_mobile) ? $row->father_mobile : '-' ?></td>
                                 <td><?= !empty($row->unit_name) ? $row->unit_name : '-' ?></td>
@@ -172,6 +176,18 @@ $controllerRoute = $module['controller_route'];
                                         <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>"><i class="fas fa-ban text-danger"></i></a>
                                     <?php } ?>
                                     |
+                                    <button type="button"
+                                            class="btn btn-warning btn-sm promoteStudentBtn"
+                                            data-student-id="<?= $row->id ?>"
+                                            data-student-name="<?= e($studentNameDisplay) ?>"
+                                            data-present-class-name="<?= e(!empty($row->class_name) ? $row->class_name : '-') ?>"
+                                            data-admission-fees="<?= e($row->admission_fees) ?>"
+                                            data-monthly-fees="<?= e($row->monthly_fees) ?>"
+                                            data-unit-id="<?= $row->unit_id ?>"
+                                            data-current-class-id="<?= $currentClassId ?>">
+                                        Promote
+                                    </button>
+                                    |
                                     <!-- <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>"><i class="fa fa-trash text-danger"></i></a> -->
                                     <!-- <a href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#studentDetails<?= $row->id ?>">
                                         <i class="fa fa-eye text-success"></i>
@@ -202,6 +218,56 @@ $controllerRoute = $module['controller_route'];
     <div class="modal-dialog modal-fullscreen modal-dialog-centered">
         <div class="modal-content" id="studentDetailsContent">
             
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="studentPromoteModal" tabindex="-1" aria-labelledby="studentPromoteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="studentPromoteLabel">Promote Student</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="studentPromoteForm" method="POST" action="{{ route('student.promote') }}">
+                @csrf
+                <div class="modal-body">
+                    <input type="hidden" name="student_id" id="promote_student_id" value="{{ old('student_id') }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="promote_student_name" class="form-label">Student Name</label>
+                            <input type="text" class="form-control form-control-sm" id="promote_student_name" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="promote_present_class" class="form-label">Present Class</label>
+                            <input type="text" class="form-control form-control-sm" id="promote_present_class" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="promote_admission_fees" class="form-label">Admission Fee <span class="text-danger">*</span></label>
+                            <input type="number" step="1" min="1" class="form-control form-control-sm" name="admission_fees" id="promote_admission_fees" value="{{ old('admission_fees') }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="promote_monthly_fees" class="form-label">Monthly Fee <span class="text-danger">*</span></label>
+                            <input type="number" step="1" min="1" class="form-control form-control-sm" name="monthly_fees" id="promote_monthly_fees" value="{{ old('monthly_fees') }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="promoted_class_id" class="form-label">Promoted To Class <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" name="promoted_class_id" id="promoted_class_id" required>
+                                <option value="">Select</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info py-2 mb-0">
+                                The promoted class options are based on the student unit.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-warning btn-sm">Promote</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -238,5 +304,105 @@ $controllerRoute = $module['controller_route'];
                 });
         }
     });
+    </script>
+    <script>
+        const promoteVhsClasses = @json($vhs_classes);
+        const promoteTsaClasses = @json($tsa_classes);
+        const promoteOldData = {
+            studentId: @json(old('student_id')),
+            admissionFees: @json(old('admission_fees')),
+            monthlyFees: @json(old('monthly_fees')),
+            promotedClassId: @json(old('promoted_class_id')),
+        };
+
+        function populatePromotedClassOptions(unitId, selectedClassId) {
+            const classSelect = document.getElementById('promoted_class_id');
+            if (!classSelect) {
+                return;
+            }
+
+            const classes = (String(unitId) === '1') ? promoteVhsClasses : ((String(unitId) === '2') ? promoteTsaClasses : []);
+
+            classSelect.innerHTML = '';
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Select';
+            classSelect.appendChild(defaultOption);
+
+            (classes || []).forEach(function (classRow) {
+                const option = document.createElement('option');
+                option.value = String(classRow.id);
+                option.textContent = classRow.name;
+
+                if (selectedClassId !== undefined && selectedClassId !== null && String(selectedClassId) === String(classRow.id)) {
+                    option.selected = true;
+                }
+
+                classSelect.appendChild(option);
+            });
+        }
+
+        function openPromoteModal(btn, overrideData) {
+            const promoteForm = document.getElementById('studentPromoteForm');
+            const modalElement = document.getElementById('studentPromoteModal');
+            const studentNameField = document.getElementById('promote_student_name');
+            const presentClassField = document.getElementById('promote_present_class');
+            const admissionFeesField = document.getElementById('promote_admission_fees');
+            const monthlyFeesField = document.getElementById('promote_monthly_fees');
+            const studentIdField = document.getElementById('promote_student_id');
+            const classSelect = document.getElementById('promoted_class_id');
+
+            const studentData = {
+                studentId: btn.dataset.studentId || '',
+                studentName: btn.dataset.studentName || '',
+                presentClassName: btn.dataset.presentClassName || '',
+                admissionFees: btn.dataset.admissionFees || '',
+                monthlyFees: btn.dataset.monthlyFees || '',
+                unitId: btn.dataset.unitId || '',
+                currentClassId: btn.dataset.currentClassId || '',
+            };
+
+            const data = overrideData || {};
+
+            promoteForm.action = "{{ route('student.promote') }}";
+            studentIdField.value = studentData.studentId;
+            studentNameField.value = studentData.studentName;
+            presentClassField.value = studentData.presentClassName;
+            admissionFeesField.value = (data.admissionFees !== undefined && data.admissionFees !== null) ? data.admissionFees : studentData.admissionFees;
+            monthlyFeesField.value = (data.monthlyFees !== undefined && data.monthlyFees !== null) ? data.monthlyFees : studentData.monthlyFees;
+
+            const selectedClassId = (data.promotedClassId !== undefined && data.promotedClassId !== null) ? data.promotedClassId : '';
+            populatePromotedClassOptions(studentData.unitId, selectedClassId);
+
+            if (classSelect && !selectedClassId) {
+                classSelect.value = '';
+            }
+
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modal.show();
+        }
+
+        document.addEventListener("click", function (e) {
+            const promoteBtn = e.target.closest(".promoteStudentBtn");
+            if (!promoteBtn) {
+                return;
+            }
+
+            openPromoteModal(promoteBtn);
+        });
+
+        window.addEventListener('load', function () {
+            if (!promoteOldData.studentId) {
+                return;
+            }
+
+            const promoteBtn = document.querySelector('.promoteStudentBtn[data-student-id="' + promoteOldData.studentId + '"]');
+            if (!promoteBtn) {
+                return;
+            }
+
+            openPromoteModal(promoteBtn, promoteOldData);
+        });
     </script>
 @endsection

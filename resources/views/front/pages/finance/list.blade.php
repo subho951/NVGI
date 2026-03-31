@@ -172,6 +172,48 @@ $controllerRoute = $module['controller_route'];
     .action-link:hover {
         color: #0e2338;
     }
+    .summary-section {
+        margin-top: 2px;
+    }
+    .summary-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--bg-surface);
+        box-shadow: 0 10px 24px rgba(18, 33, 53, .06);
+        overflow: hidden;
+        height: 100%;
+    }
+    .summary-card-head {
+        background: #152d45;
+        color: #fff;
+        padding: 12px 16px;
+        font-size: .82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+    }
+    .summary-card .table-responsive {
+        border-radius: 0;
+    }
+    .summary-table {
+        margin-bottom: 0;
+    }
+    .summary-table thead th {
+        background: #eef4fa;
+        color: #203549;
+        font-size: .74rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .45px;
+        white-space: nowrap;
+    }
+    .summary-table td {
+        font-size: .84rem;
+        color: #203549;
+    }
+    .summary-table .text-end {
+        white-space: nowrap;
+    }
     .table-responsive {
         border-radius: 12px;
     }
@@ -254,20 +296,91 @@ $controllerRoute = $module['controller_route'];
         </div>
     </div>
 
+    <div class="row g-3 mb-3 summary-section">
+        <div class="col-lg-6">
+            <div class="summary-card">
+                <div class="summary-card-head">Unit Wise Summary</div>
+                <div class="table-responsive">
+                    <table class="table table-sm summary-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Unit</th>
+                                <th class="text-end">Records</th>
+                                <th class="text-end">Income</th>
+                                <th class="text-end">Expense</th>
+                                <th class="text-end">Net Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($unit_summary_rows as $summary)
+                                <tr>
+                                    <td>{{ $summary['unit_name'] }}</td>
+                                    <td class="text-end">{{ number_format((int)$summary['records']) }}</td>
+                                    <td class="text-end text-success">INR {{ number_format((float)$summary['income'], 2) }}</td>
+                                    <td class="text-end text-danger">INR {{ number_format((float)$summary['expense'], 2) }}</td>
+                                    <td class="text-end {{ ((float)$summary['net_balance'] >= 0) ? 'text-success' : 'text-danger' }}">INR {{ number_format((float)$summary['net_balance'], 2) }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">No transactions found</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="summary-card">
+                <div class="summary-card-head">Branch Wise Summary</div>
+                <div class="table-responsive">
+                    <table class="table table-sm summary-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Unit</th>
+                                <th>Branch</th>
+                                <th class="text-end">Records</th>
+                                <th class="text-end">Income</th>
+                                <th class="text-end">Expense</th>
+                                <th class="text-end">Net Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($branch_summary_rows as $summary)
+                                <tr>
+                                    <td>{{ $summary['unit_name'] }}</td>
+                                    <td>{{ $summary['branch_name'] }}</td>
+                                    <td class="text-end">{{ number_format((int)$summary['records']) }}</td>
+                                    <td class="text-end text-success">INR {{ number_format((float)$summary['income'], 2) }}</td>
+                                    <td class="text-end text-danger">INR {{ number_format((float)$summary['expense'], 2) }}</td>
+                                    <td class="text-end {{ ((float)$summary['net_balance'] >= 0) ? 'text-success' : 'text-danger' }}">INR {{ number_format((float)$summary['net_balance'], 2) }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center py-3">No transactions found</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card filter-card">
         <div class="card-body">
             <div class="filter-title">Search Filters</div>
             <form method="GET" action="{{ url('finance/list') }}">
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-lg-2 col-md-4">
                         <label for="from_date" class="form-label">From Date</label>
                         <input type="date" class="form-control" name="from_date" id="from_date" value="{{ $from_date }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-lg-2 col-md-4">
                         <label for="to_date" class="form-label">To Date</label>
                         <input type="date" class="form-control" name="to_date" id="to_date" value="{{ $to_date }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-lg-2 col-md-4">
                         <label for="type" class="form-label">Type</label>
                         <select class="form-select" name="type" id="type">
                             <option value="">All</option>
@@ -275,7 +388,29 @@ $controllerRoute = $module['controller_route'];
                             <option value="EXPENSE" {{ (($type == 'EXPENSE')?'selected':'') }}>EXPENSE</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-lg-2 col-md-4">
+                        <label for="unit_id" class="form-label">Unit</label>
+                        <select class="form-select" name="unit_id" id="unit_id">
+                            <option value="">All Units</option>
+                            @foreach($units as $unit)
+                                <option value="{{ $unit->id }}" {{ ((string)$unit_id === (string)$unit->id)?'selected':'' }}>
+                                    {{ $unit->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label for="branch_id" class="form-label">Branch</label>
+                        <select class="form-select" name="branch_id" id="branch_id">
+                            <option value="">All Branches</option>
+                            @foreach($branches as $branch)
+                                <option class="branch unit{{ $branch->unit_id }}" value="{{ $branch->id }}" {{ ((string)$branch_id === (string)$branch->id)?'selected':'' }}>
+                                    {{ $branch->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
                         <label for="created_by" class="form-label">Created By</label>
                         <select class="form-select" name="created_by" id="created_by">
                             <option value="">All Users</option>
@@ -313,6 +448,10 @@ $controllerRoute = $module['controller_route'];
                             <th>Amount</th>
                             <th>Particulars</th>
                             <th>Note</th>
+                            <th>Unit</th>
+                            <th>Branch</th>
+                            <th>Payment Mode</th>
+                            <th>Payment Reference</th>
                             <th>Entry By</th>
                             <th>Action</th>
                         </tr>
@@ -336,6 +475,10 @@ $controllerRoute = $module['controller_route'];
                                     <td class="amount {{ $amountClass }}">INR {{ number_format((float)$row->transaction_amount, 2) }}</td>
                                     <td>{{ $row->particulars }}</td>
                                     <td>{{ (($row->note != '')?$row->note:'--') }}</td>
+                                    <td>{{ (($row->unit_name != '')?$row->unit_name:'--') }}</td>
+                                    <td>{{ (($row->branch_name != '')?$row->branch_name:'--') }}</td>
+                                    <td>{{ (($row->payment_mode != '')?$row->payment_mode:'--') }}</td>
+                                    <td>{{ (($row->payment_reference != '')?$row->payment_reference:'--') }}</td>
                                     <td>{{ (($row->creator_name != '')?$row->creator_name:'System') }}</td>
                                     <td class="text-center">
                                         <a href="{{ url($controllerRoute.'/invoice/'.$encodedId) }}"
@@ -368,4 +511,30 @@ $controllerRoute = $module['controller_route'];
         </div>
     </div>
 </div>
+@endsection
+@section('scripts')
+<script>
+    $(function () {
+        function bindUnitWiseBranch(unitId, branchSelector, optionClass, selectedBranch) {
+            var branchSelect = $(branchSelector);
+
+            branchSelect.val('');
+            branchSelect.find('.' + optionClass).hide();
+
+            if (unitId !== '') {
+                branchSelect.find('.unit' + unitId).show();
+            }
+
+            if (selectedBranch !== '') {
+                branchSelect.val(selectedBranch);
+            }
+        }
+
+        bindUnitWiseBranch($('#unit_id').val(), '#branch_id', 'branch', $('#branch_id').val());
+
+        $('#unit_id').on('change', function () {
+            bindUnitWiseBranch($(this).val(), '#branch_id', 'branch', '');
+        });
+    });
+</script>
 @endsection

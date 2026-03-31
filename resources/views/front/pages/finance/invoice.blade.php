@@ -4,6 +4,10 @@ use App\Helpers\Helper;
 $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_logo') : config('constants.no_image'));
 $creatorName = trim((string)$transaction->creator_name);
 $updaterName = trim((string)$transaction->updater_name);
+$unitName = trim((string)$transaction->unit_name);
+$branchName = trim((string)$transaction->branch_name);
+$paymentMode = trim((string)$transaction->payment_mode);
+$paymentReference = trim((string)$transaction->payment_reference);
 $amount = (float)$transaction->transaction_amount;
 $amountInWords = Helper::getIndianCurrency($amount);
 ?>
@@ -13,6 +17,8 @@ $amountInWords = Helper::getIndianCurrency($amount);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title }} - {{ $transaction->txn_no }}</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="<?=((Helper::getSettingValue('site_favicon') != '')?config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_favicon'):env('NO_IMAGE'))?>" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
@@ -333,6 +339,10 @@ $amountInWords = Helper::getIndianCurrency($amount);
                 </div>
                 <div class="grid-card">
                     <p class="title">Transaction Context</p>
+                    <p><strong>Unit:</strong> {{ ($unitName != '') ? $unitName : '--' }}</p>
+                    <p><strong>Branch:</strong> {{ ($branchName != '') ? $branchName : '--' }}</p>
+                    <p><strong>Payment Mode:</strong> {{ ($paymentMode != '') ? $paymentMode : '--' }}</p>
+                    <p><strong>Payment Reference:</strong> {{ ($paymentReference != '') ? $paymentReference : '--' }}</p>
                     <p><strong>Fee ID:</strong> {{ (int)$transaction->fee_id }}</p>
                     <p><strong>Logged On:</strong> {{ date('d M Y h:i A', strtotime($transaction->created_at)) }}</p>
                     <p><strong>Status:</strong> {{ ((int)$transaction->status === 1) ? 'ACTIVE' : 'INACTIVE' }}</p>
