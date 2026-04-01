@@ -827,7 +827,7 @@ class StudentController extends Controller
                                     ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
                                     ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
                                     ->leftJoin('users', 'users.id', '=', 'students.created_by')
-                                    ->where('students.status', '!=', 3)
+                                    ->where('students.status', '=', 1)
                                     ->where('students.session_id', '=', $sessionData['session_id'])
                                     ->where('students.unit_id', $unit_id)
                                     ->where('students.branch_id', $branch_id)
