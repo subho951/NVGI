@@ -1,4 +1,4 @@
-﻿@extends('front.layouts.afterlogin')
+@extends('front.layouts.afterlogin')
 @section('content')
 <?php
 $controllerRoute = $module['controller_route'];
@@ -246,12 +246,11 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
                     <select class="form-select" name="payment_mode" id="payment_mode" required>
                         <option value="" {{ (($paymentMode === '') ? 'selected' : '') }}>Select Payment Mode</option>
                         <option value="Cash" {{ ((string)$paymentMode === 'Cash') ? 'selected' : '' }}>Cash</option>
-                        <option value="Online" {{ ((string)$paymentMode === 'Online') ? 'selected' : '' }}>Online</option>
-                        <option value="Cheque" {{ ((string)$paymentMode === 'Cheque') ? 'selected' : '' }}>Cheque</option>
+                        <option value="Bank" {{ ((string)$paymentMode === 'Bank') ? 'selected' : '' }}>Bank</option>
                     </select>
                 </div>
 
-                <div class="col-md-4 payment-reference-group {{ (!in_array($paymentMode, ['Online', 'Cheque'])) ? 'd-none' : '' }}" id="payment_reference_group">
+                <div class="col-md-4 payment-reference-group {{ ((string)$paymentMode !== 'Bank') ? 'd-none' : '' }}" id="payment_reference_group">
                     <label for="payment_reference" class="form-label">Payment Reference</label>
                     <input type="text"
                            class="form-control"
@@ -259,7 +258,7 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
                            id="payment_reference"
                            value="{{ $paymentReference }}"
                            placeholder="UTR, cheque number, transaction id"
-                           {{ (!in_array($paymentMode, ['Online', 'Cheque'])) ? 'disabled' : '' }}>
+                                                      {{ ((string)$paymentMode !== 'Bank') ? 'disabled' : '' }}>
                 </div>
 
                 <div class="col-md-4">
@@ -306,7 +305,7 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
             function togglePaymentReference(paymentMode) {
                 var group = $('#payment_reference_group');
                 var input = $('#payment_reference');
-                var shouldShow = (paymentMode === 'Online' || paymentMode === 'Cheque');
+                var shouldShow = (paymentMode === 'Bank');
 
                 if (shouldShow) {
                     group.removeClass('d-none');
@@ -373,6 +372,11 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
         });
     </script>
 @endsection
+
+
+
+
+
 
 
 

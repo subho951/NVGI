@@ -1,4 +1,4 @@
-﻿@extends('front.layouts.afterlogin')
+@extends('front.layouts.afterlogin')
 @section('content')
 <?php
 
@@ -301,8 +301,23 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
     }
     .fee-payment-form {
         display: flex;
+        flex-direction: column;
         gap: 3px;
         margin-top: 5px;
+    }
+    .fee-payment-form .payment-mode-select {
+        font-size: 10px;
+        border-radius: 6px;
+        height: 26px;
+        padding: 2px 5px;
+    }
+    .fee-payment-form .payment-actions {
+        display: flex;
+        gap: 3px;
+    }
+    .fee-payment-form .payment-actions .payment-amount-input {
+        flex: 1 1 auto;
+        min-width: 0;
     }
     .fee-payment-form .payment-amount-input {
         font-size: 10px;
@@ -630,16 +645,23 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                                 data-payable="<?= number_format((float)$month_payable, 2, '.', '') ?>"
                                 data-due="<?= number_format((float)$month_due, 2, '.', '') ?>">
                                 @csrf
-                                <input type="text"
-                                    name="payment_amount"
-                                    class="form-control form-control-sm payment-amount-input"
-                                    placeholder="Amount"
-                                    autocomplete="off"
-                                    oninput="allowNumberDot(this)">
+                                <select class="form-select form-select-sm payment-mode-select" name="payment_mode" required>
+                                    <option value="Cash">Cash</option>
+                                    <option value="Bank" selected>Bank</option>
+                                </select>
+                                <input type="hidden" name="ledger_id" value="1">
+                                <div class="payment-actions">
+                                    <input type="text"
+                                        name="payment_amount"
+                                        class="form-control form-control-sm payment-amount-input"
+                                        placeholder="Amount"
+                                        autocomplete="off"
+                                        oninput="allowNumberDot(this)">
 
-                                <button type="submit" class="btn btn-success btn-sm payment-submit-btn" title="Submit">
-                                    <i class="fa-solid fa-arrow-right"></i>
-                                </button>
+                                    <button type="submit" class="btn btn-success btn-sm payment-submit-btn" title="Submit">
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                    </button>
+                                </div>
                             </form>
 
                             <div class="due-cleared-badge <?= ($isMonthPaid ? '' : 'd-none') ?>">
@@ -797,6 +819,8 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                     student_id: form.data('student-id'),
                     payable_month: form.data('month'),
                     payable_year: form.data('year'),
+                    payment_mode: form.find('select[name="payment_mode"]').val(),
+                    ledger_id: form.find('input[name="ledger_id"]').val(),
                     payment_amount: enteredAmount
                 },
                 beforeSend: function(){
@@ -842,3 +866,4 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
     })
 </script>
 @endsection
+

@@ -45,6 +45,7 @@ class FinanceController extends Controller
         $unitId                 = $request->unit_id;
         $branchId               = $request->branch_id;
         $ledgerId               = $request->ledger_id;
+        $paymentMode            = $request->payment_mode;
 
         $data['from_date']      = $fromDate;
         $data['to_date']        = $toDate;
@@ -53,6 +54,7 @@ class FinanceController extends Controller
         $data['unit_id']        = $unitId;
         $data['branch_id']      = $branchId;
         $data['ledger_id']      = $ledgerId;
+        $data['payment_mode']   = $paymentMode;
 
         $query = Transaction::select(
                                 'transactions.*',
@@ -96,6 +98,10 @@ class FinanceController extends Controller
 
         if ($ledgerId != '' && is_numeric($ledgerId) && (int)$ledgerId > 0) {
             $query->where('transactions.ledger_id', '=', (int)$ledgerId);
+        }
+
+        if (in_array($paymentMode, ['Cash', 'Bank'])) {
+            $query->where('transactions.payment_mode', '=', $paymentMode);
         }
 
         $rows = $query->orderByRaw('CAST(transactions.txn_no AS UNSIGNED) DESC')
@@ -228,7 +234,7 @@ class FinanceController extends Controller
                                 ->where('unit_id', (int)$request->unit_id);
                     }),
                 ],
-                'payment_mode'          => 'required|in:Cash,Online,Cheque',
+                'payment_mode'          => 'required|in:Cash,Bank',
                 'payment_reference'     => 'nullable|string|max:2000',
                 'particulars'           => 'required|string|max:1000',
                 'note'                  => 'nullable|string|max:2000',
@@ -344,7 +350,7 @@ class FinanceController extends Controller
                                 ->where('unit_id', (int)$request->unit_id);
                     }),
                 ],
-                'payment_mode'          => 'required|in:Cash,Online,Cheque',
+                'payment_mode'          => 'required|in:Cash,Bank',
                 'payment_reference'     => 'nullable|string|max:2000',
                 'particulars'           => 'required|string|max:1000',
                 'note'                  => 'nullable|string|max:2000',
@@ -454,7 +460,7 @@ class FinanceController extends Controller
 
     private function normalizePaymentReference($paymentMode, $paymentReference)
     {
-        if (!in_array($paymentMode, ['Online', 'Cheque'])) {
+        if ($paymentMode !== 'Bank') {
             return null;
         }
 

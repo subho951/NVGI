@@ -251,6 +251,14 @@ $controllerRoute = $module['controller_route'];
                             <input type="number" step="1" min="1" class="form-control form-control-sm" name="monthly_fees" id="promote_monthly_fees" value="{{ old('monthly_fees') }}" required>
                         </div>
                         <div class="col-md-4">
+                            <label for="promote_payment_mode" class="form-label">Payment Mode <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" name="payment_mode" id="promote_payment_mode" required>
+                                <option value="Cash" {{ ((string)old('payment_mode', 'Bank') === 'Cash') ? 'selected' : '' }}>Cash</option>
+                                <option value="Bank" {{ ((string)old('payment_mode', 'Bank') === 'Bank') ? 'selected' : '' }}>Bank</option>
+                            </select>
+                            <input type="hidden" name="ledger_id" id="promote_ledger_id" value="{{ old('ledger_id', 3) }}">
+                        </div>
+                        <div class="col-md-4">
                             <label for="promoted_class_id" class="form-label">Promoted To Class <span class="text-danger">*</span></label>
                             <select class="form-select form-select-sm" name="promoted_class_id" id="promoted_class_id" required>
                                 <option value="">Select</option>
@@ -312,6 +320,8 @@ $controllerRoute = $module['controller_route'];
             studentId: @json(old('student_id')),
             admissionFees: @json(old('admission_fees')),
             monthlyFees: @json(old('monthly_fees')),
+            paymentMode: @json(old('payment_mode', 'Bank')),
+            ledgerId: @json(old('ledger_id', 3)),
             promotedClassId: @json(old('promoted_class_id')),
         };
 
@@ -350,6 +360,8 @@ $controllerRoute = $module['controller_route'];
             const presentClassField = document.getElementById('promote_present_class');
             const admissionFeesField = document.getElementById('promote_admission_fees');
             const monthlyFeesField = document.getElementById('promote_monthly_fees');
+            const paymentModeField = document.getElementById('promote_payment_mode');
+            const ledgerIdField = document.getElementById('promote_ledger_id');
             const studentIdField = document.getElementById('promote_student_id');
             const classSelect = document.getElementById('promoted_class_id');
 
@@ -371,6 +383,12 @@ $controllerRoute = $module['controller_route'];
             presentClassField.value = studentData.presentClassName;
             admissionFeesField.value = (data.admissionFees !== undefined && data.admissionFees !== null) ? data.admissionFees : studentData.admissionFees;
             monthlyFeesField.value = (data.monthlyFees !== undefined && data.monthlyFees !== null) ? data.monthlyFees : studentData.monthlyFees;
+            if (paymentModeField) {
+                paymentModeField.value = (data.paymentMode !== undefined && data.paymentMode !== null && data.paymentMode !== '') ? data.paymentMode : 'Bank';
+            }
+            if (ledgerIdField) {
+                ledgerIdField.value = (data.ledgerId !== undefined && data.ledgerId !== null && data.ledgerId !== '') ? data.ledgerId : '3';
+            }
 
             const selectedClassId = (data.promotedClassId !== undefined && data.promotedClassId !== null) ? data.promotedClassId : '';
             populatePromotedClassOptions(studentData.unitId, selectedClassId);
@@ -406,3 +424,4 @@ $controllerRoute = $module['controller_route'];
         });
     </script>
 @endsection
+

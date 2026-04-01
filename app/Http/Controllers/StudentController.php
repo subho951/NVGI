@@ -435,6 +435,8 @@ class StudentController extends Controller
                 'student_id'            => 'required|integer|exists:students,id',
                 'admission_fees'        => 'required|numeric|gt:0',
                 'monthly_fees'          => 'required|numeric|gt:0',
+                'payment_mode'          => 'required|in:Cash,Bank',
+                'ledger_id'             => 'required|integer|in:3',
             ]);
 
             $student = Student::select(
@@ -466,6 +468,8 @@ class StudentController extends Controller
             }
 
             $currentClassId = ((int)$student->unit_id === 1) ? (int)$student->vhs_class_id : (int)$student->tsa_class_id;
+            $paymentMode = (string)$request->payment_mode;
+            $ledgerId = (int)$request->ledger_id;
 
             $request->validate([
                 'promoted_class_id' => [
@@ -510,7 +514,7 @@ class StudentController extends Controller
                 return false;
             }));
 
-            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $financialMonths, $nextSessionData) {
+            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $financialMonths, $nextSessionData, $paymentMode, $ledgerId) {
                 $studentUpdate = [
                     'admission_fees'    => $admissionFeesValue,
                     'monthly_fees'      => $monthlyFeesValue,
@@ -566,7 +570,8 @@ class StudentController extends Controller
                     'fee_id'                 => 0,
                     'unit_id'                => (int)$student->unit_id,
                     'branch_id'              => (int)$student->branch_id,
-                    'payment_mode'           => 'Cash',
+                    'ledger_id'              => $ledgerId,
+                    'payment_mode'           => $paymentMode,
                     'payment_reference'      => null,
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
@@ -964,6 +969,8 @@ class StudentController extends Controller
                 'student_id'     => 'required|integer',
                 'payable_month'  => 'required|integer|min:1|max:12',
                 'payable_year'   => 'required|integer|min:2000|max:2100',
+                'payment_mode'   => 'required|in:Cash,Bank',
+                'ledger_id'      => 'required|integer|in:1',
                 'payment_amount' => 'required|numeric|gt:0',
             ]);
 
@@ -1027,8 +1034,10 @@ class StudentController extends Controller
             $newDueAmount    = max($payableAmount - $newPaidAmount, 0);
             $updatedBy       = ((session()->has('user_data') && array_key_exists('user_id', session('user_data')))?session('user_data')['user_id']:((Auth::check())?Auth::id():0));
             $transactionAmount = number_format($enteredAmount, 2, '.', '');
+            $paymentMode = (string)$request->payment_mode;
+            $ledgerId = (int)$request->ledger_id;
 
-            DB::transaction(function () use ($studentPayment, $newPaidAmount, $newDueAmount, $updatedBy, $student, $monthName, $request, $transactionAmount) {
+            DB::transaction(function () use ($studentPayment, $newPaidAmount, $newDueAmount, $updatedBy, $student, $monthName, $request, $transactionAmount, $paymentMode, $ledgerId) {
                 $studentPayment->update([
                     'payment_amount' => $newPaidAmount,
                     'payment_date'   => date('Y-m-d'),
@@ -1049,7 +1058,8 @@ class StudentController extends Controller
                     'fee_id'                 => $studentPayment->id,
                     'unit_id'                => (int)$studentPayment->unit_id,
                     'branch_id'              => (int)$studentPayment->branch_id,
-                    'payment_mode'           => 'Cash',
+                    'ledger_id'              => $ledgerId,
+                    'payment_mode'           => $paymentMode,
                     'payment_reference'      => null,
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),

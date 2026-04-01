@@ -1,4 +1,4 @@
-﻿@extends('front.layouts.afterlogin')
+@extends('front.layouts.afterlogin')
 @section('content')
 <?php
 use App\Helpers\Helper;
@@ -389,6 +389,14 @@ $controllerRoute = $module['controller_route'];
                         </select>
                     </div>
                     <div class="col-lg-2 col-md-4">
+                        <label for="payment_mode" class="form-label">Payment Mode</label>
+                        <select class="form-select" name="payment_mode" id="payment_mode">
+                            <option value="">All Modes</option>
+                            <option value="Cash" {{ ((string)$payment_mode === 'Cash') ? 'selected' : '' }}>Cash</option>
+                            <option value="Bank" {{ ((string)$payment_mode === 'Bank') ? 'selected' : '' }}>Bank</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
                         <label for="ledger_id" class="form-label">Ledger</label>
                         <select class="form-select" name="ledger_id" id="ledger_id">
                             <option value="">All Ledgers</option>
@@ -579,6 +587,7 @@ $controllerRoute = $module['controller_route'];
     });
 </script>
 @endsection
+
 
 
 
