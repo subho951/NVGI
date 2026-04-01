@@ -495,30 +495,17 @@ class StudentController extends Controller
                 return redirect()->back()->with('error_message', 'Promoted class not found !!!')->withInput();
             }
 
-            $updatedBy          = $this->currentUserId();
-            $admissionFeesValue  = number_format((float)$request->admission_fees, 2, '.', '');
-            $monthlyFeesValue    = number_format((float)$request->monthly_fees, 2, '.', '');
-            $currentYear         = (int)Carbon::now()->year;
-            $currentMonth        = (int)Carbon::now()->month;
-            $nextSessionData     = $this->getNextFinancialSessionData($student->session_id);
-            $financialMonths     = $this->buildFinancialMonths($nextSessionData['start_year'], $nextSessionData['end_year']);
-            $financialMonths     = array_values(array_filter($financialMonths, function ($monthConfig) use ($currentYear, $currentMonth) {
-                if ((int)$monthConfig['year'] > $currentYear) {
-                    return true;
-                }
+            $updatedBy            = $this->currentUserId();
+            $admissionFeesValue   = number_format((float)$request->admission_fees, 2, '.', '');
+            $monthlyFeesValue     = number_format((float)$request->monthly_fees, 2, '.', '');
+            $financialSessionData = $this->getFinancialSessionData();
+            $financialMonths      = $this->buildFinancialMonths($financialSessionData['start_year'], $financialSessionData['end_year']);
 
-                if ((int)$monthConfig['year'] === $currentYear && (int)$monthConfig['month'] >= $currentMonth) {
-                    return true;
-                }
-
-                return false;
-            }));
-
-            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $financialMonths, $nextSessionData, $paymentMode, $ledgerId) {
+            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $financialMonths, $financialSessionData, $paymentMode, $ledgerId) {
                 $studentUpdate = [
                     'admission_fees'    => $admissionFeesValue,
                     'monthly_fees'      => $monthlyFeesValue,
-                    'session_id'        => $nextSessionData['session_id'],
+                    // 'session_id'        => $financialSessionData['session_id'],
                     'updated_by'        => $updatedBy,
                 ];
 
@@ -1337,8 +1324,8 @@ class StudentController extends Controller
     private function getNextFinancialSessionData($sessionId = null)
     {
         $currentSessionData = $this->getFinancialSessionData($sessionId);
-        $nextStartYear      = ((int)$currentSessionData['start_year']) + 1;
-        $nextEndYear        = ((int)$currentSessionData['end_year']) + 1;
+        $nextStartYear      = ((int)$currentSessionData['end_year']);
+        $nextEndYear        = $nextStartYear + 1;
         $nextSession        = $this->findSessionByFinancialYear($nextStartYear, $nextEndYear);
 
         return [
