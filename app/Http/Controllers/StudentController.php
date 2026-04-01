@@ -134,11 +134,11 @@ class StudentController extends Controller
                         $sl_no              = $getLastStudent->sl_no;
                         $next_sl_no         = $sl_no + 1;
                         $next_sl_no_string  = str_pad($next_sl_no, 4, 0, STR_PAD_LEFT);
-                        $student_id_serial  = 'NVGI-' . (($getUnit)?$getUnit->serial_id:'') . '-' . (($getBranch)?$getBranch->serial_id:'') . '-' . $next_sl_no_string;
+                        $student_id_serial  = (($getUnit)?$getUnit->serial_id:'') . '-' . (($getBranch)?$getBranch->serial_id:'') . '-' . $next_sl_no_string;
                     } else {
                         $next_sl_no         = 1;
                         $next_sl_no_string  = str_pad($next_sl_no, 4, 0, STR_PAD_LEFT);
-                        $student_id_serial  = 'NVGI-' . (($getUnit)?$getUnit->serial_id:'') . '-' . (($getBranch)?$getBranch->serial_id:'') . '-' . $next_sl_no_string;
+                        $student_id_serial  = (($getUnit)?$getUnit->serial_id:'') . '-' . (($getBranch)?$getBranch->serial_id:'') . '-' . $next_sl_no_string;
                     }
                 /* student serial no generation */
 
@@ -444,6 +444,7 @@ class StudentController extends Controller
                                 'students.unit_id',
                                 'students.branch_id',
                                 'students.full_name',
+                                'students.student_id_serial',
                                 'students.admission_fees as current_admission_fees',
                                 'students.monthly_fees as current_monthly_fees',
                                 'students.vhs_class_id',
@@ -563,7 +564,7 @@ class StudentController extends Controller
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
                     'transaction_amount'     => $admissionFeesValue,
-                    'particulars'            => 'Admission fee collected for '.$student->full_name.' during promotion to '.$promotedClass->name,
+                    'particulars'            => 'Session fee collected for '.$student->full_name.' ('.$student->student_id_serial.') during promotion to '.$promotedClass->name,
                     'note'                   => 'Promotion from '.(($student->current_class_name != '') ? $student->current_class_name : '-').' to '.$promotedClass->name,
                     'status'                 => 1,
                     'created_by'             => $updatedBy,

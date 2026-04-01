@@ -243,7 +243,7 @@ $controllerRoute = $module['controller_route'];
                             <input type="text" class="form-control form-control-sm" id="promote_present_class" readonly>
                         </div>
                         <div class="col-md-4">
-                            <label for="promote_admission_fees" class="form-label">Admission Fee <span class="text-danger">*</span></label>
+                            <label for="promote_admission_fees" class="form-label">Session Fee <span class="text-danger">*</span></label>
                             <input type="number" step="1" min="1" class="form-control form-control-sm" name="admission_fees" id="promote_admission_fees" value="{{ old('admission_fees') }}" required>
                         </div>
                         <div class="col-md-4">
