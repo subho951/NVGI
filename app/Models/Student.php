@@ -46,6 +46,8 @@ class Student extends Model
         'blood_group',
         'admission_fees',
         'monthly_fees',
+        'books_fee',
+        'uniform_fee',
         'photo',
         'created_by',
         'updated_by',

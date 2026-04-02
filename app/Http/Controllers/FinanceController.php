@@ -450,6 +450,14 @@ class FinanceController extends Controller
             return false;
         }
 
+        if ($particulars !== '' && str_starts_with($particulars, 'Books Fee collected for ')) {
+            return false;
+        }
+
+        if ($particulars !== '' && str_starts_with($particulars, 'Uniform Fee collected for ')) {
+            return false;
+        }
+
         $note = trim((string)($transaction->note ?? ''));
         if ($note !== '' && str_starts_with($note, 'Promotion from ')) {
             return false;

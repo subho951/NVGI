@@ -54,10 +54,12 @@ class StudentController extends Controller
                                                                 'students.*',
                                                                 'units.name as unit_name',
                                                                 'branches.name as branch_name',
+                                                                'sessions.name as session_name',
                                                                 DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name")
                                                             )
                                                             ->leftJoin('units', 'units.id', '=', 'students.unit_id')
                                                             ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                                                            ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
                                                             ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
                                                             ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
                                                             ->where(function ($q) {
@@ -118,6 +120,8 @@ class StudentController extends Controller
                     'blood_group'               => 'required|string',
                     'admission_fees'            => 'required|numeric|gt:0',
                     'monthly_fees'              => 'required|numeric|gt:0',
+                    'books_fee'                 => 'required|numeric|gt:0',
+                    'uniform_fee'               => 'required|numeric|gt:0',
                 ]);
 
                 if($request->middle_name != ''){
@@ -205,6 +209,8 @@ class StudentController extends Controller
                     'blood_group'               => $request->blood_group,
                     'admission_fees'            => $request->admission_fees,
                     'monthly_fees'              => $request->monthly_fees,
+                    'books_fee'                 => number_format((float)$request->books_fee, 2, '.', ''),
+                    'uniform_fee'               => number_format((float)$request->uniform_fee, 2, '.', ''),
                     'photo'                     => $photo,
                     'created_by'                => $updatedBy,
                     'updated_by'                => $updatedBy,
@@ -345,6 +351,8 @@ class StudentController extends Controller
                     'blood_group'               => 'required|string',
                     'admission_fees'            => 'required|numeric|gt:0',
                     'monthly_fees'              => 'required|numeric|gt:0',
+                    'books_fee'                 => 'required|numeric|gt:0',
+                    'uniform_fee'               => 'required|numeric|gt:0',
                 ]);
                 $postData               = $request->all();
                 if($request->unit_id == 1){
@@ -392,6 +400,8 @@ class StudentController extends Controller
                     'blood_group'               => $request->blood_group,
                     'admission_fees'            => $request->admission_fees,
                     'monthly_fees'              => $request->monthly_fees,
+                    'books_fee'                 => number_format((float)$request->books_fee, 2, '.', ''),
+                    'uniform_fee'               => number_format((float)$request->uniform_fee, 2, '.', ''),
                     'photo'                     => $photo,
                     'updated_by'                => session('user_data')['user_id'],
                 ]);
@@ -575,6 +585,89 @@ class StudentController extends Controller
             return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' promoted successfully !!!');
         }
     /* promote */
+    /* special fee collection */
+        public function collectSpecialFee(Request $request)
+        {
+            $request->validate([
+                'special_fee_student_id'  => 'required|integer|exists:students,id',
+                'special_fee_type'        => 'required|in:books,uniform',
+                'special_fee_payment_mode'=> 'required|in:Cash,Bank',
+                'special_fee_ledger_id'   => 'required|integer|in:4',
+                'special_fee_amount'      => 'required|numeric|gt:0',
+            ]);
+
+            $student = Student::select(
+                                'students.id',
+                                'students.unit_id',
+                                'students.branch_id',
+                                'students.full_name',
+                                'students.student_id_serial',
+                                'students.session_id',
+                                'sessions.name as session_name'
+                            )
+                            ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
+                            ->where('students.id', '=', (int)$request->special_fee_student_id)
+                            ->where(function ($q) {
+                                $q->where('students.status', '!=', 3)
+                                  ->orWhereNull('students.status');
+                            })
+                            ->first();
+
+            if (!$student) {
+                return redirect()->back()->with('error_message', 'Student not found !!!')->withInput();
+            }
+
+            $feeType = (string)$request->special_fee_type;
+            $feeLabel = (($feeType === 'books') ? 'Books Fee' : 'Uniform Fee');
+            $feeField = (($feeType === 'books') ? 'books_fee' : 'uniform_fee');
+            $feeAmount = number_format((float)$request->special_fee_amount, 2, '.', '');
+            $paymentMode = (string)$request->special_fee_payment_mode;
+            $ledgerId = (int)$request->special_fee_ledger_id;
+            $studentName = trim((string)$student->full_name);
+            if ($studentName === '') {
+                $studentName = 'Unknown Student';
+            }
+
+            $sessionName = trim((string)$student->session_name);
+            $sessionText = (($sessionName !== '') ? ' for session ' . $sessionName : '');
+            $updatedBy = $this->currentUserId();
+
+            DB::transaction(function () use ($student, $feeField, $feeAmount, $feeLabel, $studentName, $sessionText, $updatedBy, $paymentMode, $ledgerId) {
+                $student->{$feeField} = $feeAmount;
+                $student->updated_by = $updatedBy;
+                $student->save();
+
+                $lastTransaction = Transaction::withTrashed()->select('sl_no')
+                                        ->orderBy('sl_no', 'DESC')
+                                        ->lockForUpdate()
+                                        ->first();
+
+                $nextSlNo  = (($lastTransaction) ? ((int)$lastTransaction->sl_no + 1) : 1);
+                $nextTxnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
+
+                Transaction::create([
+                    'sl_no'                  => $nextSlNo,
+                    'txn_no'                 => $nextTxnNo,
+                    'fee_id'                 => 0,
+                    'unit_id'                => (int)$student->unit_id,
+                    'branch_id'              => (int)$student->branch_id,
+                    'ledger_id'              => $ledgerId,
+                    'payment_mode'           => $paymentMode,
+                    'payment_reference'      => null,
+                    'type'                   => 'INCOME',
+                    'transaction_timestamp'  => Carbon::now(),
+                    'transaction_amount'     => $feeAmount,
+                    'particulars'            => $feeLabel . ' collected for ' . $studentName . ' (' . $student->student_id_serial . ')' . $sessionText,
+                    'note'                   => $feeLabel . ' collection',
+                    'status'                 => 1,
+                    'created_by'             => $updatedBy,
+                    'updated_by'             => $updatedBy,
+                ]);
+            });
+
+            return redirect($this->data['controller_route'] . "/list")->with('success_message', $feeLabel.' collected successfully for '.$studentName.' !!!');
+        }
+    /* special fee collection */
     public function details($id)
     {
         $id = Helper::decoded($id);

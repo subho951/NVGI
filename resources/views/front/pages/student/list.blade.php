@@ -71,6 +71,10 @@ $controllerRoute = $module['controller_route'];
         font-weight: 700;
         color: #0f766e;
     }
+    .student-fee-btn{
+        min-width: 92px;
+        white-space: nowrap;
+    }
 </style>
 <h2 class="student-page-title mb-3">Manage <?= $module['title'] ?></h2>
 @if(session('success_message'))
@@ -177,6 +181,32 @@ $controllerRoute = $module['controller_route'];
                                     <?php } ?>
                                     |
                                     <button type="button"
+                                            class="btn btn-info btn-sm student-fee-btn feeCollectionBtn"
+                                            data-student-id="<?= $row->id ?>"
+                                            data-student-name="<?= e($studentNameDisplay) ?>"
+                                            data-student-serial="<?= e($row->student_id_serial) ?>"
+                                            data-session-name="<?= e(!empty($row->session_name) ? $row->session_name : '-') ?>"
+                                            data-books-fee="<?= e($row->books_fee) ?>"
+                                            data-uniform-fee="<?= e($row->uniform_fee) ?>"
+                                            data-fee-type="books"
+                                            data-fee-label="Books Fee">
+                                        Books Fee
+                                    </button>
+                                    |
+                                    <button type="button"
+                                            class="btn btn-secondary btn-sm student-fee-btn feeCollectionBtn"
+                                            data-student-id="<?= $row->id ?>"
+                                            data-student-name="<?= e($studentNameDisplay) ?>"
+                                            data-student-serial="<?= e($row->student_id_serial) ?>"
+                                            data-session-name="<?= e(!empty($row->session_name) ? $row->session_name : '-') ?>"
+                                            data-books-fee="<?= e($row->books_fee) ?>"
+                                            data-uniform-fee="<?= e($row->uniform_fee) ?>"
+                                            data-fee-type="uniform"
+                                            data-fee-label="Uniform Fee">
+                                        Uniform Fee
+                                    </button>
+                                    |
+                                    <button type="button"
                                             class="btn btn-warning btn-sm promoteStudentBtn"
                                             data-student-id="<?= $row->id ?>"
                                             data-student-name="<?= e($studentNameDisplay) ?>"
@@ -274,6 +304,59 @@ $controllerRoute = $module['controller_route'];
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                     <button type="submit" class="btn btn-warning btn-sm">Promote</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="studentSpecialFeeModal" tabindex="-1" aria-labelledby="studentSpecialFeeLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="studentSpecialFeeLabel">Special Fee Collection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="studentSpecialFeeForm" method="POST" action="{{ route('student.special-fee.collect') }}">
+                @csrf
+                <div class="modal-body">
+                    <input type="hidden" name="special_fee_student_id" id="special_fee_student_id" value="{{ old('special_fee_student_id') }}">
+                    <input type="hidden" name="special_fee_type" id="special_fee_type" value="{{ old('special_fee_type') }}">
+                    <input type="hidden" name="special_fee_ledger_id" id="special_fee_ledger_id" value="{{ old('special_fee_ledger_id', 4) }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="special_fee_student_name" class="form-label">Student Name</label>
+                            <input type="text" class="form-control form-control-sm" id="special_fee_student_name" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="special_fee_student_serial" class="form-label">Student Serial No</label>
+                            <input type="text" class="form-control form-control-sm" id="special_fee_student_serial" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="special_fee_session_year" class="form-label">Current Session Year</label>
+                            <input type="text" class="form-control form-control-sm" id="special_fee_session_year" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="special_fee_payment_mode" class="form-label">Payment Mode <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" name="special_fee_payment_mode" id="special_fee_payment_mode" required>
+                                <option value="Cash" {{ ((string)old('special_fee_payment_mode', 'Bank') === 'Cash') ? 'selected' : '' }}>Cash</option>
+                                <option value="Bank" {{ ((string)old('special_fee_payment_mode', 'Bank') === 'Bank') ? 'selected' : '' }}>Bank</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="special_fee_amount" class="form-label">Fee Amount <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="special_fee_amount" id="special_fee_amount" value="{{ old('special_fee_amount') }}" required>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info py-2 mb-0">
+                                The selected fee will be saved on the student record and logged as an income transaction.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success btn-sm" id="special_fee_submit_btn">Collect Fee</button>
                 </div>
             </form>
         </div>
@@ -423,5 +506,84 @@ $controllerRoute = $module['controller_route'];
             openPromoteModal(promoteBtn, promoteOldData);
         });
     </script>
-@endsection
+    <script>
+        const specialFeeOldData = {
+            studentId: @json(old('special_fee_student_id')),
+            feeType: @json(old('special_fee_type')),
+            paymentMode: @json(old('special_fee_payment_mode', 'Bank')),
+            ledgerId: @json(old('special_fee_ledger_id', 4)),
+            feeAmount: @json(old('special_fee_amount')),
+        };
 
+        function openSpecialFeeModal(btn, overrideData) {
+            const modalElement = document.getElementById('studentSpecialFeeModal');
+            const feeForm = document.getElementById('studentSpecialFeeForm');
+            const modalTitle = document.getElementById('studentSpecialFeeLabel');
+            const studentIdField = document.getElementById('special_fee_student_id');
+            const feeTypeField = document.getElementById('special_fee_type');
+            const ledgerIdField = document.getElementById('special_fee_ledger_id');
+            const studentNameField = document.getElementById('special_fee_student_name');
+            const studentSerialField = document.getElementById('special_fee_student_serial');
+            const sessionYearField = document.getElementById('special_fee_session_year');
+            const paymentModeField = document.getElementById('special_fee_payment_mode');
+            const amountField = document.getElementById('special_fee_amount');
+            const submitButton = document.getElementById('special_fee_submit_btn');
+
+            const studentData = {
+                studentId: btn.dataset.studentId || '',
+                studentName: btn.dataset.studentName || '',
+                studentSerial: btn.dataset.studentSerial || '',
+                sessionName: btn.dataset.sessionName || '-',
+                booksFee: btn.dataset.booksFee || '',
+                uniformFee: btn.dataset.uniformFee || '',
+                feeType: btn.dataset.feeType || '',
+                feeLabel: btn.dataset.feeLabel || 'Fee',
+            };
+
+            const data = overrideData || {};
+            const feeLabel = studentData.feeLabel;
+            const defaultAmount = (studentData.feeType === 'books') ? studentData.booksFee : studentData.uniformFee;
+
+            feeForm.action = "{{ route('student.special-fee.collect') }}";
+            modalTitle.textContent = feeLabel + ' Collection';
+            studentIdField.value = studentData.studentId;
+            feeTypeField.value = studentData.feeType;
+            if (ledgerIdField) {
+                ledgerIdField.value = (data.ledgerId !== undefined && data.ledgerId !== null && data.ledgerId !== '') ? data.ledgerId : '4';
+            }
+            studentNameField.value = studentData.studentName;
+            studentSerialField.value = studentData.studentSerial;
+            sessionYearField.value = studentData.sessionName;
+            if (paymentModeField) {
+                paymentModeField.value = (data.paymentMode !== undefined && data.paymentMode !== null && data.paymentMode !== '') ? data.paymentMode : 'Bank';
+            }
+            amountField.value = (data.feeAmount !== undefined && data.feeAmount !== null && data.feeAmount !== '') ? data.feeAmount : defaultAmount;
+            submitButton.textContent = 'Collect ' + feeLabel;
+
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modal.show();
+        }
+
+        document.addEventListener("click", function (e) {
+            const feeBtn = e.target.closest(".feeCollectionBtn");
+            if (!feeBtn) {
+                return;
+            }
+
+            openSpecialFeeModal(feeBtn);
+        });
+
+        window.addEventListener('load', function () {
+            if (!specialFeeOldData.studentId || !specialFeeOldData.feeType) {
+                return;
+            }
+
+            const feeBtn = document.querySelector('.feeCollectionBtn[data-student-id="' + specialFeeOldData.studentId + '"][data-fee-type="' + specialFeeOldData.feeType + '"]');
+            if (!feeBtn) {
+                return;
+            }
+
+            openSpecialFeeModal(feeBtn, specialFeeOldData);
+        });
+    </script>
+@endsection

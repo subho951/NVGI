@@ -1,0 +1,44 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        if (Schema::hasTable('students') && !Schema::hasColumn('students', 'books_fee')) {
+            Schema::table('students', function (Blueprint $table) {
+                $table->decimal('books_fee', 12, 2)->default(0);
+            });
+        }
+
+        if (Schema::hasTable('students') && !Schema::hasColumn('students', 'uniform_fee')) {
+            Schema::table('students', function (Blueprint $table) {
+                $table->decimal('uniform_fee', 12, 2)->default(0);
+            });
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        if (Schema::hasTable('students') && Schema::hasColumn('students', 'uniform_fee')) {
+            Schema::table('students', function (Blueprint $table) {
+                $table->dropColumn('uniform_fee');
+            });
+        }
+
+        if (Schema::hasTable('students') && Schema::hasColumn('students', 'books_fee')) {
+            Schema::table('students', function (Blueprint $table) {
+                $table->dropColumn('books_fee');
+            });
+        }
+    }
+};

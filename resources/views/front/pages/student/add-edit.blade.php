@@ -67,6 +67,8 @@ if($row){
     $blood_group = $row->blood_group;
     $admission_fees = $row->admission_fees;
     $monthly_fees = $row->monthly_fees;
+    $books_fee = $row->books_fee;
+    $uniform_fee = $row->uniform_fee;
 } else {
     $unit_id = '';
     $branch_id = '';
@@ -102,6 +104,8 @@ if($row){
     $blood_group = '';
     $admission_fees = '';
     $monthly_fees = '';
+    $books_fee = '';
+    $uniform_fee = '';
 }
 ?>
 
@@ -332,7 +336,15 @@ if($row){
         <label for="monthly_fees">Monthly Fees <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-sm" name="monthly_fees" id="monthly_fees" placeholder="Monthly Fees" value="<?= $monthly_fees ?>" required>
     </div>
-    
+    <div class="col-md-3">
+        <label for="books_fee">Books Fee <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-sm" name="books_fee" id="books_fee" placeholder="Books Fee" value="<?= $books_fee ?>" required>
+    </div>
+    <div class="col-md-3">
+        <label for="uniform_fee">Uniform Fee <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-sm" name="uniform_fee" id="uniform_fee" placeholder="Uniform Fee" value="<?= $uniform_fee ?>" required>
+    </div>
+
     <div class="col-md-6">
         <label for="photo">Upload Photo (jpg or png)</label>
         <input type="file" class="form-control form-control-sm" name="photo" id="photo" placeholder="Upload Photo (jpg or png)">
