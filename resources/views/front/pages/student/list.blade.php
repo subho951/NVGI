@@ -180,32 +180,34 @@ $controllerRoute = $module['controller_route'];
                                         <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>"><i class="fas fa-ban text-danger"></i></a>
                                     <?php } ?>
                                     |
-                                    <button type="button"
-                                            class="btn btn-info btn-sm student-fee-btn feeCollectionBtn"
-                                            data-student-id="<?= $row->id ?>"
-                                            data-student-name="<?= e($studentNameDisplay) ?>"
-                                            data-student-serial="<?= e($row->student_id_serial) ?>"
-                                            data-session-name="<?= e(!empty($row->session_name) ? $row->session_name : '-') ?>"
-                                            data-books-fee="<?= e($row->books_fee) ?>"
-                                            data-uniform-fee="<?= e($row->uniform_fee) ?>"
-                                            data-fee-type="books"
-                                            data-fee-label="Books Fee">
-                                        Books Fee
-                                    </button>
-                                    |
-                                    <button type="button"
-                                            class="btn btn-secondary btn-sm student-fee-btn feeCollectionBtn"
-                                            data-student-id="<?= $row->id ?>"
-                                            data-student-name="<?= e($studentNameDisplay) ?>"
-                                            data-student-serial="<?= e($row->student_id_serial) ?>"
-                                            data-session-name="<?= e(!empty($row->session_name) ? $row->session_name : '-') ?>"
-                                            data-books-fee="<?= e($row->books_fee) ?>"
-                                            data-uniform-fee="<?= e($row->uniform_fee) ?>"
-                                            data-fee-type="uniform"
-                                            data-fee-label="Uniform Fee">
-                                        Uniform Fee
-                                    </button>
-                                    |
+                                    <?php if($row->unit_id == 1){?>
+                                        <button type="button"
+                                                class="btn btn-info btn-sm student-fee-btn feeCollectionBtn"
+                                                data-student-id="<?= $row->id ?>"
+                                                data-student-name="<?= e($studentNameDisplay) ?>"
+                                                data-student-serial="<?= e($row->student_id_serial) ?>"
+                                                data-session-name="<?= e(!empty($row->session_name) ? $row->session_name : '-') ?>"
+                                                data-books-fee="<?= e($row->books_fee) ?>"
+                                                data-uniform-fee="<?= e($row->uniform_fee) ?>"
+                                                data-fee-type="books"
+                                                data-fee-label="Books Fee">
+                                            Books Fee
+                                        </button>
+                                        |
+                                        <button type="button"
+                                                class="btn btn-secondary btn-sm student-fee-btn feeCollectionBtn"
+                                                data-student-id="<?= $row->id ?>"
+                                                data-student-name="<?= e($studentNameDisplay) ?>"
+                                                data-student-serial="<?= e($row->student_id_serial) ?>"
+                                                data-session-name="<?= e(!empty($row->session_name) ? $row->session_name : '-') ?>"
+                                                data-books-fee="<?= e($row->books_fee) ?>"
+                                                data-uniform-fee="<?= e($row->uniform_fee) ?>"
+                                                data-fee-type="uniform"
+                                                data-fee-label="Uniform Fee">
+                                            Uniform Fee
+                                        </button>
+                                        |
+                                    <?php }?>
                                     <button type="button"
                                             class="btn btn-warning btn-sm promoteStudentBtn"
                                             data-student-id="<?= $row->id ?>"
