@@ -215,8 +215,9 @@ class StudentController extends Controller
                     'created_by'                => $updatedBy,
                     'updated_by'                => $updatedBy,
                 ];
-                // Helper::pr($fields);
-                DB::transaction(function () use ($fields, $request, $updatedBy, $full_name) {
+                
+                Helper::pr($fields);
+                DB::transaction(function () use ($fields, $request, $updatedBy, $full_name, $student_id_serial) {
                     $student = Student::create($fields);
                     $id = $student->id;
 
@@ -256,9 +257,10 @@ class StudentController extends Controller
                         'payment_mode'           => 'Cash',
                         'payment_reference'      => null,
                         'type'                   => 'INCOME',
+                        'ledger_id'              => 3,
                         'transaction_timestamp'  => Carbon::now(),
                         'transaction_amount'     => number_format((float)$request->admission_fees, 2, '.', ''),
-                        'particulars'            => 'Admission fee collected for '.$full_name.' during new admission',
+                        'particulars'            => 'Admission fee collected for '.$full_name.' ('. $student_id_serial .') during new admission',
                         'note'                   => 'New student admission',
                         'status'                 => 1,
                         'created_by'             => $updatedBy,
@@ -309,7 +311,7 @@ class StudentController extends Controller
                     $getBranch          = Branch::select('serial_id')->where('id', '=', $request->branch_id)->first();
                     $next_sl_no         = (($data['row'])?$data['row']->sl_no:0);
                     $next_sl_no_string  = str_pad($next_sl_no, 4, 0, STR_PAD_LEFT);
-                    $student_id_serial  = 'NVGI-' . (($getUnit)?$getUnit->serial_id:'') . '-' . (($getBranch)?$getBranch->serial_id:'') . '-' . $next_sl_no_string;
+                    $student_id_serial  = (($getUnit)?$getUnit->serial_id:'') . '-' . (($getBranch)?$getBranch->serial_id:'') . '-' . $next_sl_no_string;
                 /* student serial no generation */
 
                 /* photo */
