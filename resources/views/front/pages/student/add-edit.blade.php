@@ -337,12 +337,12 @@ if($row){
         <input type="text" class="form-control form-control-sm" name="monthly_fees" id="monthly_fees" placeholder="Monthly Fees" value="<?= $monthly_fees ?>" required>
     </div>
     <div class="col-md-3">
-        <label for="books_fee">Books Fee <span class="text-danger">*</span></label>
-        <input type="text" class="form-control form-control-sm" name="books_fee" id="books_fee" placeholder="Books Fee" value="<?= $books_fee ?>" required>
+        <label for="books_fee">Books Fee</label>
+        <input type="text" class="form-control form-control-sm" name="books_fee" id="books_fee" placeholder="Books Fee" value="<?= $books_fee ?>">
     </div>
     <div class="col-md-3">
-        <label for="uniform_fee">Uniform Fee <span class="text-danger">*</span></label>
-        <input type="text" class="form-control form-control-sm" name="uniform_fee" id="uniform_fee" placeholder="Uniform Fee" value="<?= $uniform_fee ?>" required>
+        <label for="uniform_fee">Uniform Fee</label>
+        <input type="text" class="form-control form-control-sm" name="uniform_fee" id="uniform_fee" placeholder="Uniform Fee" value="<?= $uniform_fee ?>">
     </div>
 
     <div class="col-md-6">

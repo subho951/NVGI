@@ -120,8 +120,8 @@ class StudentController extends Controller
                     'blood_group'               => 'required|string',
                     'admission_fees'            => 'required|numeric|gt:0',
                     'monthly_fees'              => 'required|numeric|gt:0',
-                    'books_fee'                 => 'required|numeric|gt:0',
-                    'uniform_fee'               => 'required|numeric|gt:0',
+                    // 'books_fee'                 => 'required|numeric|gt:0',
+                    // 'uniform_fee'               => 'required|numeric|gt:0',
                 ]);
 
                 if($request->middle_name != ''){
@@ -351,8 +351,8 @@ class StudentController extends Controller
                     'blood_group'               => 'required|string',
                     'admission_fees'            => 'required|numeric|gt:0',
                     'monthly_fees'              => 'required|numeric|gt:0',
-                    'books_fee'                 => 'required|numeric|gt:0',
-                    'uniform_fee'               => 'required|numeric|gt:0',
+                    // 'books_fee'                 => 'required|numeric|gt:0',
+                    // 'uniform_fee'               => 'required|numeric|gt:0',
                 ]);
                 $postData               = $request->all();
                 if($request->unit_id == 1){
