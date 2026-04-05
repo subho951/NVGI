@@ -1147,7 +1147,7 @@ class StudentController extends Controller
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
                     'transaction_amount'     => $transactionAmount,
-                    'particulars'            => 'Fees collection for '.$student->full_name.' '.$monthName.' '.$request->payable_year.' with amount '.$transactionAmount,
+                    'particulars'            => 'Fees collection for '.$student->full_name.' ('.$student->student_id_serial.') '.$monthName.' '.$request->payable_year.' with amount '.$transactionAmount,
                     'created_by'             => $updatedBy,
                     'updated_by'             => $updatedBy,
                 ]);
