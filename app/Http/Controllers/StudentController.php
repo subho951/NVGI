@@ -1187,13 +1187,20 @@ class StudentController extends Controller
             ]);
         }
         public function feesEntry(){
+            // $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')
+            //                                     ->where(function ($query) {
+            //                                         $query->where('status', '!=', 3)
+            //                                                 ->where('id', '=', 11)
+            //                                               ->orWhereNull('status');
+            //                                     })
+            //                                     ->get();
             $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')
                                                 ->where(function ($query) {
                                                     $query->where('status', '!=', 3)
-                                                            ->where('id', '=', 11)
                                                           ->orWhereNull('status');
                                                 })
                                                 ->get();
+
             if($students){
                 $targetMonths = [
                     ['month' => 4, 'year' => 2026],
