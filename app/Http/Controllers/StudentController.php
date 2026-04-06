@@ -1065,7 +1065,7 @@ class StudentController extends Controller
                 ], 422);
             }
 
-            $student = Student::select('id', 'full_name')
+            $student = Student::select('id', 'full_name', 'student_id_serial')
                                 ->where('id', $request->student_id)
                                 ->first();
             if (!$student) {
