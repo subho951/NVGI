@@ -1190,6 +1190,7 @@ class StudentController extends Controller
             $students                   = Student::select('id', 'unit_id', 'branch_id', 'session_id', 'monthly_fees')
                                                 ->where(function ($query) {
                                                     $query->where('status', '!=', 3)
+                                                            ->where('id', '=', 1)
                                                           ->orWhereNull('status');
                                                 })
                                                 ->get();
