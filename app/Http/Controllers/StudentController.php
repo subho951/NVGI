@@ -216,7 +216,7 @@ class StudentController extends Controller
                     'updated_by'                => $updatedBy,
                 ];
                 
-                Helper::pr($fields);
+                // Helper::pr($fields);
                 DB::transaction(function () use ($fields, $request, $updatedBy, $full_name, $student_id_serial) {
                     $student = Student::create($fields);
                     $id = $student->id;
