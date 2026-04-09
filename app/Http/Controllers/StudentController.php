@@ -857,6 +857,245 @@ class StudentController extends Controller
         $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
         return view('front.pages.' . $page_name, $data);
     }
+    public function generateIdCard(Request $request)
+    {
+        $data['module']             = $this->data;
+        $title                      = 'Generate ID Card';
+        $page_name                  = 'student.id-card.index';
+        $data['brand']              = $this->getStudentIdCardBranding();
+        $data['units']              = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
+        $data['branches']           = collect();
+        $data['classes']            = collect();
+        $data['students']           = null;
+        $data['search_applied']     = false;
+        $data['search_student_id']  = trim((string)$request->query('student_id', ''));
+        $data['search_unit_id']     = (($request->filled('unit_id')) ? (int)$request->query('unit_id') : '');
+        $data['search_branch_id']   = (($request->filled('branch_id')) ? (int)$request->query('branch_id') : '');
+        $data['search_class_id']    = (($request->filled('class_id')) ? (int)$request->query('class_id') : '');
+        $data['filters_locked']     = ($data['search_student_id'] !== '');
+
+        $selectedBranchUnitId = null;
+        if ($data['search_branch_id'] !== '') {
+            $selectedBranch = Branch::select('unit_id')
+                                    ->where('id', '=', (int)$data['search_branch_id'])
+                                    ->where('status', '=', 1)
+                                    ->first();
+            $selectedBranchUnitId = (($selectedBranch) ? (int)$selectedBranch->unit_id : null);
+        }
+
+        $selectedClassUnitId = null;
+        if ($data['search_class_id'] !== '') {
+            $selectedClass = Classes::select('unit_id')
+                                    ->where('id', '=', (int)$data['search_class_id'])
+                                    ->where('status', '=', 1)
+                                    ->first();
+            $selectedClassUnitId = (($selectedClass) ? (int)$selectedClass->unit_id : null);
+        }
+
+        if ($data['search_unit_id'] === '' && $selectedBranchUnitId !== null) {
+            $data['search_unit_id'] = $selectedBranchUnitId;
+        }
+
+        if ($data['search_unit_id'] === '' && $selectedClassUnitId !== null) {
+            $data['search_unit_id'] = $selectedClassUnitId;
+        }
+
+        if ($data['search_unit_id'] !== '') {
+            $data['branches'] = $this->getStudentIdCardBranches($data['search_unit_id']);
+        }
+
+        if ($data['search_branch_id'] !== '') {
+            $data['classes'] = $this->getStudentIdCardClasses($data['search_branch_id'], $data['search_unit_id']);
+        } elseif ($data['search_class_id'] !== '' && $data['search_unit_id'] !== '') {
+            $data['classes'] = $this->getStudentIdCardClasses(null, $data['search_unit_id']);
+        }
+
+        $searchRequested = $request->boolean('search_submitted') || $request->hasAny(['student_id', 'unit_id', 'branch_id', 'class_id']);
+        $resolvedUnitForValidation = $this->resolveIdCardUnitId($data['search_unit_id'], $data['search_branch_id']);
+        if ($resolvedUnitForValidation === null && $selectedClassUnitId !== null) {
+            $resolvedUnitForValidation = $selectedClassUnitId;
+        }
+
+        if ($searchRequested) {
+            $validator = Validator::make($request->all(), [
+                'student_id' => 'nullable|string|max:60',
+                'unit_id'    => 'nullable|integer|exists:units,id',
+                'branch_id'  => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('branches', 'id')->where(function ($query) {
+                        $query->where('status', '=', 1);
+                    }),
+                ],
+                'class_id'   => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('classes', 'id')->where(function ($query) {
+                        $query->where('status', '=', 1);
+                    }),
+                ],
+            ]);
+
+            $validator->after(function ($validator) use ($request, $resolvedUnitForValidation, $selectedClassUnitId) {
+                $studentId = trim((string)$request->input('student_id', ''));
+
+                if ($studentId !== '') {
+                    return;
+                }
+
+                if (!$request->filled('unit_id') && !$request->filled('branch_id') && !$request->filled('class_id')) {
+                    $validator->errors()->add('search', 'Please select at least one filter or enter a Student ID.');
+                    return;
+                }
+
+                if ($request->filled('branch_id') && $request->filled('unit_id')) {
+                    $branch = Branch::select('unit_id')
+                                    ->where('id', '=', (int)$request->input('branch_id'))
+                                    ->where('status', '=', 1)
+                                    ->first();
+
+                    if ($branch && (int)$branch->unit_id !== (int)$request->input('unit_id')) {
+                        $validator->errors()->add('branch_id', 'Selected branch does not belong to the selected unit.');
+                    }
+                }
+
+                if ($request->filled('class_id')) {
+                    if ($resolvedUnitForValidation !== null && $selectedClassUnitId !== null && (int)$selectedClassUnitId !== (int)$resolvedUnitForValidation) {
+                        $validator->errors()->add('class_id', 'Selected class does not belong to the selected unit or branch.');
+                    }
+                }
+            });
+
+            if ($validator->fails()) {
+                $data['errors'] = $validator->errors();
+                $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+                return view('front.pages.' . $page_name, $data);
+            }
+
+            $studentQuery = $this->buildStudentIdCardQuery();
+            if ($data['search_student_id'] !== '') {
+                $escapedStudentId = addcslashes($data['search_student_id'], '\\%_');
+                $studentQuery->where('students.student_id_serial', 'like', '%' . $escapedStudentId . '%');
+            } else {
+                if ($data['search_unit_id'] !== '') {
+                    $studentQuery->where('students.unit_id', '=', (int)$data['search_unit_id']);
+                }
+
+                if ($data['search_branch_id'] !== '') {
+                    $studentQuery->where('students.branch_id', '=', (int)$data['search_branch_id']);
+                }
+
+                if ($data['search_class_id'] !== '') {
+                    $unitForClassFilter = $this->resolveIdCardUnitId($data['search_unit_id'], $data['search_branch_id']);
+                    if ($unitForClassFilter === null && $selectedClassUnitId !== null) {
+                        $unitForClassFilter = $selectedClassUnitId;
+                    }
+
+                    if ((int)$unitForClassFilter === 1) {
+                        $studentQuery->where('students.vhs_class_id', '=', (int)$data['search_class_id']);
+                    } elseif ((int)$unitForClassFilter === 2) {
+                        $studentQuery->where('students.tsa_class_id', '=', (int)$data['search_class_id']);
+                    } else {
+                        $studentQuery->where(function ($query) use ($data) {
+                            $query->where('students.vhs_class_id', '=', (int)$data['search_class_id'])
+                                  ->orWhere('students.tsa_class_id', '=', (int)$data['search_class_id']);
+                        });
+                    }
+                }
+            }
+
+            $data['students']       = $studentQuery->orderBy('students.full_name', 'ASC')
+                                                ->orderBy('students.id', 'ASC')
+                                                ->paginate(12)
+                                                ->withQueryString();
+            $data['search_applied'] = true;
+        }
+
+        $data['selection_key'] = $this->buildStudentIdCardSelectionKey(
+            $data['search_student_id'],
+            $data['search_unit_id'],
+            $data['search_branch_id'],
+            $data['search_class_id']
+        );
+
+        $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+        return view('front.pages.' . $page_name, $data);
+    }
+    public function generateIdCardPreview(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'student_ids'   => 'required|array|min:1|max:200',
+            'student_ids.*' => 'integer|distinct|exists:students,id',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect('student/generate-id-card')->with('error_message', $validator->errors()->first());
+        }
+
+        $selectedIds = array_values(array_unique(array_map('intval', (array)$request->input('student_ids', []))));
+        if (count($selectedIds) === 0) {
+            return redirect('student/generate-id-card')->with('error_message', 'Please select at least one student to generate ID cards.');
+        }
+
+        $studentsById = $this->buildStudentIdCardQuery()
+                            ->whereIn('students.id', $selectedIds)
+                            ->get()
+                            ->keyBy('id');
+
+        $orderedStudents = collect($selectedIds)->map(function ($studentId) use ($studentsById) {
+            return $studentsById->get($studentId);
+        })->filter()->values();
+
+        if ($orderedStudents->count() !== count($selectedIds)) {
+            return redirect('student/generate-id-card')->with('error_message', 'One or more selected students are not available for ID card generation.');
+        }
+
+        $data['module']         = $this->data;
+        $data['brand']          = $this->getStudentIdCardBranding();
+        $data['students']       = $orderedStudents;
+        $data['selected_count'] = $orderedStudents->count();
+        $data['generated_at']   = Carbon::now()->format('d-m-Y h:i A');
+
+        return view('front.pages.student.id-card.preview', $data);
+    }
+    public function generateIdCardBranches(Request $request)
+    {
+        $request->validate([
+            'unit_id' => 'required|integer|exists:units,id',
+        ]);
+
+        $branches = $this->getStudentIdCardBranches((int)$request->input('unit_id'));
+
+        return response()->json([
+            'status'   => true,
+            'branches' => $branches,
+        ]);
+    }
+    public function generateIdCardClasses(Request $request)
+    {
+        $request->validate([
+            'branch_id' => 'required|integer|exists:branches,id',
+        ]);
+
+        $branch = Branch::select('unit_id')
+                        ->where('id', '=', (int)$request->input('branch_id'))
+                        ->where('status', '=', 1)
+                        ->first();
+
+        if (!$branch) {
+            return response()->json([
+                'status'  => false,
+                'classes' => [],
+            ], 422);
+        }
+
+        $classes = $this->getStudentIdCardClasses((int)$request->input('branch_id'), (int)$branch->unit_id);
+
+        return response()->json([
+            'status'  => true,
+            'classes' => $classes,
+        ]);
+    }
     /* fees collection */
         public function feesCollection(Request $request){
             $data['module']                 = $this->data;
@@ -1519,6 +1758,127 @@ class StudentController extends Controller
                         ->groupBy('sp.student_id');
 
         return $paymentSubQuery;
+    }
+
+    private function getStudentIdCardBranding()
+    {
+        $siteName = trim((string)Helper::getSettingValue('site_name'));
+        $siteTagline = trim((string)Helper::getSettingValue('description'));
+        $siteLogo = trim((string)Helper::getSettingValue('site_logo'));
+        $siteName = (($siteName !== '') ? $siteName : config('app.name'));
+
+        $initials = '';
+        $nameParts = preg_split('/\s+/', $siteName, -1, PREG_SPLIT_NO_EMPTY);
+        if (is_array($nameParts)) {
+            foreach (array_slice($nameParts, 0, 3) as $part) {
+                $initials .= strtoupper(substr($part, 0, 1));
+            }
+        }
+        if ($initials === '') {
+            $initials = 'ID';
+        }
+
+        return [
+            'site_name'     => $siteName,
+            'site_tagline'  => $siteTagline,
+            'site_logo_url' => (($siteLogo !== '') ? config('constants.app_url') . config('constants.uploads_url_path') . $siteLogo : ''),
+            'site_initials' => $initials,
+        ];
+    }
+
+    private function buildStudentIdCardQuery()
+    {
+        return Student::select(
+                        'students.id',
+                        'students.student_id_serial',
+                        'students.full_name',
+                        'students.photo',
+                        'students.unit_id',
+                        'students.branch_id',
+                        'students.vhs_class_id',
+                        'students.tsa_class_id',
+                        'units.name as unit_name',
+                        'branches.name as branch_name',
+                        DB::raw('COALESCE(vhs_classes.name, tsa_classes.name) as class_name')
+                    )
+                    ->leftJoin('units', 'units.id', '=', 'students.unit_id')
+                    ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                    ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                    ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                    ->where(function ($query) {
+                        $query->where('students.status', '!=', 3)
+                              ->orWhereNull('students.status');
+                    });
+    }
+
+    private function getStudentIdCardBranches($unitId = null)
+    {
+        if (!$unitId) {
+            return collect();
+        }
+
+        return Branch::select('id', 'name', 'unit_id')
+                    ->where('status', '=', 1)
+                    ->where('unit_id', '=', (int)$unitId)
+                    ->orderBy('name', 'ASC')
+                    ->get();
+    }
+
+    private function getStudentIdCardClasses($branchId = null, $unitId = null)
+    {
+        if ($branchId) {
+            $branch = Branch::select('unit_id')
+                            ->where('id', '=', (int)$branchId)
+                            ->where('status', '=', 1)
+                            ->first();
+            if ($branch) {
+                $unitId = (int)$branch->unit_id;
+            }
+        }
+
+        if (!$unitId) {
+            return collect();
+        }
+
+        return Classes::select('id', 'name', 'unit_id')
+                        ->where('status', '=', 1)
+                        ->where('unit_id', '=', (int)$unitId)
+                        ->orderBy('name', 'ASC')
+                        ->get();
+    }
+
+    private function resolveIdCardUnitId($unitId = null, $branchId = null)
+    {
+        if ($branchId) {
+            $branch = Branch::select('unit_id')
+                            ->where('id', '=', (int)$branchId)
+                            ->where('status', '=', 1)
+                            ->first();
+            if ($branch) {
+                return (int)$branch->unit_id;
+            }
+        }
+
+        if ($unitId !== null && $unitId !== '') {
+            return (int)$unitId;
+        }
+
+        return null;
+    }
+
+    private function buildStudentIdCardSelectionKey($studentId = '', $unitId = '', $branchId = '', $classId = '')
+    {
+        if (trim((string)$studentId) !== '') {
+            return 'student-id-card-' . md5('student_id:' . trim((string)$studentId));
+        }
+
+        $payload = [
+            'unit_id'   => (($unitId !== '') ? (int)$unitId : ''),
+            'branch_id' => (($branchId !== '') ? (int)$branchId : ''),
+            'class_id'  => (($classId !== '') ? (int)$classId : ''),
+        ];
+
+        return 'student-id-card-' . md5(json_encode($payload));
     }
 
     private function currentUserId()
