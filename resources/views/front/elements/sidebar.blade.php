@@ -187,11 +187,11 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                         </a>
                     </li>
                 <?php } ?>
-                <!-- <li>
+                <li>
                     <a href="<?= url('student/generate-id-card') ?>" class="nav-link <?= (($pageSegment == 'student' && $pageFunction == 'generate-id-card') ? 'active-link' : '') ?>">
                         <i class="fa-solid fa-id-card"></i> <span>Generate ID Card</span>
                     </a>
-                </li> -->
+                </li>
                 <?php if(in_array(19, $moduleIds)){?>
                     <li>
                         <a href="<?= url('student/fees-collection') ?>" class="nav-link <?= (($pageSegment == 'student' && $pageFunction == 'fees-collection') ? 'active-link' : '') ?>">

@@ -4,22 +4,13 @@ $brand = $brand ?? [];
 $students = $students ?? collect();
 $selectedCount = (($selected_count ?? 0) !== null) ? (int)$selected_count : 0;
 $generatedAt = $generated_at ?? '';
-$previewTitle = trim((string)($preview_title ?? ''));
-if ($previewTitle === '') {
-    $previewTitle = 'Student ID Card Preview';
-}
-$cardBackgroundUrl = trim((string)($card_background_url ?? ''));
-if ($cardBackgroundUrl === '') {
-    $cardBackgroundUrl = config('constants.uploads_url') . 'uploads/student/id-card-bg.jpeg';
-}
-// $cardBackgroundUrl = config('constants.uploads_url') . 'student/id-card-bg.jpeg';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $previewTitle }}</title>
+    <title>Student ID Card Preview</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="<?=((Helper::getSettingValue('site_favicon') != '')?config('constants.app_url') . config('constants.uploads_url_path') . Helper::getSettingValue('site_favicon'):env('NO_IMAGE'))?>" />
     <style>
@@ -123,7 +114,7 @@ if ($cardBackgroundUrl === '') {
             height: 54mm;
             display: flex;
             overflow: hidden;
-            /* border-radius: 3mm; */
+            border-radius: 3mm;
             background: linear-gradient(135deg, #f8dc63 0%, #f4c514 55%, #eab308 100%);
             border: 0.35mm solid rgba(75, 47, 24, 0.28);
             box-shadow: 0 5px 14px rgba(15, 23, 42, 0.16);
@@ -235,7 +226,7 @@ if ($cardBackgroundUrl === '') {
         }
         .student-code{
             width: 100%;
-            /* border-radius: 1mm; */
+            border-radius: 1mm;
             padding: 0.8mm 1mm;
             background: #4b2f18;
             color: #ffffff;
@@ -300,7 +291,7 @@ if ($cardBackgroundUrl === '') {
         }
         .barcode-bars{
             height: 4.5mm;
-            /* border-radius: 0.7mm; */
+            border-radius: 0.7mm;
             background:
                 repeating-linear-gradient(
                     90deg,
@@ -338,109 +329,191 @@ if ($cardBackgroundUrl === '') {
         }
         .id-card{
             position: relative;
-            width: 85.6mm;
-            height: 54mm;
-            overflow: hidden;
-            display: block;
-            background-color: #f3c80c;
-            background-position: center center;
-            background-repeat: no-repeat;
-            background-size: 100% 100%;
-            /* border-radius: 0.8mm; */
-            border: 0.25mm solid rgba(42, 23, 8, 0.16);
+            background: linear-gradient(135deg, #f8dd5f 0%, #f1c61d 42%, #e6b812 100%);
+            border-radius: 2.7mm;
+            border: 0.35mm solid rgba(42, 23, 8, 0.76);
             box-shadow: 0 5px 14px rgba(15, 23, 42, 0.16);
-            break-inside: avoid;
-            page-break-inside: avoid;
         }
-        .id-card__content{
+        .id-card__strip{
+            width: 11.4mm;
+            background: linear-gradient(180deg, #4a2b15 0%, #2b1709 100%);
+            font-size: 4.1mm;
+            letter-spacing: 0.65mm;
+        }
+        .id-card__main{
+            position: relative;
+            overflow: visible;
+            padding: 1.45mm 1.85mm 1.25mm 1.9mm;
+        }
+        .id-card__watermark{
             position: absolute;
-            inset: 0;
-        }
-        .student-photo-frame{
-            position: absolute;
-            left: 15.0mm;
-            top: 17mm;
-            width: 21.2mm;
-            height: 28.8mm;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #ffffff;
-            border: 0.35mm solid #2b1709;
-            z-index: 2;
-        }
-        .student-photo{
-            width: 100%;
-            flex: 1;
-            min-height: 0;
-            object-fit: cover;
-            object-position: center top;
-            display: block;
-        }
-        .student-code{
-            min-height: 5.0mm;
+            top: 0.25mm;
+            right: 0.85mm;
+            bottom: 0.25mm;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0.5mm 0.8mm;
-            background: #2b1709;
-            color: #ffffff;
-            font-family: "Arial Narrow", Arial, sans-serif;
-            font-size: 2.05mm;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            color: rgba(255, 243, 176, 0.24);
+            font-size: 4.6mm;
             font-weight: 900;
-            letter-spacing: 0.18mm;
-            line-height: 1;
+            letter-spacing: 0.45mm;
+            text-transform: uppercase;
+            pointer-events: none;
+            user-select: none;
+        }
+        .brand-row{
+            position: relative;
+            z-index: 1;
+            align-items: flex-start;
+            gap: 0.9mm;
+            margin-bottom: 0.8mm;
+            padding-bottom: 0;
+            border-bottom: 0;
+        }
+        .brand-logo,
+        .brand-initials{
+            position: relative;
+            z-index: 2;
+            width: 12.8mm;
+            height: 12.8mm;
+            flex: 0 0 12.8mm;
+            margin-left: -4.8mm;
+            margin-top: -0.2mm;
+            border-radius: 2.0mm;
+            object-fit: contain;
+            background: #fff5d1;
+            border: 0.35mm solid rgba(42, 23, 8, 0.9);
+            box-shadow: 0 0.7mm 1.3mm rgba(0, 0, 0, 0.08);
+        }
+        .brand-initials{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.0mm;
+            font-weight: 900;
+            color: #4a2b15;
+            background: linear-gradient(135deg, #fff9e3 0%, #f3e0a1 100%);
+        }
+        .brand-copy{
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            padding-right: 1.5mm;
+        }
+        .brand-name{
+            margin: 0;
+            display: block;
+            color: #1d1206;
+            font-size: 4.0mm;
+            font-weight: 900;
+            line-height: 0.96;
+            letter-spacing: 0.15mm;
+            text-transform: uppercase;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
+        }
+        .brand-tagline{
+            margin-top: 0.35mm;
+            color: #1f1305;
+            font-size: 1.95mm;
+            font-weight: 800;
+            line-height: 1.0;
+            text-transform: uppercase;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .brand-certification{
+            margin-top: 0.15mm;
+            color: #1f1305;
+            font-size: 1.75mm;
+            font-weight: 800;
+            line-height: 1.0;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .id-card__body{
+            position: relative;
+            z-index: 1;
+            gap: 1.55mm;
+            min-width: 0;
+            align-items: stretch;
+        }
+        .photo-stack{
+            width: 21.6mm;
+            flex: 0 0 21.6mm;
+            gap: 0;
+            align-items: stretch;
+        }
+        .student-photo{
+            width: 100%;
+            height: 25.8mm;
+            border: 0.35mm solid #2b1709;
+        }
+        .student-code{
+            padding: 0.8mm 0.7mm 0.7mm;
+            font-size: 2.05mm;
+            letter-spacing: 0.08mm;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
         }
         .student-details{
-            position: absolute;
-            top: 17.1mm;
-            left: 38.0mm;
-            right: 4.6mm;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            gap: 0.6mm;
+            gap: 0.25mm;
+            justify-content: flex-start;
             min-width: 0;
-            color: #2b1607;
-            font-family: "Arial Narrow", Arial, sans-serif;
-            font-size: 2.55mm;
-            line-height: 1.05;
-            font-weight: 900;
-            text-transform: uppercase;
         }
         .detail-list{
-            display: flex;
-            flex-direction: column;
-            gap: 0.6mm;
+            gap: 0.35mm;
+        }
+        .student-name{
+            display: none;
         }
         .student-detail{
             display: flex;
             align-items: flex-start;
-            gap: 0.9mm;
-            min-width: 0;
-            font-size: 2.55mm;
-            line-height: 1.02;
+            gap: 0.8mm;
+            color: #1d1206;
+            font-size: 2.2mm;
+            line-height: 1.03;
             font-weight: 900;
-        }
-        .student-detail--name{
-            font-size: 2.65mm;
-        }
-        .student-detail--name .student-detail-label{
-            min-width: 12.3mm;
-        }
-        .student-detail--name .student-detail-value{
-            font-size: 2.7mm;
+            text-transform: uppercase;
         }
         .student-detail-label{
             flex: 0 0 auto;
-            min-width: 12.0mm;
+            min-width: 11.9mm;
             white-space: nowrap;
         }
         .student-detail-value{
             flex: 1;
             min-width: 0;
             word-break: break-word;
+        }
+        .student-detail--address .student-detail-value{
+            display: flex;
+            flex-direction: column;
+            gap: 0.15mm;
+        }
+        .student-detail--address .student-detail-label{
+            min-width: 14.8mm;
+        }
+        .student-address-line{
+            display: block;
+            width: 100%;
+        }
+        .student-address-line--pin{
+            white-space: nowrap;
+        }
+        .student-detail--contact .student-detail-label{
+            min-width: 13.8mm;
         }
         .student-detail--inline{
             flex-wrap: nowrap;
@@ -454,28 +527,30 @@ if ($cardBackgroundUrl === '') {
         .student-detail-separator{
             flex: 0 0 auto;
             font-weight: 900;
-            padding: 0 0.25mm;
+            padding: 0 0.35mm;
         }
-        .student-detail--address{
-            gap: 0.8mm;
-        }
-        .student-detail--address .student-detail-label{
-            min-width: 14.3mm;
-        }
-        .student-detail--address .student-detail-value{
+        .card-footer{
+            margin-top: auto;
             display: flex;
-            flex-direction: column;
-            gap: 0.15mm;
+            justify-content: flex-end;
+            align-items: flex-end;
+            min-height: 6.1mm;
+            padding-top: 0.7mm;
         }
-        .student-address-line{
-            display: block;
-            width: 100%;
+        .sign-box{
+            width: auto;
+            flex: 0 0 auto;
+            text-align: right;
+            color: #1d1206;
         }
-        .student-address-line--pin{
+        .sign-line{
+            border-top: 0;
+            padding-top: 0;
+            font-size: 1.9mm;
+            font-weight: 800;
+            font-style: italic;
+            letter-spacing: 0.05mm;
             white-space: nowrap;
-        }
-        .student-detail--contact .student-detail-label{
-            min-width: 13.8mm;
         }
         @media print{
             body{
@@ -526,7 +601,7 @@ if ($cardBackgroundUrl === '') {
     <div class="preview-page">
         <div class="preview-toolbar no-print">
             <div>
-                <h1>{{ $previewTitle }}</h1>
+                <h1>Student ID Card Preview</h1>
                 <div class="meta">{{ $selectedCount }} card{{ ($selectedCount === 1) ? '' : 's' }} ready for printing @if($generatedAt) | Generated {{ $generatedAt }} @endif</div>
             </div>
             <div class="toolbar-actions">
@@ -541,7 +616,6 @@ if ($cardBackgroundUrl === '') {
                     @include('front.pages.student.id-card.partials.card', [
                         'student' => $student,
                         'brand' => $brand,
-                        'cardBackgroundUrl' => $cardBackgroundUrl,
                     ])
                 @endforeach
             </div>

@@ -169,7 +169,7 @@ $studentsTotal = (($students && method_exists($students, 'total')) ? $students->
                     <h5 class="mb-1 fw-bold text-slate-800">Search Filters</h5>
                     <div class="text-muted small">The Student ID field takes priority over Unit, Branch and Class selections.</div>
                 </div>
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Dependent dropdowns via AJAX</span>
+                <!-- <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Dependent dropdowns via AJAX</span> -->
             </div>
         </div>
         <div class="card-body">
@@ -236,7 +236,13 @@ $studentsTotal = (($students && method_exists($students, 'total')) ? $students->
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2">
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="clearSelectionBtn">Clear Selection</button>
-                            <button type="submit" class="btn btn-success btn-sm px-4" id="generateBtn" disabled>Generate ID Card</button>
+                            <button type="submit" class="btn btn-success btn-sm px-4" id="generateBtn" data-generate-card-btn disabled>Generate ID Card</button>
+                            <button type="submit"
+                                    class="btn btn-warning btn-sm px-4"
+                                    id="generateEscortBtn"
+                                    data-generate-card-btn
+                                    formaction="{{ route('student.escort-card.preview') }}"
+                                    disabled>Generate Escort Card</button>
                         </div>
                     </div>
                 </div>
@@ -354,7 +360,7 @@ $studentsTotal = (($students && method_exists($students, 'total')) ? $students->
     const previewForm = document.getElementById('idCardPreviewForm');
     const selectedIdsContainer = document.getElementById('selectedIdsContainer');
     const selectedCountBadge = document.getElementById('selectedCountBadge');
-    const generateBtn = document.getElementById('generateBtn');
+    const generateButtons = Array.from(document.querySelectorAll('[data-generate-card-btn]'));
     const clearBtn = document.getElementById('clearSelectionBtn');
     const selectAll = document.getElementById('selectAllStudents');
     const branchesUrl = @json(route('student.id-card.branches'));
@@ -403,9 +409,9 @@ $studentsTotal = (($students && method_exists($students, 'total')) ? $students->
         if (selectedCountBadge) {
             selectedCountBadge.textContent = String(count);
         }
-        if (generateBtn) {
-            generateBtn.disabled = count === 0;
-        }
+        generateButtons.forEach(function (button) {
+            button.disabled = count === 0;
+        });
     }
 
     function updateSelectAllState() {

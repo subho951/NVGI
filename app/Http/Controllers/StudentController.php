@@ -973,6 +973,8 @@ class StudentController extends Controller
             }
 
             $studentQuery = $this->buildStudentIdCardQuery();
+            $studentQuery->where('students.status', '=', 1);
+
             if ($data['search_student_id'] !== '') {
                 $escapedStudentId = addcslashes($data['search_student_id'], '\\%_');
                 $studentQuery->where('students.student_id_serial', 'like', '%' . $escapedStudentId . '%');
@@ -1023,18 +1025,40 @@ class StudentController extends Controller
     }
     public function generateIdCardPreview(Request $request)
     {
+        return $this->generateStudentCardPreview(
+            $request,
+            'student/generate-id-card',
+            'Student ID Card Preview',
+            'id-card-bg.jpeg',
+            'ID Card',
+            'ID Cards'
+        );
+    }
+    public function generateEscortCardPreview(Request $request)
+    {
+        return $this->generateStudentCardPreview(
+            $request,
+            'student/generate-id-card',
+            'Student Escort Card Preview',
+            'escort-card-bg.jpeg',
+            'Escort Card',
+            'Escort Cards'
+        );
+    }
+    private function generateStudentCardPreview(Request $request, string $redirectPath, string $previewTitle, string $backgroundFile, string $cardLabel, string $cardPluralLabel)
+    {
         $validator = Validator::make($request->all(), [
             'student_ids'   => 'required|array|min:1|max:200',
             'student_ids.*' => 'integer|distinct|exists:students,id',
         ]);
 
         if ($validator->fails()) {
-            return redirect('student/generate-id-card')->with('error_message', $validator->errors()->first());
+            return redirect($redirectPath)->with('error_message', $validator->errors()->first());
         }
 
         $selectedIds = array_values(array_unique(array_map('intval', (array)$request->input('student_ids', []))));
         if (count($selectedIds) === 0) {
-            return redirect('student/generate-id-card')->with('error_message', 'Please select at least one student to generate ID cards.');
+            return redirect($redirectPath)->with('error_message', 'Please select at least one student to generate ' . $cardPluralLabel . '.');
         }
 
         $studentsById = $this->buildStudentIdCardQuery()
@@ -1047,14 +1071,19 @@ class StudentController extends Controller
         })->filter()->values();
 
         if ($orderedStudents->count() !== count($selectedIds)) {
-            return redirect('student/generate-id-card')->with('error_message', 'One or more selected students are not available for ID card generation.');
+            return redirect($redirectPath)->with('error_message', 'One or more selected students are not available for ' . $cardLabel . ' generation.');
         }
 
-        $data['module']         = $this->data;
-        $data['brand']          = $this->getStudentIdCardBranding();
-        $data['students']       = $orderedStudents;
-        $data['selected_count'] = $orderedStudents->count();
-        $data['generated_at']   = Carbon::now()->format('d-m-Y h:i A');
+        $data['module']             = $this->data;
+        $data['brand']              = $this->getStudentIdCardBranding();
+        $data['students']           = $orderedStudents;
+        $data['selected_count']     = $orderedStudents->count();
+        $data['generated_at']       = Carbon::now()->format('d-m-Y h:i A');
+        $data['preview_title']      = $previewTitle;
+        // $data['card_background_url'] = config('constants.app_url') . config('constants.uploads_url_path') . 'student/' . $backgroundFile;
+        $data['card_background_url'] = config('constants.uploads_url') . 'student/' . $backgroundFile;
+
+        // $cardBackgroundUrl = config('constants.uploads_url') . 'student/id-card-bg.jpeg';
 
         return view('front.pages.student.id-card.preview', $data);
     }
@@ -1793,6 +1822,16 @@ class StudentController extends Controller
                         'students.student_id_serial',
                         'students.full_name',
                         'students.photo',
+                        'students.dob',
+                        'students.permanent_address',
+                        'students.permanent_pincode',
+                        'students.father_name',
+                        'students.mother_name',
+                        'students.emergency_name',
+                        'students.father_mobile',
+                        'students.mother_mobile',
+                        'students.emergency_phone',
+                        'students.blood_group',
                         'students.unit_id',
                         'students.branch_id',
                         'students.vhs_class_id',
