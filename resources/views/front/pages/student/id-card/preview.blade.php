@@ -112,7 +112,7 @@ if ($cardBackgroundUrl === '') {
         .sheet-grid{
             display: grid;
             grid-template-columns: repeat(3, 85.6mm);
-            gap: 1mm;
+            gap: 0mm;
             justify-content: center;
             align-content: start;
             width: fit-content;
