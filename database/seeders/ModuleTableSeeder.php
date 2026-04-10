@@ -74,6 +74,12 @@ class ModuleTableSeeder extends Seeder
             [
                 'name' => 'Lead Status'
             ],
+            [
+                'name' => 'Exams - Exam List'
+            ],
+            [
+                'name' => 'Exams - Student Marks Entry'
+            ],
         ]);
     }
 }

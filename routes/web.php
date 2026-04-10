@@ -13,6 +13,7 @@ use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\MediumController;
 use App\Http\Controllers\ModuleController;
+use App\Http\Controllers\ExamController;
 use App\Http\Controllers\KnowAboutController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\ReligionController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesPersonController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\ExamStudentMarkController;
 use App\Http\Controllers\Common\TableController;
 
 /* Front Panel */
@@ -167,6 +169,13 @@ use App\Http\Controllers\Common\TableController;
                     Route::get('class/delete/{id}', [ClassController::class, 'delete']);
                     Route::get('class/change-status/{id}', [ClassController::class, 'change_status']);
                 /* class */
+                /* exams */
+                    Route::match(['get', 'post'], 'exam/list', [ExamController::class, 'list']);
+                    Route::match(['get', 'post'], 'exam/edit/{id}', [ExamController::class, 'edit']);
+                    Route::get('exam/change-status/{id}', [ExamController::class, 'change_status']);
+                    Route::match(['get', 'post'], 'exam/marks', [ExamStudentMarkController::class, 'index'])->name('exam.marks.index');
+                    Route::post('exam/marks/save', [ExamStudentMarkController::class, 'save'])->name('exam.marks.save');
+                /* exams */
                 /* Religion */
                     Route::match(['get', 'post'], 'religion/list', [ReligionController::class, 'list']);
                     Route::match(['get', 'post'], 'religion/edit/{id}', [ReligionController::class, 'edit']);
