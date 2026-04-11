@@ -491,7 +491,7 @@ if ($cardBackgroundUrl === '') {
                 display: block;
             }
             .sheet-grid{
-                gap: 4mm;
+                gap: 0mm;
                 grid-template-columns: repeat(3, 85.6mm);
             }
             .id-card{
@@ -512,7 +512,7 @@ if ($cardBackgroundUrl === '') {
             .sheet-grid{
                 display: flex;
                 flex-direction: column;
-                gap: 14px;
+                gap: 2px;
                 transform: none;
                 width: 100%;
             }
