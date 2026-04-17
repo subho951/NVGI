@@ -282,7 +282,7 @@ class StudentController extends Controller
             $title                          = $this->data['title'].' Update';
             $page_name                      = 'student.add-edit';
             $data['row']                    = Student::where($this->data['primary_key'], '=', $id)->first();
-            // Helper::pr($data['row']);
+            
             $generalSetting                 = GeneralSetting::find('1');
             $data['action']                 = 'Edit';
 
@@ -407,6 +407,17 @@ class StudentController extends Controller
                     'photo'                     => $photo,
                     'updated_by'                => session('user_data')['user_id'],
                 ]);
+
+                /* student monthly fees schedule update */
+                    $monthly_fees = $request->monthly_fees;
+                    $student_id = $id;
+
+                    $fees_fields = [
+                        'payable_amount'    => $monthly_fees,
+                        'due_amount'        => $monthly_fees,
+                    ];
+                    StudentPayment::where('student_id', '=', $student_id)->update($fees_fields);
+                /* student monthly fees schedule update */
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
             }
 
@@ -1536,94 +1547,94 @@ class StudentController extends Controller
         }
     /* fees collection */
 
-        public function admissionFeesEntry(){
-            $students = Student::select(
-                                'id',
-                                'student_id_serial',
-                                'full_name',
-                                'unit_id',
-                                'branch_id',
-                                'admission_date',
-                                'admission_fees'
-                            )
-                            ->where(function ($query) {
-                                $query->where('status', '!=', 3)
-                                      ->orWhereNull('status');
-                            })
-                            ->where('admission_fees', '>', 0)
-                            ->orderBy('id', 'ASC')
-                            ->get();
+    public function admissionFeesEntry(){
+        $students = Student::select(
+                            'id',
+                            'student_id_serial',
+                            'full_name',
+                            'unit_id',
+                            'branch_id',
+                            'admission_date',
+                            'admission_fees'
+                        )
+                        ->where(function ($query) {
+                            $query->where('status', '!=', 3)
+                                    ->orWhereNull('status');
+                        })
+                        ->where('admission_fees', '>', 0)
+                        ->orderBy('id', 'ASC')
+                        ->get();
 
-            if (!$students || $students->isEmpty()) {
-                echo 'No students found';
-                return;
-            }
-
-            $createdCount = 0;
-            $skippedCount  = 0;
-            $updatedBy     = $this->currentUserId();
-
-            DB::transaction(function () use ($students, $updatedBy, &$createdCount, &$skippedCount) {
-                $lastTransaction = Transaction::withTrashed()->select('sl_no')
-                                        ->orderBy('sl_no', 'DESC')
-                                        ->lockForUpdate()
-                                        ->first();
-
-                $nextSlNo = (($lastTransaction) ? ((int)$lastTransaction->sl_no + 1) : 1);
-
-                foreach ($students as $student) {
-                    $admissionFeeAmount = number_format((float)$student->admission_fees, 2, '.', '');
-
-                    $alreadyExists = Transaction::where('fee_id', 0)
-                                                ->where('type', 'INCOME')
-                                                ->where('unit_id', (int)$student->unit_id)
-                                                ->where('branch_id', (int)$student->branch_id)
-                                                ->where('transaction_amount', $admissionFeeAmount)
-                                                ->where(function ($query) use ($student) {
-                                                    $query->where('particulars', 'like', '%'.$student->full_name.'%')
-                                                          ->orWhere('particulars', 'like', '%'.$student->student_id_serial.'%')
-                                                          ->orWhere('note', 'like', '%'.$student->full_name.'%')
-                                                          ->orWhere('note', 'like', '%'.$student->student_id_serial.'%');
-                                                })
-                                                ->exists();
-
-                    if ($alreadyExists) {
-                        $skippedCount++;
-                        continue;
-                    }
-
-                    $transactionTimestamp = (!empty($student->admission_date))
-                                                ? $student->admission_date . ' ' . date('H:i:s')
-                                                : date('Y-m-d H:i:s');
-                    $txnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
-
-                    $fields1 = [
-                        'sl_no'                  => $nextSlNo,
-                        'txn_no'                 => $txnNo,
-                        'fee_id'                 => 0,
-                        'unit_id'                => (int)$student->unit_id,
-                        'branch_id'              => (int)$student->branch_id,
-                        'payment_mode'           => 'Cash',
-                        'payment_reference'      => null,
-                        'type'                   => 'INCOME',
-                        'transaction_timestamp'  => $transactionTimestamp,
-                        'transaction_amount'     => $admissionFeeAmount,
-                        'particulars'            => 'Admission fee collected for '.$student->full_name.' ('.$student->student_id_serial.') during backfill',
-                        'note'                   => 'Admission fee backfill for '.$student->student_id_serial,
-                        'status'                 => 1,
-                        'created_by'             => $updatedBy,
-                        'updated_by'             => $updatedBy,
-                    ];
-
-                    Transaction::insert($fields1);
-
-                    $nextSlNo++;
-                    $createdCount++;
-                }
-            });
-
-            echo 'Admission fee transactions created: '.$createdCount.'. Skipped: '.$skippedCount.'.';
+        if (!$students || $students->isEmpty()) {
+            echo 'No students found';
+            return;
         }
+
+        $createdCount = 0;
+        $skippedCount  = 0;
+        $updatedBy     = $this->currentUserId();
+
+        DB::transaction(function () use ($students, $updatedBy, &$createdCount, &$skippedCount) {
+            $lastTransaction = Transaction::withTrashed()->select('sl_no')
+                                    ->orderBy('sl_no', 'DESC')
+                                    ->lockForUpdate()
+                                    ->first();
+
+            $nextSlNo = (($lastTransaction) ? ((int)$lastTransaction->sl_no + 1) : 1);
+
+            foreach ($students as $student) {
+                $admissionFeeAmount = number_format((float)$student->admission_fees, 2, '.', '');
+
+                $alreadyExists = Transaction::where('fee_id', 0)
+                                            ->where('type', 'INCOME')
+                                            ->where('unit_id', (int)$student->unit_id)
+                                            ->where('branch_id', (int)$student->branch_id)
+                                            ->where('transaction_amount', $admissionFeeAmount)
+                                            ->where(function ($query) use ($student) {
+                                                $query->where('particulars', 'like', '%'.$student->full_name.'%')
+                                                        ->orWhere('particulars', 'like', '%'.$student->student_id_serial.'%')
+                                                        ->orWhere('note', 'like', '%'.$student->full_name.'%')
+                                                        ->orWhere('note', 'like', '%'.$student->student_id_serial.'%');
+                                            })
+                                            ->exists();
+
+                if ($alreadyExists) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                $transactionTimestamp = (!empty($student->admission_date))
+                                            ? $student->admission_date . ' ' . date('H:i:s')
+                                            : date('Y-m-d H:i:s');
+                $txnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
+
+                $fields1 = [
+                    'sl_no'                  => $nextSlNo,
+                    'txn_no'                 => $txnNo,
+                    'fee_id'                 => 0,
+                    'unit_id'                => (int)$student->unit_id,
+                    'branch_id'              => (int)$student->branch_id,
+                    'payment_mode'           => 'Cash',
+                    'payment_reference'      => null,
+                    'type'                   => 'INCOME',
+                    'transaction_timestamp'  => $transactionTimestamp,
+                    'transaction_amount'     => $admissionFeeAmount,
+                    'particulars'            => 'Admission fee collected for '.$student->full_name.' ('.$student->student_id_serial.') during backfill',
+                    'note'                   => 'Admission fee backfill for '.$student->student_id_serial,
+                    'status'                 => 1,
+                    'created_by'             => $updatedBy,
+                    'updated_by'             => $updatedBy,
+                ];
+
+                Transaction::insert($fields1);
+
+                $nextSlNo++;
+                $createdCount++;
+            }
+        });
+
+        echo 'Admission fee transactions created: '.$createdCount.'. Skipped: '.$skippedCount.'.';
+    }
 
     private function getFinancialSessionData($sessionId = null)
     {
