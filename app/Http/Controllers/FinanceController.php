@@ -310,9 +310,9 @@ class FinanceController extends Controller
             return redirect($this->data['controller_route'] . "/list")->with('error_message', 'Transaction not found !!!');
         }
 
-        if (!$this->isEditableTransaction($data['row'])) {
-            return redirect($this->data['controller_route'] . "/list")->with('error_message', 'This transaction cannot be edited !!!');
-        }
+        // if (!$this->isEditableTransaction($data['row'])) {
+        //     return redirect($this->data['controller_route'] . "/list")->with('error_message', 'This transaction cannot be edited !!!');
+        // }
 
         $data['users'] = User::select('id', 'first_name', 'last_name')
                                 ->where('status', '!=', 3)
