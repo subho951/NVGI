@@ -511,13 +511,13 @@ $controllerRoute = $module['controller_route'];
                                            title="Invoice">
                                             <i class="fa-solid fa-file-invoice-dollar"></i>
                                         </a>
-                                        <?php if($row->can_edit){?>
+                                        <?php //if($row->can_edit){?>
                                             <a href="{{ url($controllerRoute.'/edit/'.$encodedId) }}"
                                             class="action-link"
                                             title="Edit">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                        <?php }?>
+                                        <?php //}?>
                                         <!-- <a href="javascript:void(0);"
                                            onclick="showConfirmBox('{{ $encodedId }}', '{{ $controllerRoute.'/delete/' }}', 'Are you sure you want to delete this transaction?')"
                                            class="action-link text-danger"
