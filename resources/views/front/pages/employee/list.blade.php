@@ -463,6 +463,7 @@ use App\Helpers\Helper;
 
 $controllerRoute = $module['controller_route'];
 $employeeRows = collect($rows ?? []);
+$hasEmployeeRows = $employeeRows->isNotEmpty();
 $employeeStats = [
     'total' => $employeeRows->count(),
     'active' => $employeeRows->where('status', 1)->count(),
@@ -587,29 +588,30 @@ $employeeStats = [
             </div>
         </div>
         <div class="employee-table-wrap">
-            <div class="table-responsive">
-                <table id="example" class="table table-hover align-middle employee-table datatable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Employee No</th>
-                            <th>Name</th>
-                            <th>Gender</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Branches</th>
-                            <th>DOB</th>
-                            <th>Age</th>
-                            <th>DOJ</th>
-                            <th>Salary</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (count($rows) > 0) {
+            @if ($hasEmployeeRows)
+                <div class="table-responsive">
+                    <table id="example" class="table table-hover align-middle employee-table datatable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Employee No</th>
+                                <th>Name</th>
+                                <th>Gender</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Branches</th>
+                                <th>DOB</th>
+                                <th>Age</th>
+                                <th>DOJ</th>
+                                <th>Salary</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
                             $sl = 1;
-                            foreach ($rows as $row) {
+                            foreach ($employeeRows as $row) {
                                 $encodedId = Helper::encoded($row->id);
                                 $statusUrl = $controllerRoute . '/change-status/';
                                 $editUrl = $controllerRoute . '/edit/' . $encodedId;
@@ -656,24 +658,20 @@ $employeeStats = [
                                         <?php } ?>
                                     </td>
                                 </tr>
-                            <?php }
-                        } else { ?>
-                            <tr>
-                                <td colspan="13">
-                                    <div class="employee-empty-state">
-                                        <i class="fa-regular fa-folder-open"></i>
-                                        <h6>No employee records yet</h6>
-                                        <p class="mb-3">Add the first employee to start building the directory.</p>
-                                        <a href="<?= url($controllerRoute . '/add') ?>" class="btn btn-employee-primary">
-                                            <i class="fa-solid fa-plus me-1"></i> Add Employee
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php } ?>
-                    </tbody>
-                </table>
-            </div>
+                            <?php } ?>
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="employee-empty-state">
+                    <i class="fa-regular fa-folder-open"></i>
+                    <h6>No employee records yet</h6>
+                    <p class="mb-3">Add the first employee to start building the directory.</p>
+                    <a href="<?= url($controllerRoute . '/add') ?>" class="btn btn-employee-primary">
+                        <i class="fa-solid fa-plus me-1"></i> Add Employee
+                    </a>
+                </div>
+            @endif
         </div>
     </div>
 </div>
