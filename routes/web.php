@@ -19,6 +19,7 @@ use App\Http\Controllers\ReligionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesPersonController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\Common\TableController;
 
@@ -196,6 +197,13 @@ use App\Http\Controllers\Common\TableController;
                 Route::post('student/fees-collection/due-report', [StudentController::class, 'feesCollectionDueReport'])->name('student.fees-collection.due-report');
                 Route::match(['get'], 'student/fees-entry', [StudentController::class, 'feesEntry']);
             /* student */
+            /* employee */
+                Route::match(['get', 'post'], 'employee/list', [EmployeeController::class, 'list']);
+                Route::match(['get', 'post'], 'employee/add', [EmployeeController::class, 'add']);
+                Route::match(['get', 'post'], 'employee/edit/{id}', [EmployeeController::class, 'edit']);
+                Route::get('employee/delete/{id}', [EmployeeController::class, 'delete']);
+                Route::get('employee/change-status/{id}', [EmployeeController::class, 'change_status']);
+            /* employee */
             /* CRM */
                 /* sales person */
                     Route::match(['get', 'post'], 'sales-person/list', [SalesPersonController::class, 'list']);

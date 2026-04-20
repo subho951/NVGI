@@ -1,0 +1,396 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Helpers\Helper;
+use App\Models\Branch;
+use App\Models\Employee;
+use App\Services\SiteAuthService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
+use Illuminate\Validation\Rule;
+
+class EmployeeController extends Controller
+{
+    protected $siteAuthService;
+    protected $data;
+
+    public function __construct()
+    {
+        $this->data = array(
+            'title'             => 'Employee',
+            'controller'        => 'EmployeeController',
+            'controller_route'  => 'employee',
+            'primary_key'       => 'id',
+        );
+        $this->siteAuthService = new SiteAuthService();
+    }
+
+    /* list */
+    public function list(Request $request)
+    {
+        $data['module'] = $this->data;
+        $title = $this->data['title'] . ' List';
+        $page_name = 'employee.list';
+
+        $branchMap = $this->getBranchMap();
+        $data['branches'] = Branch::select('id', 'name')
+                                ->where('status', '!=', 3)
+                                ->orderBy('name', 'ASC')
+                                ->get();
+        $data['rows'] = Employee::where('status', '!=', 3)
+                            ->orderBy('id', 'DESC')
+                            ->get()
+                            ->map(function ($row) use ($branchMap) {
+                                $row->employee_name = $this->buildEmployeeName($row);
+
+                                $branchIds = json_decode((string)$row->branch, true);
+                                if (!is_array($branchIds)) {
+                                    $branchIds = [];
+                                }
+                                $branchIds = array_values(array_unique(array_filter(array_map('intval', $branchIds))));
+                                $row->branch_ids = $branchIds;
+                                $row->branch_names = collect($branchIds)
+                                                    ->map(function ($branchId) use ($branchMap) {
+                                                        return $branchMap[$branchId] ?? null;
+                                                    })
+                                                    ->filter()
+                                                    ->values()
+                                                    ->all();
+
+                                return $row;
+                            });
+
+        $data['action'] = 'Add';
+        $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+        return view('front.pages.' . $page_name, $data);
+    }
+    /* list */
+
+    /* add */
+    public function add(Request $request)
+    {
+        $data['module'] = $this->data;
+        $title = $this->data['title'] . ' Add';
+        $page_name = 'employee.add-edit';
+        $data['row'] = [];
+        $data['action'] = 'Add';
+        $data['branchOptions'] = Branch::select('id', 'name', 'unit_id')
+                                    ->where('status', '!=', 3)
+                                    ->orderBy('name', 'ASC')
+                                    ->get();
+        $data['employee_no_preview'] = $this->generateEmployeeNo();
+
+        if ($request->isMethod('post')) {
+            $request->validate($this->employeeValidationRules());
+
+            $userId = $this->currentUserId();
+            $nextSlNo = $this->getNextEmployeeSlNo();
+            $employeeNo = $this->formatEmployeeNo($nextSlNo);
+            $branchIds = $this->normalizeBranchIds($request->input('branch', []));
+            $age = $this->calculateAge($request->dob);
+            $imagePath = null;
+
+            try {
+                if ($request->hasFile('image')) {
+                    $imagePath = $this->storeEmployeeImage($request->file('image'));
+                }
+
+                Employee::create([
+                    'sl_no'         => $nextSlNo,
+                    'employee_no'   => $employeeNo,
+                    'first_name'    => trim((string)$request->first_name),
+                    'middle_name'   => $this->normalizeNullableString($request->middle_name),
+                    'last_name'     => trim((string)$request->last_name),
+                    'email'         => $this->normalizeNullableString($request->email),
+                    'phone'         => $this->normalizeNullableString($request->phone),
+                    'address'       => $this->normalizeNullableString($request->address),
+                    'pincode'       => $this->normalizeNullableString($request->pincode),
+                    'dob'           => $request->dob,
+                    'age'           => $age,
+                    'doj'           => $request->doj,
+                    'image'         => $imagePath,
+                    'salary'        => (float)$request->salary,
+                    'branch'        => json_encode($branchIds),
+                    'gender'        => $this->normalizeNullableString($request->gender),
+                    'status'        => 1,
+                    'created_by'    => $userId,
+                    'updated_by'    => $userId,
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+                if (!empty($imagePath)) {
+                    $this->deleteEmployeeImage($imagePath);
+                }
+
+                return redirect()->back()->withInput()->with('error_message', 'Unable to save employee.');
+            }
+
+            return redirect($this->data['controller_route'] . '/list')->with('success_message', $this->data['title'] . ' added successfully !!!');
+        }
+
+        $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+        return view('front.pages.' . $page_name, $data);
+    }
+    /* add */
+
+    /* edit */
+    public function edit(Request $request, $id)
+    {
+        $data['module'] = $this->data;
+        $id = Helper::decoded($id);
+        $title = $this->data['title'] . ' Update';
+        $page_name = 'employee.add-edit';
+        $data['row'] = Employee::where($this->data['primary_key'], '=', $id)
+                            ->where('status', '!=', 3)
+                            ->first();
+        $data['action'] = 'Edit';
+        $data['branchOptions'] = Branch::select('id', 'name', 'unit_id')
+                                    ->where('status', '!=', 3)
+                                    ->orderBy('name', 'ASC')
+                                    ->get();
+
+        if (!$data['row']) {
+            return redirect($this->data['controller_route'] . '/list')->with('error_message', 'Employee not found !!!');
+        }
+
+        if ($request->isMethod('post')) {
+            $request->validate($this->employeeValidationRules($data['row']->id));
+
+            $userId = $this->currentUserId();
+            $branchIds = $this->normalizeBranchIds($request->input('branch', []));
+            $age = $this->calculateAge($request->dob);
+            $oldImage = $data['row']->image;
+            $newImagePath = $oldImage;
+
+            try {
+                if ($request->hasFile('image')) {
+                    $newImagePath = $this->storeEmployeeImage($request->file('image'));
+                }
+
+                $data['row']->update([
+                    'first_name'    => trim((string)$request->first_name),
+                    'middle_name'   => $this->normalizeNullableString($request->middle_name),
+                    'last_name'     => trim((string)$request->last_name),
+                    'email'         => $this->normalizeNullableString($request->email),
+                    'phone'         => $this->normalizeNullableString($request->phone),
+                    'address'       => $this->normalizeNullableString($request->address),
+                    'pincode'       => $this->normalizeNullableString($request->pincode),
+                    'dob'           => $request->dob,
+                    'age'           => $age,
+                    'doj'           => $request->doj,
+                    'image'         => $newImagePath,
+                    'salary'        => (float)$request->salary,
+                    'branch'        => json_encode($branchIds),
+                    'gender'        => $this->normalizeNullableString($request->gender),
+                    'updated_by'    => $userId,
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+                if ($request->hasFile('image') && !empty($newImagePath) && $newImagePath !== $oldImage) {
+                    $this->deleteEmployeeImage($newImagePath);
+                }
+
+                return redirect()->back()->withInput()->with('error_message', 'Unable to update employee.');
+            }
+
+            if ($request->hasFile('image') && !empty($oldImage) && $oldImage !== $newImagePath) {
+                $this->deleteEmployeeImage($oldImage);
+            }
+
+            return redirect($this->data['controller_route'] . '/list')->with('success_message', $this->data['title'] . ' updated successfully !!!');
+        }
+
+        $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
+        return view('front.pages.' . $page_name, $data);
+    }
+    /* edit */
+
+    /* delete */
+    public function delete(Request $request, $id)
+    {
+        $id = Helper::decoded($id);
+
+        $employee = Employee::where($this->data['primary_key'], '=', $id)
+                        ->where('status', '!=', 3)
+                        ->first();
+
+        if (!$employee) {
+            return redirect($this->data['controller_route'] . '/list')->with('error_message', 'Employee not found !!!');
+        }
+
+        if (!empty($employee->image)) {
+            $this->deleteEmployeeImage($employee->image);
+        }
+
+        $employee->update([
+            'status'     => 3,
+            'deleted_at' => date('Y-m-d H:i:s'),
+            'updated_by' => $this->currentUserId(),
+        ]);
+
+        return redirect($this->data['controller_route'] . '/list')->with('success_message', $this->data['title'] . ' deleted successfully !!!');
+    }
+    /* delete */
+
+    /* change status */
+    public function change_status(Request $request, $id)
+    {
+        $id = Helper::decoded($id);
+
+        $employee = Employee::where($this->data['primary_key'], '=', $id)
+                        ->where('status', '!=', 3)
+                        ->first();
+
+        if (!$employee) {
+            return redirect($this->data['controller_route'] . '/list')->with('error_message', 'Employee not found !!!');
+        }
+
+        if ((int)$employee->status === 1) {
+            $employee->status = 0;
+            $msg = 'deactivated';
+        } else {
+            $employee->status = 1;
+            $msg = 'activated';
+        }
+
+        $employee->updated_by = $this->currentUserId();
+        $employee->save();
+
+        return redirect($this->data['controller_route'] . '/list')->with('success_message', $this->data['title'] . ' ' . $msg . ' successfully !!!');
+    }
+    /* change status */
+
+    private function employeeValidationRules($employeeId = null)
+    {
+        $emailRule = Rule::unique('employees', 'email')->whereNull('deleted_at');
+        $phoneRule = Rule::unique('employees', 'phone')->whereNull('deleted_at');
+
+        if ($employeeId) {
+            $emailRule->ignore($employeeId);
+            $phoneRule->ignore($employeeId);
+        }
+
+        return [
+            'first_name'    => 'required|string|max:255',
+            'middle_name'   => 'nullable|string|max:255',
+            'last_name'     => 'required|string|max:255',
+            'email'         => ['nullable', 'email', 'max:255', $emailRule],
+            'phone'         => ['nullable', 'digits:10', $phoneRule],
+            'address'       => 'nullable|string|max:1000',
+            'pincode'       => 'nullable|digits:6',
+            'dob'           => 'required|date|before_or_equal:today',
+            'doj'           => 'required|date|before_or_equal:today',
+            'salary'        => 'required|numeric|min:0',
+            'gender'        => 'nullable|in:Male,Female,Others',
+            'branch'        => 'required|array|min:1',
+            'branch.*'      => [
+                'integer',
+                Rule::exists('branches', 'id')->where(function ($query) {
+                    $query->where('status', '!=', 3);
+                }),
+            ],
+            'image'         => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,svg,ico,avif',
+        ];
+    }
+
+    private function generateEmployeeNo()
+    {
+        return $this->formatEmployeeNo($this->getNextEmployeeSlNo());
+    }
+
+    private function formatEmployeeNo($slNo)
+    {
+        return 'NVGI-E-' . str_pad((string)$slNo, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function getNextEmployeeSlNo()
+    {
+        return ((int)Employee::max('sl_no')) + 1;
+    }
+
+    private function calculateAge($dob)
+    {
+        return Carbon::parse($dob)->age;
+    }
+
+    private function normalizeBranchIds($branches = [])
+    {
+        if (!is_array($branches)) {
+            $branches = [];
+        }
+
+        $branchIds = array_map('intval', $branches);
+        $branchIds = array_values(array_filter($branchIds));
+
+        return array_values(array_unique($branchIds));
+    }
+
+    private function normalizeNullableString($value)
+    {
+        $value = trim((string)$value);
+        return ($value === '') ? null : $value;
+    }
+
+    private function storeEmployeeImage($file)
+    {
+        $uploadPath = public_path('uploads/employee');
+        if (!File::exists($uploadPath)) {
+            File::makeDirectory($uploadPath, 0755, true, true);
+        }
+
+        $imageName = $file->getClientOriginalName();
+        $uploadedFile = $this->upload_single_file('image', $imageName, 'employee', 'image');
+
+        if (!$uploadedFile['status']) {
+            throw new \RuntimeException($uploadedFile['message']);
+        }
+
+        return '/uploads/employee/' . $uploadedFile['newFilename'];
+    }
+
+    private function deleteEmployeeImage($imagePath)
+    {
+        $filePath = public_path(ltrim((string)$imagePath, '/\\'));
+
+        if (File::exists($filePath)) {
+            File::delete($filePath);
+        }
+    }
+
+    private function getBranchMap()
+    {
+        return Branch::select('id', 'name')
+                ->where('status', '!=', 3)
+                ->orderBy('name', 'ASC')
+                ->get()
+                ->pluck('name', 'id')
+                ->toArray();
+    }
+
+    private function buildEmployeeName($row)
+    {
+        $parts = [
+            trim((string)$row->first_name),
+            trim((string)$row->middle_name),
+            trim((string)$row->last_name),
+        ];
+
+        $parts = array_values(array_filter($parts, function ($value) {
+            return $value !== '';
+        }));
+
+        return trim(implode(' ', $parts));
+    }
+
+    private function currentUserId()
+    {
+        if (session()->has('user_data') && array_key_exists('user_id', session('user_data'))) {
+            return (int)session('user_data')['user_id'];
+        }
+
+        return ((Auth::check()) ? (int)Auth::id() : 0);
+    }
+}

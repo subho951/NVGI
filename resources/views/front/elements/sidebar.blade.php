@@ -276,6 +276,15 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
         </li>
     <?php } ?>
 
+    <?php if(in_array(26, $moduleIds)){?>
+        <!-- Employees -->
+        <li class="nav-item">
+            <a href="<?= url('employee/list') ?>" class="nav-link <?= (($pageSegment == 'employee') ? 'active-link' : '') ?>">
+                <i class="fa-solid fa-user-tie"></i> <span>Employees</span>
+            </a>
+        </li>
+    <?php } ?>
+
     <?php if(in_array(5, $moduleIds)){?>
         <!-- Settings -->
         <li class="nav-item">

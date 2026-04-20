@@ -12,6 +12,7 @@ $pageSegment  = $pageName[0];
 
 <head>
   @include('front/elements/afterhead')
+  @yield('styles')
 </head>
 
 <body>
