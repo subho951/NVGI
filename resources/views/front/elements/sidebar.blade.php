@@ -164,7 +164,7 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                 <?php } ?>
             </ul>
         </li>
-    <?php } ?>
+    <?php } ?>    
 
     <?php if((in_array(15, $moduleIds)) || (in_array(16, $moduleIds)) || (in_array(19, $moduleIds))){?>
         <!-- Students -->
@@ -289,6 +289,38 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
             <a href="<?= url('employee/list') ?>" class="nav-link <?= (($pageSegment == 'employee') ? 'active-link' : '') ?>">
                 <i class="fa-solid fa-user-tie"></i> <span>Employees</span>
             </a>
+        </li>
+    <?php }?>
+
+    <?php if((in_array(24, $moduleIds)) || (in_array(25, $moduleIds))){?>
+        <!-- Exams -->
+        <li class="nav-item">
+            <a class="nav-link d-flex justify-content-between align-items-center <?= (($pageSegment == 'exam') ? 'active-link' : '') ?>"
+                data-bs-toggle="collapse"
+                href="#examsMenu"
+                role="button"
+                aria-expanded="<?= (($pageSegment == 'exam') ? 'true' : 'false') ?>"
+                aria-controls="examsMenu">
+                <span><i class="fa-solid fa-file-lines"></i> Exams</span>
+                <i class="fa-solid fa-angle-down menu-arrow"></i>
+            </a>
+
+            <ul class="collapse list-unstyled ps-3 <?= (($pageSegment == 'exam') ? 'show' : '') ?>" id="examsMenu">
+                <?php if(in_array(24, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('exam/list') ?>" class="nav-link <?= (($pageSegment == 'exam' && in_array($pageFunction, ['list', 'edit'])) ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Exam List</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(24, $moduleIds) || in_array(25, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('exam/marks') ?>" class="nav-link <?= (($pageSegment == 'exam' && $pageFunction == 'marks') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Exam Marks</span>
+                        </a>
+                    </li>
+                <?php } ?>
+            </ul>
         </li>
     <?php } ?>
 
