@@ -20,6 +20,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesPersonController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\Common\TableController;
 
@@ -174,6 +175,12 @@ use App\Http\Controllers\Common\TableController;
                     Route::get('religion/delete/{id}', [ReligionController::class, 'delete']);
                     Route::get('religion/change-status/{id}', [ReligionController::class, 'change_status']);
                 /* Religion */
+                /* bank accounts */
+                    Route::match(['get', 'post'], 'bank-account/list', [BankAccountController::class, 'list']);
+                    Route::match(['get', 'post'], 'bank-account/add', [BankAccountController::class, 'add']);
+                    Route::match(['get', 'post'], 'bank-account/edit/{id}', [BankAccountController::class, 'edit']);
+                    Route::get('bank-account/change-status/{id}', [BankAccountController::class, 'change_status']);
+                /* bank accounts */
             /* masters */
             /* student */
                 Route::match(['get', 'post'], 'student/list', [StudentController::class, 'list']);

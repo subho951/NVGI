@@ -74,6 +74,27 @@ class ModuleTableSeeder extends Seeder
             [
                 'name' => 'Lead Status'
             ],
+            [
+                'name' => 'Finance - Add New Transactions'
+            ],
+            [
+                'name' => 'Finance - Ledgers'
+            ],
+            [
+                'name' => 'Students - Generate ID & ESCORT Card'
+            ],
+            [
+                'name' => 'Exams - Exam List'
+            ],
+            [
+                'name' => 'Exams - Exam Marks'
+            ],
+            [
+                'name' => 'Employees'
+            ],
+            [
+                'name' => 'Masters - Bank Accounts'
+            ],
         ]);
     }
 }
