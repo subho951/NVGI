@@ -133,8 +133,8 @@ class BankAccountController extends Controller
         return [
             'bank_name' => ['required', 'string', 'max:255'],
             'bank_branch' => ['required', 'string', 'max:255'],
-            'account_no' => ['required', 'string', 'max:50', $accountNoRule],
-            'ifsc_code' => ['required', 'string', 'size:11', 'regex:/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/'],
+            // 'account_no' => ['required', 'string', 'max:50', $accountNoRule],
+            // 'ifsc_code' => ['required', 'string', 'size:11', 'regex:/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/'],
             'account_type' => ['required', Rule::in(['CURRENT', 'SAVINGS'])],
         ];
     }
@@ -144,7 +144,7 @@ class BankAccountController extends Controller
         return [
             'bank_name' => trim((string) $request->bank_name),
             'bank_branch' => trim((string) $request->bank_branch),
-            'account_no' => preg_replace('/\s+/', '', trim((string) $request->account_no)),
+            'account_no' => trim((string) $request->account_no),
             'ifsc_code' => strtoupper(trim((string) $request->ifsc_code)),
             'account_type' => strtoupper(trim((string) $request->account_type)),
         ];

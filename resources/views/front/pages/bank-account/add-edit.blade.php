@@ -205,7 +205,7 @@ $accountType = old('account_type', (($isEdit) ? $row->account_type : ''));
 
                 <div class="col-md-6">
                     <label for="account_no" class="form-label">Account Number <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" name="account_no" id="account_no" placeholder="Enter account number" value="{{ $accountNo }}" required>
+                    <input type="text" class="form-control" name="account_no" id="account_no" placeholder="Enter account number" value="{{ $accountNo }}">
                 </div>
 
                 <div class="col-md-6">
@@ -218,8 +218,7 @@ $accountType = old('account_type', (($isEdit) ? $row->account_type : ''));
                            value="{{ $ifscCode }}"
                            style="text-transform: uppercase;"
                            oninput="this.value = this.value.toUpperCase()"
-                           maxlength="11"
-                           required>
+                           maxlength="11">
                 </div>
 
                 <div class="col-12 d-flex flex-wrap gap-2 justify-content-end mt-2">
