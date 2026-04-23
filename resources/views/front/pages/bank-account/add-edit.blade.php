@@ -204,12 +204,12 @@ $accountType = old('account_type', (($isEdit) ? $row->account_type : ''));
                 </div>
 
                 <div class="col-md-6">
-                    <label for="account_no" class="form-label">Account Number <span class="text-danger">*</span></label>
+                    <label for="account_no" class="form-label">Account Number</label>
                     <input type="text" class="form-control" name="account_no" id="account_no" placeholder="Enter account number" value="{{ $accountNo }}">
                 </div>
 
                 <div class="col-md-6">
-                    <label for="ifsc_code" class="form-label">IFSC Code <span class="text-danger">*</span></label>
+                    <label for="ifsc_code" class="form-label">IFSC Code</label>
                     <input type="text"
                            class="form-control"
                            name="ifsc_code"
