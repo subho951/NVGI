@@ -649,20 +649,20 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                 </div>
                                 <div class="col-md-4">
                                     <label for="bank_name" class="form-label">Bank Name</label>
-                                    <input type="text" class="form-control" name="bank_name" id="bank_name" placeholder="Aadhar No" value="<?= e($bank_name) ?>">
+                                    <input type="text" class="form-control" name="bank_name" id="bank_name" placeholder="Bank Name" value="<?= e($bank_name) ?>">
                                 </div>
                                 <div class="col-md-4">
                                     <label for="bank_branch" class="form-label">Bank Branch</label>
-                                    <input type="text" class="form-control" name="bank_branch" id="bank_branch" placeholder="Aadhar No" value="<?= e($bank_branch) ?>">
+                                    <input type="text" class="form-control" name="bank_branch" id="bank_branch" placeholder="Bank Branch" value="<?= e($bank_branch) ?>">
                                 </div>
 
                                 <div class="col-md-4">
                                     <label for="account_no" class="form-label">Account No.</label>
-                                    <input type="text" class="form-control" name="account_no" id="account_no" placeholder="Aadhar No" value="<?= e($account_no) ?>">
+                                    <input type="text" class="form-control" name="account_no" id="account_no" placeholder="Account No." value="<?= e($account_no) ?>">
                                 </div>
                                 <div class="col-md-4">
                                     <label for="ifsc_code" class="form-label">IFSC Code</label>
-                                    <input type="text" class="form-control" name="ifsc_code" id="ifsc_code" placeholder="Aadhar No" value="<?= e($ifsc_code) ?>">
+                                    <input type="text" class="form-control" name="ifsc_code" id="ifsc_code" placeholder="IFSC Code" value="<?= e($ifsc_code) ?>">
                                 </div>
                                 <div class="col-md-4">
                                     <label for="account_type" class="form-label">Account Type</label>
