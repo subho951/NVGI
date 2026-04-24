@@ -107,6 +107,10 @@ if($row){
     $books_fee = '';
     $uniform_fee = '';
 }
+
+$admissionPaymentMode = old('payment_mode', '');
+$admissionBankAccountId = old('bank_account_id', '');
+$admissionPaymentReference = old('payment_reference', '');
 ?>
 
 <h6 class="text-center alert alert-info alert-sm py-2 px-2"><?= $action ?> <?= $module['title'] ?></h6>
@@ -345,7 +349,44 @@ if($row){
         <input type="text" class="form-control form-control-sm" name="uniform_fee" id="uniform_fee" placeholder="Uniform Fee" value="<?= $uniform_fee ?>">
     </div>
 
-    <div class="col-md-6">
+    @if($action === 'Add')
+        <div class="col-md-3">
+            <label for="payment_mode">Payment Mode <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" name="payment_mode" id="payment_mode" required>
+                <option value="" {{ (($admissionPaymentMode === '') ? 'selected' : '') }}>Select Payment Mode</option>
+                <option value="Cash" {{ (($admissionPaymentMode === 'Cash') ? 'selected' : '') }}>Cash</option>
+                <option value="Bank" {{ (($admissionPaymentMode === 'Bank') ? 'selected' : '') }}>Bank</option>
+            </select>
+        </div>
+
+        <div class="col-md-3 payment-bank-group {{ (($admissionPaymentMode !== 'Bank') ? 'd-none' : '') }}" id="payment_bank_group">
+            <label for="bank_account_id">Bank Account <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" name="bank_account_id" id="bank_account_id" {{ (($admissionPaymentMode === 'Bank') ? 'required' : 'disabled') }}>
+                <option value="" {{ (($admissionBankAccountId === '') ? 'selected' : '') }}>Select Bank Account</option>
+                @forelse($bankAccounts as $bankAccountRow)
+                    <option value="{{ $bankAccountRow->id }}" {{ ((string)$admissionBankAccountId === (string)$bankAccountRow->id) ? 'selected' : '' }}>
+                        {{ $bankAccountRow->bank_name }}{{ ($bankAccountRow->account_no != '') ? ' (' . $bankAccountRow->account_no . ')' : '' }}
+                    </option>
+                @empty
+                    <option value="">No bank accounts available</option>
+                @endforelse
+            </select>
+        </div>
+
+        <div class="col-md-3 payment-reference-group {{ (($admissionPaymentMode !== 'Bank') ? 'd-none' : '') }}" id="payment_reference_group">
+            <label for="payment_reference">Payment Reference <span class="text-danger">*</span></label>
+            <input type="text"
+                   class="form-control form-control-sm"
+                   name="payment_reference"
+                   id="payment_reference"
+                   value="{{ $admissionPaymentReference }}"
+                   placeholder="UTR / cheque number / transaction ID"
+                   autocomplete="off"
+                   {{ (($admissionPaymentMode === 'Bank') ? 'required' : 'disabled') }}>
+        </div>
+    @endif
+
+    <div class="col-md-3">
         <label for="photo">Upload Photo (jpg or png)</label>
         <input type="file" class="form-control form-control-sm" name="photo" id="photo" placeholder="Upload Photo (jpg or png)">
         <p class="mt-2">
@@ -416,6 +457,40 @@ if($row){
                 $('#branch_id .branch').hide();
                 $('#branch_id .unit' + unit_id).show();
             });
+
+            if ($('#payment_mode').length) {
+                function toggleAdmissionPaymentFields(paymentMode) {
+                    var bankGroup = $('#payment_bank_group');
+                    var bankInput = $('#bank_account_id');
+                    var referenceGroup = $('#payment_reference_group');
+                    var referenceInput = $('#payment_reference');
+                    var shouldShow = (paymentMode === 'Bank');
+
+                    if (shouldShow) {
+                        bankGroup.removeClass('d-none');
+                        bankInput.prop('disabled', false);
+                        bankInput.prop('required', true);
+
+                        referenceGroup.removeClass('d-none');
+                        referenceInput.prop('disabled', false);
+                        referenceInput.prop('required', true);
+                    } else {
+                        bankGroup.addClass('d-none');
+                        bankInput.prop('disabled', true);
+                        bankInput.prop('required', false);
+
+                        referenceGroup.addClass('d-none');
+                        referenceInput.prop('disabled', true);
+                        referenceInput.prop('required', false);
+                    }
+                }
+
+                toggleAdmissionPaymentFields($('#payment_mode').val());
+
+                $('#payment_mode').on('change', function () {
+                    toggleAdmissionPaymentFields($(this).val());
+                });
+            }
         })
     </script>
 @endsection

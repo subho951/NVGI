@@ -296,6 +296,30 @@ $controllerRoute = $module['controller_route'];
                                 <option value="">Select</option>
                             </select>
                         </div>
+                        <div class="col-md-6 payment-bank-group d-none" id="promote_bank_account_group">
+                            <label for="promote_bank_account_id" class="form-label">Bank Account <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" name="bank_account_id" id="promote_bank_account_id" disabled>
+                                <option value="">Select Bank Account</option>
+                                @forelse($bankAccounts as $bankAccountRow)
+                                    <option value="{{ $bankAccountRow->id }}" {{ ((string)old('bank_account_id') === (string)$bankAccountRow->id) ? 'selected' : '' }}>
+                                        {{ $bankAccountRow->bank_name }}{{ ($bankAccountRow->account_no != '') ? ' (' . $bankAccountRow->account_no . ')' : '' }}
+                                    </option>
+                                @empty
+                                    <option value="">No bank accounts available</option>
+                                @endforelse
+                            </select>
+                        </div>
+                        <div class="col-md-6 payment-reference-group d-none" id="promote_payment_reference_group">
+                            <label for="promote_payment_reference" class="form-label">Payment Reference <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control form-control-sm"
+                                   name="payment_reference"
+                                   id="promote_payment_reference"
+                                   value="{{ old('payment_reference') }}"
+                                   placeholder="UTR / cheque number / transaction ID"
+                                   autocomplete="off"
+                                   disabled>
+                        </div>
                         <div class="col-12">
                             <div class="alert alert-info py-2 mb-0">
                                 The promoted class options are based on the student unit.
@@ -348,6 +372,30 @@ $controllerRoute = $module['controller_route'];
                         <div class="col-md-4">
                             <label for="special_fee_amount" class="form-label">Fee Amount <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="special_fee_amount" id="special_fee_amount" value="{{ old('special_fee_amount') }}" required>
+                        </div>
+                        <div class="col-md-6 payment-bank-group d-none" id="special_fee_bank_account_group">
+                            <label for="special_fee_bank_account_id" class="form-label">Bank Account <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" name="bank_account_id" id="special_fee_bank_account_id" disabled>
+                                <option value="">Select Bank Account</option>
+                                @forelse($bankAccounts as $bankAccountRow)
+                                    <option value="{{ $bankAccountRow->id }}" {{ ((string)old('bank_account_id') === (string)$bankAccountRow->id) ? 'selected' : '' }}>
+                                        {{ $bankAccountRow->bank_name }}{{ ($bankAccountRow->account_no != '') ? ' (' . $bankAccountRow->account_no . ')' : '' }}
+                                    </option>
+                                @empty
+                                    <option value="">No bank accounts available</option>
+                                @endforelse
+                            </select>
+                        </div>
+                        <div class="col-md-6 payment-reference-group d-none" id="special_fee_payment_reference_group">
+                            <label for="special_fee_payment_reference" class="form-label">Payment Reference <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control form-control-sm"
+                                   name="payment_reference"
+                                   id="special_fee_payment_reference"
+                                   value="{{ old('payment_reference') }}"
+                                   placeholder="UTR / cheque number / transaction ID"
+                                   autocomplete="off"
+                                   disabled>
                         </div>
                         <div class="col-12">
                             <div class="alert alert-info py-2 mb-0">
@@ -406,9 +454,31 @@ $controllerRoute = $module['controller_route'];
             admissionFees: @json(old('admission_fees')),
             monthlyFees: @json(old('monthly_fees')),
             paymentMode: @json(old('payment_mode', 'Bank')),
+            bankAccountId: @json(old('bank_account_id')),
+            paymentReference: @json(old('payment_reference')),
             ledgerId: @json(old('ledger_id', 3)),
             promotedClassId: @json(old('promoted_class_id')),
         };
+
+        function toggleBankPaymentFields(paymentMode, bankGroupSelector, bankInputSelector, referenceGroupSelector, referenceInputSelector) {
+            const shouldShow = (paymentMode === 'Bank');
+            const bankGroup = document.querySelector(bankGroupSelector);
+            const bankInput = document.querySelector(bankInputSelector);
+            const referenceGroup = document.querySelector(referenceGroupSelector);
+            const referenceInput = document.querySelector(referenceInputSelector);
+
+            if (bankGroup && bankInput) {
+                bankGroup.classList.toggle('d-none', !shouldShow);
+                bankInput.disabled = !shouldShow;
+                bankInput.required = shouldShow;
+            }
+
+            if (referenceGroup && referenceInput) {
+                referenceGroup.classList.toggle('d-none', !shouldShow);
+                referenceInput.disabled = !shouldShow;
+                referenceInput.required = shouldShow;
+            }
+        }
 
         function populatePromotedClassOptions(unitId, selectedClassId) {
             const classSelect = document.getElementById('promoted_class_id');
@@ -446,6 +516,8 @@ $controllerRoute = $module['controller_route'];
             const admissionFeesField = document.getElementById('promote_admission_fees');
             const monthlyFeesField = document.getElementById('promote_monthly_fees');
             const paymentModeField = document.getElementById('promote_payment_mode');
+            const bankAccountField = document.getElementById('promote_bank_account_id');
+            const paymentReferenceField = document.getElementById('promote_payment_reference');
             const ledgerIdField = document.getElementById('promote_ledger_id');
             const studentIdField = document.getElementById('promote_student_id');
             const classSelect = document.getElementById('promoted_class_id');
@@ -471,12 +543,26 @@ $controllerRoute = $module['controller_route'];
             if (paymentModeField) {
                 paymentModeField.value = (data.paymentMode !== undefined && data.paymentMode !== null && data.paymentMode !== '') ? data.paymentMode : 'Bank';
             }
+            if (bankAccountField) {
+                bankAccountField.value = (data.bankAccountId !== undefined && data.bankAccountId !== null && data.bankAccountId !== '') ? data.bankAccountId : '';
+            }
+            if (paymentReferenceField) {
+                paymentReferenceField.value = (data.paymentReference !== undefined && data.paymentReference !== null) ? data.paymentReference : '';
+            }
             if (ledgerIdField) {
                 ledgerIdField.value = (data.ledgerId !== undefined && data.ledgerId !== null && data.ledgerId !== '') ? data.ledgerId : '3';
             }
 
             const selectedClassId = (data.promotedClassId !== undefined && data.promotedClassId !== null) ? data.promotedClassId : '';
             populatePromotedClassOptions(studentData.unitId, selectedClassId);
+
+            toggleBankPaymentFields(
+                paymentModeField ? paymentModeField.value : 'Cash',
+                '#promote_bank_account_group',
+                '#promote_bank_account_id',
+                '#promote_payment_reference_group',
+                '#promote_payment_reference'
+            );
 
             if (classSelect && !selectedClassId) {
                 classSelect.value = '';
@@ -507,12 +593,26 @@ $controllerRoute = $module['controller_route'];
 
             openPromoteModal(promoteBtn, promoteOldData);
         });
+
+        if (document.getElementById('promote_payment_mode')) {
+            document.getElementById('promote_payment_mode').addEventListener('change', function () {
+                toggleBankPaymentFields(
+                    this.value,
+                    '#promote_bank_account_group',
+                    '#promote_bank_account_id',
+                    '#promote_payment_reference_group',
+                    '#promote_payment_reference'
+                );
+            });
+        }
     </script>
     <script>
         const specialFeeOldData = {
             studentId: @json(old('special_fee_student_id')),
             feeType: @json(old('special_fee_type')),
             paymentMode: @json(old('special_fee_payment_mode', 'Bank')),
+            bankAccountId: @json(old('bank_account_id')),
+            paymentReference: @json(old('payment_reference')),
             ledgerId: @json(old('special_fee_ledger_id', 4)),
             feeAmount: @json(old('special_fee_amount')),
         };
@@ -528,6 +628,8 @@ $controllerRoute = $module['controller_route'];
             const studentSerialField = document.getElementById('special_fee_student_serial');
             const sessionYearField = document.getElementById('special_fee_session_year');
             const paymentModeField = document.getElementById('special_fee_payment_mode');
+            const bankAccountField = document.getElementById('special_fee_bank_account_id');
+            const paymentReferenceField = document.getElementById('special_fee_payment_reference');
             const amountField = document.getElementById('special_fee_amount');
             const submitButton = document.getElementById('special_fee_submit_btn');
 
@@ -559,8 +661,22 @@ $controllerRoute = $module['controller_route'];
             if (paymentModeField) {
                 paymentModeField.value = (data.paymentMode !== undefined && data.paymentMode !== null && data.paymentMode !== '') ? data.paymentMode : 'Bank';
             }
+            if (bankAccountField) {
+                bankAccountField.value = (data.bankAccountId !== undefined && data.bankAccountId !== null && data.bankAccountId !== '') ? data.bankAccountId : '';
+            }
+            if (paymentReferenceField) {
+                paymentReferenceField.value = (data.paymentReference !== undefined && data.paymentReference !== null) ? data.paymentReference : '';
+            }
             amountField.value = (data.feeAmount !== undefined && data.feeAmount !== null && data.feeAmount !== '') ? data.feeAmount : defaultAmount;
             submitButton.textContent = 'Collect ' + feeLabel;
+
+            toggleBankPaymentFields(
+                paymentModeField ? paymentModeField.value : 'Cash',
+                '#special_fee_bank_account_group',
+                '#special_fee_bank_account_id',
+                '#special_fee_payment_reference_group',
+                '#special_fee_payment_reference'
+            );
 
             const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
             modal.show();
@@ -587,5 +703,17 @@ $controllerRoute = $module['controller_route'];
 
             openSpecialFeeModal(feeBtn, specialFeeOldData);
         });
+
+        if (document.getElementById('special_fee_payment_mode')) {
+            document.getElementById('special_fee_payment_mode').addEventListener('change', function () {
+                toggleBankPaymentFields(
+                    this.value,
+                    '#special_fee_bank_account_group',
+                    '#special_fee_bank_account_id',
+                    '#special_fee_payment_reference_group',
+                    '#special_fee_payment_reference'
+                );
+            });
+        }
     </script>
 @endsection

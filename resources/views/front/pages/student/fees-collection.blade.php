@@ -311,6 +311,18 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         height: 26px;
         padding: 2px 5px;
     }
+    .fee-payment-form .bank-account-select {
+        font-size: 10px;
+        border-radius: 6px;
+        height: 26px;
+        padding: 2px 5px;
+    }
+    .fee-payment-form .payment-reference-input {
+        font-size: 10px;
+        border-radius: 6px;
+        height: 26px;
+        padding: 2px 5px;
+    }
     .fee-payment-form .payment-actions {
         display: flex;
         gap: 3px;
@@ -649,6 +661,28 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                                     <option value="Cash">Cash</option>
                                     <option value="Bank" selected>Bank</option>
                                 </select>
+                                <div class="bank-account-group">
+                                    <select class="form-select form-select-sm bank-account-select"
+                                            name="bank_account_id"
+                                            required>
+                                        <option value="">Bank Account</option>
+                                        @forelse($bankAccounts as $bankAccountRow)
+                                            <option value="{{ $bankAccountRow->id }}">
+                                                {{ $bankAccountRow->bank_name }}{{ ($bankAccountRow->account_no != '') ? ' (' . $bankAccountRow->account_no . ')' : '' }}
+                                            </option>
+                                        @empty
+                                            <option value="">No bank accounts available</option>
+                                        @endforelse
+                                    </select>
+                                </div>
+                                <div class="payment-reference-group">
+                                    <input type="text"
+                                           class="form-control form-control-sm payment-reference-input"
+                                           name="payment_reference"
+                                           placeholder="UTR / cheque number / transaction ID"
+                                           autocomplete="off"
+                                           required>
+                                </div>
                                 <input type="hidden" name="ledger_id" value="1">
                                 <div class="payment-actions">
                                     <input type="text"
@@ -773,6 +807,40 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             }, 3800);
         }
 
+        function toggleBankPaymentFields(form, paymentMode) {
+            var group = form.find('.bank-account-group');
+            var input = form.find('select[name="bank_account_id"]');
+            var referenceGroup = form.find('.payment-reference-group');
+            var referenceInput = form.find('input[name="payment_reference"]');
+            var shouldShow = (paymentMode === 'Bank');
+
+            if (shouldShow) {
+                group.removeClass('d-none');
+                input.prop('disabled', false);
+                input.prop('required', true);
+                referenceGroup.removeClass('d-none');
+                referenceInput.prop('disabled', false);
+                referenceInput.prop('required', true);
+            } else {
+                group.addClass('d-none');
+                input.prop('disabled', true);
+                input.prop('required', false);
+                referenceGroup.addClass('d-none');
+                referenceInput.prop('disabled', true);
+                referenceInput.prop('required', false);
+            }
+        }
+
+        $('.fee-payment-form').each(function () {
+            var form = $(this);
+            toggleBankPaymentFields(form, form.find('select[name="payment_mode"]').val());
+        });
+
+        $(document).on('change', '.fee-payment-form .payment-mode-select', function () {
+            var form = $(this).closest('.fee-payment-form');
+            toggleBankPaymentFields(form, $(this).val());
+        });
+
         $(document).on('submit', '.fee-payment-form', function(e){
             e.preventDefault();
 
@@ -781,6 +849,9 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             var submitButton = form.find('.payment-submit-btn');
             var enteredAmount = $.trim(amountInput.val());
             var amountNumber = parseFloat(enteredAmount);
+            var paymentMode = form.find('select[name="payment_mode"]').val();
+            var bankAccountId = $.trim(form.find('select[name="bank_account_id"]').val());
+            var paymentReference = $.trim(form.find('input[name="payment_reference"]').val());
 
             var payableAmount = parseFloat(form.data('payable')) || 0;
             var dueAmount = parseFloat(form.data('due')) || 0;
@@ -810,19 +881,36 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                 return;
             }
 
+            if (paymentMode === 'Bank' && bankAccountId === '') {
+                showFeesToast('Please select a bank account for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
+                return;
+            }
+
+            if (paymentMode === 'Bank' && paymentReference === '') {
+                showFeesToast('Please enter a payment reference for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
+                return;
+            }
+
+            var requestData = {
+                _token: form.find('input[name="_token"]').val(),
+                student_id: form.data('student-id'),
+                payable_month: form.data('month'),
+                payable_year: form.data('year'),
+                payment_mode: paymentMode,
+                ledger_id: form.find('input[name="ledger_id"]').val(),
+                payment_amount: enteredAmount
+            };
+
+            if (paymentMode === 'Bank') {
+                requestData.bank_account_id = bankAccountId;
+                requestData.payment_reference = paymentReference;
+            }
+
             $.ajax({
                 url: "{{ route('student.fees-collection.update') }}",
                 method: "POST",
                 dataType: "json",
-                data: {
-                    _token: form.find('input[name="_token"]').val(),
-                    student_id: form.data('student-id'),
-                    payable_month: form.data('month'),
-                    payable_year: form.data('year'),
-                    payment_mode: form.find('select[name="payment_mode"]').val(),
-                    ledger_id: form.find('input[name="ledger_id"]').val(),
-                    payment_amount: enteredAmount
-                },
+                data: requestData,
                 beforeSend: function(){
                     submitButton.prop('disabled', true);
                 },
@@ -866,4 +954,3 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
     })
 </script>
 @endsection
-

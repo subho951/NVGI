@@ -9,6 +9,19 @@ $branchName = trim((string)$transaction->branch_name);
 $ledgerName = trim((string)$transaction->ledger_name);
 $paymentMode = trim((string)$transaction->payment_mode);
 $paymentReference = trim((string)$transaction->payment_reference);
+$bankAccountName = trim((string)$transaction->bank_account_name);
+$bankAccountNo = trim((string)$transaction->bank_account_no);
+$bankAccountDisplay = '--';
+
+if ($paymentMode === 'Bank') {
+    if ($bankAccountName !== '' && $bankAccountNo !== '') {
+        $bankAccountDisplay = $bankAccountName . ' (' . $bankAccountNo . ')';
+    } elseif ($bankAccountName !== '') {
+        $bankAccountDisplay = $bankAccountName;
+    } elseif ($bankAccountNo !== '') {
+        $bankAccountDisplay = $bankAccountNo;
+    }
+}
 $amount = (float)$transaction->transaction_amount;
 $amountInWords = Helper::getIndianCurrency($amount);
 ?>
@@ -344,6 +357,9 @@ $amountInWords = Helper::getIndianCurrency($amount);
                     <p><strong>Branch:</strong> {{ ($branchName != '') ? $branchName : '--' }}</p>
                     <p><strong>Ledger:</strong> {{ ($ledgerName != '') ? $ledgerName : '--' }}</p>
                     <p><strong>Payment Mode:</strong> {{ ($paymentMode != '') ? $paymentMode : '--' }}</p>
+                    @if($paymentMode === 'Bank')
+                        <p><strong>Bank Account:</strong> {{ $bankAccountDisplay }}</p>
+                    @endif
                     <p><strong>Payment Reference:</strong> {{ ($paymentReference != '') ? $paymentReference : '--' }}</p>
                     <p><strong>Fee ID:</strong> {{ (int)$transaction->fee_id }}</p>
                     <p><strong>Logged On:</strong> {{ date('d M Y h:i A', strtotime($transaction->created_at)) }}</p>

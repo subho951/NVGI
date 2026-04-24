@@ -23,6 +23,7 @@ use App\Models\Religion;
 use App\Models\Board;
 use App\Models\StudentPayment;
 use App\Models\Transaction;
+use App\Models\BankAccount;
 
 use App\Helpers\Helper;
 use Auth;
@@ -70,6 +71,7 @@ class StudentController extends Controller
                                                             ->get();
             $data['vhs_classes']            = Classes::select('id', 'name')->where('status', '=', 1)->where('unit_id', '=', 1)->orderBy('name', 'ASC')->get();
             $data['tsa_classes']            = Classes::select('id', 'name')->where('status', '=', 1)->where('unit_id', '=', 2)->orderBy('name', 'ASC')->get();
+            $data['bankAccounts']           = $this->bankAccountOptions();
             // Helper::pr($data['rows']);
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             return view('front.pages.' . $page_name, $data);
@@ -94,8 +96,34 @@ class StudentController extends Controller
             $data['knowAbouts']             = KnowAbout::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
             $data['religions']              = Religion::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
             $data['boards']                 = Board::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
+            $data['bankAccounts']           = $this->bankAccountOptions();
 
             if($request->isMethod('post')){
+                $paymentMode = (string)$request->input('payment_mode');
+                $bankAccountRules = (($paymentMode === 'Bank')
+                                    ? [
+                                        'required',
+                                        'integer',
+                                        Rule::exists('bank_accounts', 'id')->where(function ($query) {
+                                            $query->where('status', '!=', 3);
+                                        }),
+                                    ]
+                                    : [
+                                        'nullable',
+                                        'integer',
+                                    ]);
+                $paymentReferenceRules = (($paymentMode === 'Bank')
+                                        ? [
+                                            'required',
+                                            'string',
+                                            'max:2000',
+                                        ]
+                                        : [
+                                            'nullable',
+                                            'string',
+                                            'max:2000',
+                                        ]);
+
                 $request->validate([
                     'unit_id'                   => 'required|integer',
                     'branch_id'                 => 'required|integer',
@@ -118,10 +146,17 @@ class StudentController extends Controller
                     'emergency_relation'        => 'required|string',
                     'know_about_us'             => 'required|string',
                     'blood_group'               => 'required|string',
+                    'payment_mode'              => 'required|in:Cash,Bank',
+                    'bank_account_id'           => $bankAccountRules,
+                    'payment_reference'         => $paymentReferenceRules,
                     'admission_fees'            => 'required|numeric|gt:0',
                     'monthly_fees'              => 'required|numeric|gt:0',
                     // 'books_fee'                 => 'required|numeric|gt:0',
                     // 'uniform_fee'               => 'required|numeric|gt:0',
+                ], [
+                    'bank_account_id.required'   => 'Please select a bank account when payment mode is Bank.',
+                    'bank_account_id.exists'     => 'Selected bank account is not valid.',
+                    'payment_reference.required' => 'Please enter a payment reference when payment mode is Bank.',
                 ]);
 
                 if($request->middle_name != ''){
@@ -217,7 +252,10 @@ class StudentController extends Controller
                 ];
                 
                 // Helper::pr($fields);
-                DB::transaction(function () use ($fields, $request, $updatedBy, $full_name, $student_id_serial) {
+                $bankAccountId = (($paymentMode === 'Bank') ? ((int)$request->bank_account_id ?: null) : null);
+                $paymentReference = $this->normalizePaymentReference($paymentMode, $request->payment_reference);
+
+                DB::transaction(function () use ($fields, $request, $updatedBy, $full_name, $student_id_serial, $paymentMode, $bankAccountId, $paymentReference) {
                     $student = Student::create($fields);
                     $id = $student->id;
 
@@ -254,8 +292,9 @@ class StudentController extends Controller
                         'fee_id'                 => 0,
                         'unit_id'                => (int)$request->unit_id,
                         'branch_id'              => (int)$request->branch_id,
-                        'payment_mode'           => 'Cash',
-                        'payment_reference'      => null,
+                        'payment_mode'           => $paymentMode,
+                        'bank_account_id'        => $bankAccountId,
+                        'payment_reference'      => $paymentReference,
                         'type'                   => 'INCOME',
                         'ledger_id'              => 3,
                         'transaction_timestamp'  => Carbon::now(),
@@ -454,12 +493,43 @@ class StudentController extends Controller
     /* change status */
     /* promote */
         public function promote(Request $request){
+            $paymentMode = (string)$request->input('payment_mode');
+            $bankAccountRules = (($paymentMode === 'Bank')
+                                ? [
+                                    'required',
+                                    'integer',
+                                    Rule::exists('bank_accounts', 'id')->where(function ($query) {
+                                        $query->where('status', '!=', 3);
+                                    }),
+                                ]
+                                : [
+                                    'nullable',
+                                    'integer',
+                                ]);
+            $paymentReferenceRules = (($paymentMode === 'Bank')
+                                    ? [
+                                        'required',
+                                        'string',
+                                        'max:2000',
+                                    ]
+                                    : [
+                                        'nullable',
+                                        'string',
+                                        'max:2000',
+                                    ]);
+
             $request->validate([
                 'student_id'            => 'required|integer|exists:students,id',
                 'admission_fees'        => 'required|numeric|gt:0',
                 'monthly_fees'          => 'required|numeric|gt:0',
                 'payment_mode'          => 'required|in:Cash,Bank',
                 'ledger_id'             => 'required|integer|in:3',
+                'bank_account_id'       => $bankAccountRules,
+                'payment_reference'     => $paymentReferenceRules,
+            ], [
+                'bank_account_id.required'   => 'Please select a bank account when payment mode is Bank.',
+                'bank_account_id.exists'     => 'Selected bank account is not valid.',
+                'payment_reference.required'  => 'Please enter a payment reference when payment mode is Bank.',
             ]);
 
             $student = Student::select(
@@ -492,8 +562,9 @@ class StudentController extends Controller
             }
 
             $currentClassId = ((int)$student->unit_id === 1) ? (int)$student->vhs_class_id : (int)$student->tsa_class_id;
-            $paymentMode = (string)$request->payment_mode;
             $ledgerId = (int)$request->ledger_id;
+            $bankAccountId = (($paymentMode === 'Bank') ? ((int)$request->bank_account_id ?: null) : null);
+            $paymentReference = $this->normalizePaymentReference($paymentMode, $request->payment_reference);
 
             $request->validate([
                 'promoted_class_id' => [
@@ -525,7 +596,7 @@ class StudentController extends Controller
             $financialSessionData = $this->getFinancialSessionData();
             $financialMonths      = $this->buildFinancialMonths($financialSessionData['start_year'], $financialSessionData['end_year']);
 
-            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $financialMonths, $financialSessionData, $paymentMode, $ledgerId) {
+            DB::transaction(function () use ($student, $promotedClass, $promotedClassId, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $financialMonths, $financialSessionData, $paymentMode, $ledgerId, $bankAccountId, $paymentReference) {
                 $studentUpdate = [
                     'admission_fees'    => $admissionFeesValue,
                     'monthly_fees'      => $monthlyFeesValue,
@@ -583,7 +654,8 @@ class StudentController extends Controller
                     'branch_id'              => (int)$student->branch_id,
                     'ledger_id'              => $ledgerId,
                     'payment_mode'           => $paymentMode,
-                    'payment_reference'      => null,
+                    'bank_account_id'        => $bankAccountId,
+                    'payment_reference'      => $paymentReference,
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
                     'transaction_amount'     => $admissionFeesValue,
@@ -601,12 +673,43 @@ class StudentController extends Controller
     /* special fee collection */
         public function collectSpecialFee(Request $request)
         {
+            $paymentMode = (string)$request->input('special_fee_payment_mode');
+            $bankAccountRules = (($paymentMode === 'Bank')
+                                ? [
+                                    'required',
+                                    'integer',
+                                    Rule::exists('bank_accounts', 'id')->where(function ($query) {
+                                        $query->where('status', '!=', 3);
+                                    }),
+                                ]
+                                : [
+                                    'nullable',
+                                    'integer',
+                                ]);
+            $paymentReferenceRules = (($paymentMode === 'Bank')
+                                    ? [
+                                        'required',
+                                        'string',
+                                        'max:2000',
+                                    ]
+                                    : [
+                                        'nullable',
+                                        'string',
+                                        'max:2000',
+                                    ]);
+
             $request->validate([
                 'special_fee_student_id'  => 'required|integer|exists:students,id',
                 'special_fee_type'        => 'required|in:books,uniform',
                 'special_fee_payment_mode'=> 'required|in:Cash,Bank',
                 'special_fee_ledger_id'   => 'required|integer|in:4',
+                'bank_account_id'         => $bankAccountRules,
+                'payment_reference'       => $paymentReferenceRules,
                 'special_fee_amount'      => 'required|numeric|gt:0',
+            ], [
+                'bank_account_id.required'    => 'Please select a bank account when payment mode is Bank.',
+                'bank_account_id.exists'      => 'Selected bank account is not valid.',
+                'payment_reference.required'  => 'Please enter a payment reference when payment mode is Bank.',
             ]);
 
             $student = Student::select(
@@ -634,8 +737,9 @@ class StudentController extends Controller
             $feeLabel = (($feeType === 'books') ? 'Books Fee' : 'Uniform Fee');
             $feeField = (($feeType === 'books') ? 'books_fee' : 'uniform_fee');
             $feeAmount = number_format((float)$request->special_fee_amount, 2, '.', '');
-            $paymentMode = (string)$request->special_fee_payment_mode;
             $ledgerId = (int)$request->special_fee_ledger_id;
+            $bankAccountId = (($paymentMode === 'Bank') ? ((int)$request->bank_account_id ?: null) : null);
+            $paymentReference = $this->normalizePaymentReference($paymentMode, $request->payment_reference);
             $studentName = trim((string)$student->full_name);
             if ($studentName === '') {
                 $studentName = 'Unknown Student';
@@ -645,7 +749,7 @@ class StudentController extends Controller
             $sessionText = (($sessionName !== '') ? ' for session ' . $sessionName : '');
             $updatedBy = $this->currentUserId();
 
-            DB::transaction(function () use ($student, $feeField, $feeAmount, $feeLabel, $studentName, $sessionText, $updatedBy, $paymentMode, $ledgerId) {
+            DB::transaction(function () use ($student, $feeField, $feeAmount, $feeLabel, $studentName, $sessionText, $updatedBy, $paymentMode, $ledgerId, $bankAccountId, $paymentReference) {
                 $student->{$feeField} = $feeAmount;
                 $student->updated_by = $updatedBy;
                 $student->save();
@@ -666,7 +770,8 @@ class StudentController extends Controller
                     'branch_id'              => (int)$student->branch_id,
                     'ledger_id'              => $ledgerId,
                     'payment_mode'           => $paymentMode,
-                    'payment_reference'      => null,
+                    'bank_account_id'        => $bankAccountId,
+                    'payment_reference'      => $paymentReference,
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
                     'transaction_amount'     => $feeAmount,
@@ -1137,7 +1242,7 @@ class StudentController extends Controller
         ]);
     }
     /* fees collection */
-        public function feesCollection(Request $request){
+    public function feesCollection(Request $request){
             $data['module']                 = $this->data;
             $title                          = $this->data['title'].' List';
             $page_name                      = 'student.fees-collection';
@@ -1157,6 +1262,7 @@ class StudentController extends Controller
             $data['report_session']         = $defaultSessionData['session_id'];
             $data['report_session_name']    = $defaultSessionData['session_name'];
             $data['report_months']          = [];
+            $data['bankAccounts']           = $this->bankAccountOptions();
 
             if($request->isMethod('post')){
                 $unit_id            = $request->unit_id;
@@ -1327,13 +1433,44 @@ class StudentController extends Controller
                     ->header('Content-Disposition', 'attachment; filename=' . $fileName);
         }
         public function updateFeesCollection(Request $request){
+            $paymentMode = (string)$request->input('payment_mode');
+            $bankAccountRules = (($request->input('payment_mode') === 'Bank')
+                                ? [
+                                    'required',
+                                    'integer',
+                                    Rule::exists('bank_accounts', 'id')->where(function ($query) {
+                                        $query->where('status', '!=', 3);
+                                    }),
+                                ]
+                                : [
+                                    'nullable',
+                                    'integer',
+                                ]);
+            $paymentReferenceRules = (($paymentMode === 'Bank')
+                                    ? [
+                                        'required',
+                                        'string',
+                                        'max:2000',
+                                    ]
+                                    : [
+                                        'nullable',
+                                        'string',
+                                        'max:2000',
+                                    ]);
+
             $validator = Validator::make($request->all(), [
                 'student_id'     => 'required|integer',
                 'payable_month'  => 'required|integer|min:1|max:12',
                 'payable_year'   => 'required|integer|min:2000|max:2100',
                 'payment_mode'   => 'required|in:Cash,Bank',
                 'ledger_id'      => 'required|integer|in:1',
+                'bank_account_id' => $bankAccountRules,
+                'payment_reference' => $paymentReferenceRules,
                 'payment_amount' => 'required|numeric|gt:0',
+            ], [
+                'bank_account_id.required'    => 'Please select a bank account when payment mode is Bank.',
+                'bank_account_id.exists'      => 'Selected bank account is not valid.',
+                'payment_reference.required'   => 'Please enter a payment reference when payment mode is Bank.',
             ]);
 
             if ($validator->fails()) {
@@ -1396,10 +1533,11 @@ class StudentController extends Controller
             $newDueAmount    = max($payableAmount - $newPaidAmount, 0);
             $updatedBy       = ((session()->has('user_data') && array_key_exists('user_id', session('user_data')))?session('user_data')['user_id']:((Auth::check())?Auth::id():0));
             $transactionAmount = number_format($enteredAmount, 2, '.', '');
-            $paymentMode = (string)$request->payment_mode;
             $ledgerId = (int)$request->ledger_id;
+            $bankAccountId = (($paymentMode === 'Bank') ? ((int)$request->bank_account_id ?: null) : null);
+            $paymentReference = $this->normalizePaymentReference($paymentMode, $request->payment_reference);
 
-            DB::transaction(function () use ($studentPayment, $newPaidAmount, $newDueAmount, $updatedBy, $student, $monthName, $request, $transactionAmount, $paymentMode, $ledgerId) {
+            DB::transaction(function () use ($studentPayment, $newPaidAmount, $newDueAmount, $updatedBy, $student, $monthName, $request, $transactionAmount, $paymentMode, $ledgerId, $bankAccountId, $paymentReference) {
                 $studentPayment->update([
                     'payment_amount' => $newPaidAmount,
                     'payment_date'   => date('Y-m-d'),
@@ -1422,7 +1560,8 @@ class StudentController extends Controller
                     'branch_id'              => (int)$studentPayment->branch_id,
                     'ledger_id'              => $ledgerId,
                     'payment_mode'           => $paymentMode,
-                    'payment_reference'      => null,
+                    'bank_account_id'        => $bankAccountId,
+                    'payment_reference'      => $paymentReference,
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
                     'transaction_amount'     => $transactionAmount,
@@ -1938,5 +2077,24 @@ class StudentController extends Controller
         }
 
         return (Auth::check()) ? (int) Auth::id() : 0;
+    }
+
+    private function normalizePaymentReference($paymentMode, $paymentReference)
+    {
+        if ($paymentMode !== 'Bank') {
+            return null;
+        }
+
+        $paymentReference = trim((string)$paymentReference);
+
+        return (($paymentReference !== '') ? $paymentReference : null);
+    }
+
+    private function bankAccountOptions()
+    {
+        return BankAccount::select('id', 'bank_name', 'bank_branch', 'account_no')
+                        ->where('status', '=', 1)
+                        ->orderBy('bank_name', 'ASC')
+                        ->get();
     }
 }

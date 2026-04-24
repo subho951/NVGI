@@ -8,6 +8,7 @@ $type = old('type', (($isEdit) ? $row->type : ''));
 $transactionTimestamp = old('transaction_timestamp', (($isEdit && $row->transaction_timestamp) ? date('Y-m-d\TH:i', strtotime($row->transaction_timestamp)) : date('Y-m-d\TH:i')));
 $transactionAmount = old('transaction_amount', (($isEdit) ? number_format((float)$row->transaction_amount, 2, '.', '') : ''));
 $ledgerId = old('ledger_id', (($isEdit) ? $row->ledger_id : ''));
+$bankAccountId = old('bank_account_id', (($isEdit) ? $row->bank_account_id : ''));
 $unitId = old('unit_id', (($isEdit) ? $row->unit_id : ''));
 $branchId = old('branch_id', (($isEdit) ? $row->branch_id : ''));
 $paymentMode = old('payment_mode', (($isEdit) ? $row->payment_mode : ''));
@@ -250,7 +251,21 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
                     </select>
                 </div>
 
-                <div class="col-md-4 payment-reference-group {{ ((string)$paymentMode !== 'Bank') ? 'd-none' : '' }}" id="payment_reference_group">
+                <div class="col-md-6 bank-account-group {{ ((string)$paymentMode !== 'Bank') ? 'd-none' : '' }}" id="bank_account_group">
+                    <label for="bank_account_id" class="form-label">Bank Account <span class="text-danger">*</span></label>
+                    <select class="form-select" name="bank_account_id" id="bank_account_id" {{ ((string)$paymentMode === 'Bank') ? 'required' : 'disabled' }}>
+                        <option value="" {{ (($bankAccountId === '') ? 'selected' : '') }}>Select Bank Account</option>
+                        @forelse($bankAccounts as $bankAccountRow)
+                            <option value="{{ $bankAccountRow->id }}" {{ ((string)$bankAccountId === (string)$bankAccountRow->id) ? 'selected' : '' }}>
+                                {{ $bankAccountRow->bank_name }}{{ ($bankAccountRow->account_no != '') ? ' (' . $bankAccountRow->account_no . ')' : '' }}
+                            </option>
+                        @empty
+                            <option value="">No bank accounts available</option>
+                        @endforelse
+                    </select>
+                </div>
+                
+                <div class="col-md-6 payment-reference-group {{ ((string)$paymentMode !== 'Bank') ? 'd-none' : '' }}" id="payment_reference_group">
                     <label for="payment_reference" class="form-label">Payment Reference</label>
                     <input type="text"
                            class="form-control"
@@ -261,12 +276,12 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
                                                       {{ ((string)$paymentMode !== 'Bank') ? 'disabled' : '' }}>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-12">
                     <label for="particulars" class="form-label">Particulars <span class="text-danger">*</span></label>
                     <textarea class="form-control" name="particulars" id="particulars" rows="4" placeholder="Enter a clear transaction description..." required>{{ $particulars }}</textarea>
                 </div>
 
-                <div class="col-4">
+                <div class="col-12">
                     <label for="note" class="form-label">Note</label>
                     <textarea class="form-control" name="note" id="note" rows="4" placeholder="Optional internal note">{{ $note }}</textarea>
                 </div>
@@ -316,6 +331,22 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
                 }
             }
 
+            function toggleBankAccount(paymentMode) {
+                var group = $('#bank_account_group');
+                var input = $('#bank_account_id');
+                var shouldShow = (paymentMode === 'Bank');
+
+                if (shouldShow) {
+                    group.removeClass('d-none');
+                    input.prop('disabled', false);
+                    input.prop('required', true);
+                } else {
+                    group.addClass('d-none');
+                    input.prop('disabled', true);
+                    input.prop('required', false);
+                }
+            }
+
             function filterLedgerOptions(type) {
                 var select = $('#ledger_id');
                 var selectedValue = select.val();
@@ -356,6 +387,7 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
 
             bindUnitWiseBranch($('#unit_id').val(), '#branch_id', 'branch', $('#branch_id').val());
             togglePaymentReference($('#payment_mode').val());
+            toggleBankAccount($('#payment_mode').val());
             toggleLedgerField($('#type').val());
 
             $('#unit_id').on('change', function () {
@@ -364,6 +396,7 @@ $createdBy = old('created_by', (($isEdit) ? $row->created_by : $default_created_
 
             $('#payment_mode').on('change', function () {
                 togglePaymentReference($(this).val());
+                toggleBankAccount($(this).val());
             });
 
             $('#type').on('change', function () {

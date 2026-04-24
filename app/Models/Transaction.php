@@ -17,6 +17,7 @@ class Transaction extends Model
         'unit_id',
         'branch_id',
         'payment_mode',
+        'bank_account_id',
         'payment_reference',
         'type',
         'ledger_id',
@@ -32,5 +33,10 @@ class Transaction extends Model
     public function ledger(): BelongsTo
     {
         return $this->belongsTo(Ledger::class, 'ledger_id');
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class, 'bank_account_id');
     }
 }

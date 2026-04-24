@@ -473,6 +473,7 @@ $controllerRoute = $module['controller_route'];
                             <th>Unit</th>
                             <th>Branch</th>
                             <th>Payment Mode</th>
+                            <th>Bank Account</th>
                             <th>Payment Reference</th>
                             <th>Entry By</th>
                             <th>Action</th>
@@ -486,6 +487,19 @@ $controllerRoute = $module['controller_route'];
                                     $encodedId = Helper::encoded($row->id);
                                     $amountClass = (($row->type == 'INCOME') ? 'amount-income' : 'amount-expense');
                                     $typeClass = (($row->type == 'INCOME') ? 'txn-income' : 'txn-expense');
+                                    $bankAccountName = trim((string)$row->bank_account_name);
+                                    $bankAccountNo = trim((string)$row->bank_account_no);
+                                    $bankAccountDisplay = '--';
+
+                                    if (trim((string)$row->payment_mode) === 'Bank') {
+                                        if ($bankAccountName !== '' && $bankAccountNo !== '') {
+                                            $bankAccountDisplay = $bankAccountName . ' (' . $bankAccountNo . ')';
+                                        } elseif ($bankAccountName !== '') {
+                                            $bankAccountDisplay = $bankAccountName;
+                                        } elseif ($bankAccountNo !== '') {
+                                            $bankAccountDisplay = $bankAccountNo;
+                                        }
+                                    }
                                 @endphp
                                 <tr>
                                     <td>{{ $sl++ }}</td>
@@ -501,6 +515,7 @@ $controllerRoute = $module['controller_route'];
                                     <td>{{ (($row->unit_name != '')?$row->unit_name:'--') }}</td>
                                     <td>{{ (($row->branch_name != '')?$row->branch_name:'--') }}</td>
                                     <td>{{ (($row->payment_mode != '')?$row->payment_mode:'--') }}</td>
+                                    <td>{{ $bankAccountDisplay }}</td>
                                     <td>{{ (($row->payment_reference != '')?$row->payment_reference:'--') }}</td>
                                     <td>{{ (($row->creator_name != '')?$row->creator_name:'System') }}</td>
                                     <td class="text-center">
@@ -587,7 +602,6 @@ $controllerRoute = $module['controller_route'];
     });
 </script>
 @endsection
-
 
 
 
