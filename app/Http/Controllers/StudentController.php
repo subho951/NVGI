@@ -552,7 +552,7 @@ class StudentController extends Controller
                             ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
                             ->where('students.id', '=', (int)$request->student_id)
                             ->where(function ($q) {
-                                $q->where('students.status', '!=', 3)
+                                $q->where('students.status', '=', 1)
                                   ->orWhereNull('students.status');
                             })
                             ->first();
@@ -724,7 +724,7 @@ class StudentController extends Controller
                             ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
                             ->where('students.id', '=', (int)$request->special_fee_student_id)
                             ->where(function ($q) {
-                                $q->where('students.status', '!=', 3)
+                                $q->where('students.status', '=', 1)
                                   ->orWhereNull('students.status');
                             })
                             ->first();
@@ -1387,7 +1387,7 @@ class StudentController extends Controller
                                 ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
                                 ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
                                 ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
-                                ->where('students.status', '!=', 3)
+                                ->where('students.status', '=', 1)
                                 ->where('students.session_id', '=', $sessionData['session_id'])
                                 ->where('students.unit_id', $unitId)
                                 ->where('students.branch_id', $branchId)
@@ -1995,7 +1995,7 @@ class StudentController extends Controller
                     ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
                     ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
                     ->where(function ($query) {
-                        $query->where('students.status', '!=', 3)
+                        $query->where('students.status', '=', 1)
                               ->orWhereNull('students.status');
                     });
     }
