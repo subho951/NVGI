@@ -115,6 +115,12 @@ class EmployeeController extends Controller
                     'salary'        => (float)$request->salary,
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
+                    'aadhar_no'     => $this->normalizeNullableString($request->aadhar_no),
+                    'bank_name'     => $this->normalizeNullableString($request->bank_name),
+                    'bank_branch'   => $this->normalizeNullableString($request->bank_branch),
+                    'account_no'    => $this->normalizeNullableString($request->account_no),
+                    'ifsc_code'     => $this->normalizeNullableString($request->ifsc_code),
+                    'account_type'  => $this->normalizeNullableString($request->account_type),
                     'status'        => 1,
                     'created_by'    => $userId,
                     'updated_by'    => $userId,
@@ -185,6 +191,12 @@ class EmployeeController extends Controller
                     'salary'        => (float)$request->salary,
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
+                    'aadhar_no'     => $this->normalizeNullableString($request->aadhar_no),
+                    'bank_name'     => $this->normalizeNullableString($request->bank_name),
+                    'bank_branch'   => $this->normalizeNullableString($request->bank_branch),
+                    'account_no'    => $this->normalizeNullableString($request->account_no),
+                    'ifsc_code'     => $this->normalizeNullableString($request->ifsc_code),
+                    'account_type'  => $this->normalizeNullableString($request->account_type),
                     'updated_by'    => $userId,
                 ]);
             } catch (\Throwable $e) {
@@ -303,7 +315,7 @@ class EmployeeController extends Controller
 
     private function formatEmployeeNo($slNo)
     {
-        return 'NVGI-E-' . str_pad((string)$slNo, 4, '0', STR_PAD_LEFT);
+        return 'NVGI-' . str_pad((string)$slNo, 4, '0', STR_PAD_LEFT);
     }
 
     private function getNextEmployeeSlNo()

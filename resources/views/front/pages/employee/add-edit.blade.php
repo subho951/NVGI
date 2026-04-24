@@ -433,6 +433,12 @@ $doj = old('doj', (($isEdit) ? $row->doj : ''));
 $age = old('age', (($isEdit) ? $row->age : ''));
 $salary = old('salary', (($isEdit) ? $row->salary : ''));
 $gender = old('gender', (($isEdit) ? $row->gender : ''));
+$aadhar_no = old('aadhar_no', (($isEdit) ? $row->aadhar_no : ''));
+$bank_name = old('bank_name', (($isEdit) ? $row->bank_name : ''));
+$bank_branch = old('bank_branch', (($isEdit) ? $row->bank_branch : ''));
+$account_no = old('account_no', (($isEdit) ? $row->account_no : ''));
+$ifsc_code = old('ifsc_code', (($isEdit) ? $row->ifsc_code : ''));
+$account_type = old('account_type', (($isEdit) ? $row->account_type : ''));
 $image = (($isEdit) ? $row->image : '');
 $selectedBranches = old('branch', (($isEdit && !empty($row->branch)) ? json_decode((string)$row->branch, true) : []));
 
@@ -628,6 +634,43 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                     <div class="employee-hint mt-md-4 pt-md-3">
                                         Choose one or more branches to define the employee's work access and reporting scope.
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="employee-form-section">
+                            <div class="employee-section-title">
+                                <span><i class="fa-solid fa-briefcase"></i> Identity Details</span>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="aadhar_no" class="form-label">Aadhar No</label>
+                                    <input type="text" class="form-control" name="aadhar_no" id="aadhar_no" placeholder="Aadhar No" value="<?= e($aadhar_no) ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="bank_name" class="form-label">Bank Name</label>
+                                    <input type="text" class="form-control" name="bank_name" id="bank_name" placeholder="Aadhar No" value="<?= e($bank_name) ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="bank_branch" class="form-label">Bank Branch</label>
+                                    <input type="text" class="form-control" name="bank_branch" id="bank_branch" placeholder="Aadhar No" value="<?= e($bank_branch) ?>">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label for="account_no" class="form-label">Account No.</label>
+                                    <input type="text" class="form-control" name="account_no" id="account_no" placeholder="Aadhar No" value="<?= e($account_no) ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="ifsc_code" class="form-label">IFSC Code</label>
+                                    <input type="text" class="form-control" name="ifsc_code" id="ifsc_code" placeholder="Aadhar No" value="<?= e($ifsc_code) ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="account_type" class="form-label">Account Type</label>
+                                    <select class="form-select" name="account_type" id="account_type" required>
+                                        <option value="" {{ (($account_type === '') ? 'selected' : '') }}>Select Type</option>
+                                        <option value="CURRENT" {{ (($account_type === 'CURRENT') ? 'selected' : '') }}>CURRENT</option>
+                                        <option value="SAVINGS" {{ (($account_type === 'SAVINGS') ? 'selected' : '') }}>SAVINGS</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
