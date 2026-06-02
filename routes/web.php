@@ -7,6 +7,7 @@ use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\BranchPortalController;
 use App\Http\Controllers\FrontdeskController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\SubjectController;
@@ -66,6 +67,15 @@ use App\Http\Controllers\Common\TableController;
         Route::match(['get', 'post'], '/update-delegates-from-submissions', [CertificateController::class, 'updateDelegatesFromSubmissions']);
     /* certificate */
 /* Front Panel */
+/* Branch Employee Portal */
+    Route::get('branch-portal/login', [BranchPortalController::class, 'showLogin'])->name('branch.portal.login');
+    Route::post('branch-portal/login', [BranchPortalController::class, 'login'])->name('branch.portal.signin');
+
+    Route::middleware(['branch.portal'])->prefix('branch-portal')->name('branch.portal.')->group(function () {
+        Route::get('employees', [BranchPortalController::class, 'employees'])->name('employees');
+        Route::post('logout', [BranchPortalController::class, 'logout'])->name('logout');
+    });
+/* Branch Employee Portal */
 /* Admin Panel */
     // GET route – to display the page
     Route::get('/', [AuthController::class, 'showLogin'])->name('login');
@@ -177,6 +187,8 @@ use App\Http\Controllers\Common\TableController;
                     Route::get('exam/change-status/{id}', [ExamController::class, 'change_status']);
                     Route::match(['get', 'post'], 'exam/marks', [ExamStudentMarkController::class, 'index'])->name('exam.marks.index');
                     Route::post('exam/marks/save', [ExamStudentMarkController::class, 'save'])->name('exam.marks.save');
+                    Route::get('exam/marks/export-excel', [ExamStudentMarkController::class, 'exportExcel'])->name('exam.marks.export-excel');
+                    Route::get('exam/marks/report-card/{id}', [ExamStudentMarkController::class, 'reportCard'])->name('exam.marks.report-card');
                 /* exams */
                 /* Religion */
                     Route::match(['get', 'post'], 'religion/list', [ReligionController::class, 'list']);

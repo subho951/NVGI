@@ -15,6 +15,12 @@
     $selectedExamIds = array_map('strval', $selectedExamIds);
     $hasGeneratedResults = (!empty($generated) && !empty($exam_sections));
     $selectedExamNames = $selected_exam_names ?? [];
+    $excelReportUrl = route('exam.marks.export-excel', [
+        'unit_id' => $selectedUnitId,
+        'branch_id' => $selectedBranchId,
+        'class_id' => $selectedClassId,
+        'session_id' => $selectedSessionId,
+    ]);
 @endphp
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.css">
@@ -144,6 +150,16 @@
     .exam-hero-btn.btn-outline-light:hover {
         background: rgba(255, 255, 255, 0.16);
         color: #ffffff;
+    }
+
+    .exam-hero-btn.btn-excel {
+        color: #ffffff;
+        background: #168153;
+    }
+
+    .exam-hero-btn.btn-excel:hover {
+        color: #ffffff;
+        background: #106d45;
     }
 
     .exam-marks-card {
@@ -477,7 +493,7 @@
     .marks-table {
         width: 100%;
         margin-bottom: 0;
-        min-width: 1180px;
+        min-width: 1360px;
     }
 
     .marks-table thead th {
@@ -593,6 +609,20 @@
         border-radius: 10px;
         font-weight: 700;
         letter-spacing: 0.2px;
+    }
+
+    .marks-action-wrap {
+        display: flex;
+        justify-content: center;
+        gap: 7px;
+        flex-wrap: wrap;
+        min-width: 236px;
+    }
+
+    .marks-report-card-btn {
+        border-radius: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1px;
     }
 
     .marks-row-status {
@@ -796,6 +826,9 @@
             @if($hasGeneratedResults)
                 <a href="{{ url($controllerRoute) }}" class="exam-hero-btn btn-light">
                     <i class="fa-solid fa-rotate-left"></i> Reset Filters
+                </a>
+                <a href="{{ $excelReportUrl }}" class="exam-hero-btn btn-excel">
+                    <i class="fa-solid fa-file-excel"></i> Excel Report
                 </a>
             @endif
             <a href="{{ url('exam/list') }}" class="exam-hero-btn btn-outline-light">
@@ -1011,7 +1044,7 @@
                                             <th class="text-center" style="width:100px;">Full Marks</th>
                                             <th class="text-center" style="width:140px;">Obtain Marks</th>
                                             <th class="text-center" style="width:140px;">Marks %</th>
-                                            <th class="text-center" style="width:150px;">Action</th>
+                                            <th class="text-center" style="width:250px;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1069,9 +1102,22 @@
                                                     </div>
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-success btn-sm marks-save-btn exam-mark-save-btn">
-                                                        <i class="fa-solid fa-floppy-disk"></i> {{ $rowButtonText }}
-                                                    </button>
+                                                    <div class="marks-action-wrap">
+                                                        <button type="button" class="btn btn-success btn-sm marks-save-btn exam-mark-save-btn">
+                                                            <i class="fa-solid fa-floppy-disk"></i> {{ $rowButtonText }}
+                                                        </button>
+                                                        <a href="{{ route('exam.marks.report-card', [
+                                                            'id' => \App\Helpers\Helper::encoded($student->id),
+                                                            'unit_id' => $selectedUnitId,
+                                                            'branch_id' => $selectedBranchId,
+                                                            'class_id' => $selectedClassId,
+                                                            'session_id' => $selectedSessionId,
+                                                        ]) }}"
+                                                           class="btn btn-outline-primary btn-sm marks-report-card-btn"
+                                                           target="_blank">
+                                                            <i class="fa-solid fa-file-lines"></i> Report Card
+                                                        </a>
+                                                    </div>
                                                     <div class="mt-2">
                                                         <span class="marks-row-status {{ $rowStatusClass }}">{{ $rowStatusText }}</span>
                                                     </div>

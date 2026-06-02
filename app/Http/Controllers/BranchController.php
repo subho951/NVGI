@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Validator;
 use App\Services\SiteAuthService;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
 
 use App\Models\GeneralSetting;
 use App\Models\User;
@@ -16,7 +18,6 @@ use App\Models\Branch;
 use App\Helpers\Helper;
 use Auth;
 use Session;
-use Hash;
 
 class BranchController extends Controller
 {
@@ -47,14 +48,31 @@ class BranchController extends Controller
 
             if($request->isMethod('post')){
                 $request->validate([
-                    'name'              => 'required|string|max:255|unique:units,name',
-                    'unit_id'           => 'required|integer',
+                    'name'              => [
+                        'required',
+                        'string',
+                        'max:255',
+                        Rule::unique('branches', 'name')->where(function ($query) use ($request) {
+                            return $query->where('unit_id', '=', (int) $request->unit_id)
+                                ->whereNull('deleted_at');
+                        }),
+                    ],
+                    'unit_id'           => [
+                        'required',
+                        'integer',
+                        Rule::exists('units', 'id')->where(function ($query) {
+                            return $query->where('status', '=', 1);
+                        }),
+                    ],
+                    'password'          => 'required|string|min:8|max:72',
                 ]);
 
                 Branch::create([
                     'unit_id'           => $request->unit_id,
-                    'serial_id'         => strtoupper(substr($request->name, 0, 3)),
+                    'serial_id'         => $this->createUniqueSerialId($request->name),
                     'name'              => $request->name,
+                    'password'          => Hash::make($request->password),
+                    'original_password' => Crypt::encryptString($request->password),
                 ]);
 
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' added successfully !!!');
@@ -79,15 +97,37 @@ class BranchController extends Controller
                 $member = Branch::findOrFail($id);
 
                 $request->validate([
-                    'name'              => 'required|string|max:255|unique:units,name,'.$member->id,
-                    'unit_id'           => 'required|integer',
+                    'name'              => [
+                        'required',
+                        'string',
+                        'max:255',
+                        Rule::unique('branches', 'name')->where(function ($query) use ($request) {
+                            return $query->where('unit_id', '=', (int) $request->unit_id)
+                                ->whereNull('deleted_at');
+                        })->ignore($member->id),
+                    ],
+                    'unit_id'           => [
+                        'required',
+                        'integer',
+                        Rule::exists('units', 'id')->where(function ($query) {
+                            return $query->where('status', '=', 1);
+                        }),
+                    ],
+                    'password'          => 'nullable|string|min:8|max:72',
                 ]);
 
-                $member->update([
+                $fields = [
                     'unit_id'           => $request->unit_id,
-                    'serial_id'         => strtoupper(substr($request->name, 0, 3)),
+                    'serial_id'         => $this->createUniqueSerialId($request->name, $member->id),
                     'name'              => $request->name,
-                ]);
+                ];
+
+                if ($request->filled('password')) {
+                    $fields['password'] = Hash::make($request->password);
+                    $fields['original_password'] = Crypt::encryptString($request->password);
+                }
+
+                $member->update($fields);
 
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
             }
@@ -128,4 +168,31 @@ class BranchController extends Controller
             return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' '.$msg.' successfully !!!');
         }
     /* change status */
+
+    private function createUniqueSerialId($branchName, $ignoreBranchId = null): string
+    {
+        $serialBase = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '', trim((string) $branchName)));
+        $serialBase = substr($serialBase !== '' ? $serialBase : 'BRANCH', 0, 3);
+        $serialId = $serialBase;
+        $suffix = 2;
+
+        while ($this->serialIdExists($serialId, $ignoreBranchId)) {
+            $serialId = $serialBase . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $serialId;
+    }
+
+    private function serialIdExists(string $serialId, $ignoreBranchId = null): bool
+    {
+        $query = Branch::whereRaw('LOWER(serial_id) = ?', [strtolower($serialId)])
+                    ->where('status', '!=', 3);
+
+        if ($ignoreBranchId !== null) {
+            $query->where('id', '!=', (int) $ignoreBranchId);
+        }
+
+        return $query->exists();
+    }
 }

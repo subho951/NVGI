@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->alias([
+            'branch.portal' => \App\Http\Middleware\EnsureBranchPortalAuthenticated::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

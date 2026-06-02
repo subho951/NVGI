@@ -7,6 +7,10 @@ use App\Helpers\Helper;
 $controllerRoute = $module['controller_route'];
 ?>
 <h2>Manage <?= $module['title'] ?></h2>
+<div class="alert alert-info py-2">
+    Branch employee portal:
+    <a href="{{ route('branch.portal.login') }}" target="_blank" class="fw-bold">{{ route('branch.portal.login') }}</a>
+</div>
 @if(session('success_message'))
 <div class="alert alert-success bg-success text-light border-0 alert-dismissible fade show autohide" role="alert">
     {{ session('success_message') }}
@@ -54,10 +58,17 @@ $controllerRoute = $module['controller_route'];
                 Name of the <?= $module['title'] ?>
             </div>
             <div class="col-md-3">
-                <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name" required>
+                <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name" value="{{ old('name') }}" required>
                 @error('name') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
             <div class="col-md-2">
+                Login Password
+            </div>
+            <div class="col-md-2">
+                <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="Minimum 8 characters" minlength="8" maxlength="72" required>
+                @error('password') <span class="text-danger">{{ $message }}</span> @enderror
+            </div>
+            <div class="col-md-1">
                 <button type="submit" class="btn btn-success btn-sm w-100"><?= $action ?></button>
             </div>
         </form>
@@ -71,8 +82,9 @@ $controllerRoute = $module['controller_route'];
                 <thead>
                     <th>#</th>
                     <th>Name of the Unit</th>
-                    <th>ID (Auto-generated)</th>
+                    <th>Username (Serial ID)</th>
                     <th>Name of the <?= $module['title'] ?></th>
+                    <th>Password</th>
                     <th>Action</th>
                 </thead>
                 <tbody>
@@ -81,9 +93,10 @@ $controllerRoute = $module['controller_route'];
                         foreach ($rows as $row) { ?>
                             <tr>
                                 <td><?= $sl++ ?></td>
-                                <td><?= $row->unit_name ?></td>
-                                <td><?= $row->serial_id ?></td>
-                                <td><?= $row->name ?></td>
+                                <td><?= e($row->unit_name) ?></td>
+                                <td><?= e($row->serial_id) ?></td>
+                                <td><?= e($row->name) ?></td>
+                                <td><?= ($row->original_password_for_display !== '' ? e($row->original_password_for_display) : '<span class="text-muted">Not set</span>') ?></td>
                                 <td>
                                     <?php
                                     $encoded_id     = Helper::encoded($row->id);
@@ -105,7 +118,7 @@ $controllerRoute = $module['controller_route'];
                         <?php }
                     } else { ?>
                         <tr>
-                            <td colspan="5" class="text-danger text-center">
+                            <td colspan="6" class="text-danger text-center">
                                 No records found
                             </td>
                         </tr>

@@ -57,6 +57,14 @@ $controllerRoute = $module['controller_route'];
                 <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name" value="<?= (($single_row) ? $single_row->name : '') ?>" required>
                 @error('name') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
+            <div class="col-md-2">
+                Login Password
+            </div>
+            <div class="col-md-2">
+                <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="Leave blank to keep current password" minlength="8" maxlength="72">
+                <small class="text-info">Leave blank to keep the current password.</small>
+                @error('password') <span class="text-danger">{{ $message }}</span> @enderror
+            </div>
             <div class="col-md-1">
                 <button type="submit" class="btn btn-success btn-sm w-100"><?= $action ?></button>
             </div>
@@ -71,8 +79,9 @@ $controllerRoute = $module['controller_route'];
                 <thead>
                     <th>#</th>
                     <th>Name of the Unit</th>
-                    <th>ID (Auto-generated)</th>
+                    <th>Username (Serial ID)</th>
                     <th>Name of the <?= $module['title'] ?></th>
+                    <th>Password</th>
                     <th>Action</th>
                 </thead>
                 <tbody>
@@ -81,9 +90,10 @@ $controllerRoute = $module['controller_route'];
                         foreach ($rows as $row) { ?>
                             <tr>
                                 <td><?= $sl++ ?></td>
-                                <td><?= $row->unit_name ?></td>
-                                <td><?= $row->serial_id ?></td>
-                                <td><?= $row->name ?></td>
+                                <td><?= e($row->unit_name) ?></td>
+                                <td><?= e($row->serial_id) ?></td>
+                                <td><?= e($row->name) ?></td>
+                                <td><?= ($row->original_password_for_display !== '' ? e($row->original_password_for_display) : '<span class="text-muted">Not set</span>') ?></td>
                                 <td>
                                     <?php
                                     $encoded_id     = Helper::encoded($row->id);
@@ -105,7 +115,7 @@ $controllerRoute = $module['controller_route'];
                         <?php }
                     } else { ?>
                         <tr>
-                            <td colspan="5" class="text-danger text-center">
+                            <td colspan="6" class="text-danger text-center">
                                 No records found
                             </td>
                         </tr>

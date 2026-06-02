@@ -272,6 +272,202 @@ class ExamStudentMarkController extends Controller
         return $examSections;
     }
 
+    private function validateReportRequest(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'unit_id'    => ['required', 'integer', Rule::exists('units', 'id')->where(function ($query) {
+                $query->where('status', '=', 1)
+                    ->whereNull('deleted_at');
+            })],
+            'branch_id'  => ['required', 'integer', Rule::exists('branches', 'id')->where(function ($query) {
+                $query->where('status', '=', 1)
+                    ->whereNull('deleted_at');
+            })],
+            'class_id'   => ['required', 'integer', Rule::exists('classes', 'id')->where(function ($query) {
+                $query->where('status', '=', 1)
+                    ->whereNull('deleted_at');
+            })],
+            'session_id' => ['required', 'integer', Rule::exists('sessions', 'id')->where(function ($query) {
+                $query->where('status', '=', 1)
+                    ->whereNull('deleted_at');
+            })],
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $unitId = (int) $request->input('unit_id');
+            $branchId = (int) $request->input('branch_id');
+            $classId = (int) $request->input('class_id');
+
+            if ($unitId <= 0) {
+                return;
+            }
+
+            if ($branchId > 0) {
+                $branch = Branch::select('unit_id')
+                                ->where('id', '=', $branchId)
+                                ->where('status', '=', 1)
+                                ->first();
+
+                if ($branch && (int) $branch->unit_id !== $unitId) {
+                    $validator->errors()->add('branch_id', 'Selected branch does not belong to the selected unit.');
+                }
+            }
+
+            if ($classId > 0) {
+                $class = Classes::select('unit_id')
+                                ->where('id', '=', $classId)
+                                ->where('status', '=', 1)
+                                ->first();
+
+                if ($class && (int) $class->unit_id !== $unitId) {
+                    $validator->errors()->add('class_id', 'Selected class does not belong to the selected unit.');
+                }
+            }
+        });
+
+        return $validator;
+    }
+
+    private function getReportContext(int $unitId, int $branchId, int $classId, int $sessionId): array
+    {
+        $unit = Unit::select('id', 'name')->where('id', '=', $unitId)->first();
+        $branch = Branch::select('id', 'name')->where('id', '=', $branchId)->first();
+        $class = Classes::select('id', 'name')->where('id', '=', $classId)->first();
+        $session = Session::select('id', 'name')->where('id', '=', $sessionId)->first();
+
+        return [
+            'unit_id'      => $unitId,
+            'unit_name'    => (($unit) ? trim((string) $unit->name) : ''),
+            'branch_id'    => $branchId,
+            'branch_name'  => (($branch) ? trim((string) $branch->name) : ''),
+            'class_id'     => $classId,
+            'class_name'   => (($class) ? trim((string) $class->name) : ''),
+            'session_id'   => $sessionId,
+            'session_name' => (($session) ? trim((string) $session->name) : ''),
+        ];
+    }
+
+    private function getReportExams(int $unitId, int $classId)
+    {
+        return Exam::with(['fullMarks' => function ($query) use ($unitId, $classId) {
+                        $query->where('status', '=', 1)
+                            ->where('unit_id', '=', $unitId)
+                            ->where('class_id', '=', $classId);
+                    }])
+                    ->where('status', '=', 1)
+                    ->whereNull('deleted_at')
+                    ->whereHas('fullMarks', function ($query) use ($unitId, $classId) {
+                        $query->where('status', '=', 1)
+                            ->where('unit_id', '=', $unitId)
+                            ->where('class_id', '=', $classId);
+                    })
+                    ->orderBy('id', 'ASC')
+                    ->get();
+    }
+
+    private function getReportMarks(int $unitId, int $branchId, int $classId, int $sessionId, array $studentIds, array $examIds)
+    {
+        if (empty($studentIds) || empty($examIds)) {
+            return collect();
+        }
+
+        return ExamStudentMark::select(
+                                'id',
+                                'exam_id',
+                                'student_id',
+                                'full_marks',
+                                'obtain_marks',
+                                'marks_percentage'
+                            )
+                            ->where('unit_id', '=', $unitId)
+                            ->where('branch_id', '=', $branchId)
+                            ->where('class_id', '=', $classId)
+                            ->where('session_id', '=', $sessionId)
+                            ->where('status', '=', 1)
+                            ->whereNull('deleted_at')
+                            ->whereNotNull('obtain_marks')
+                            ->whereIn('student_id', $studentIds)
+                            ->whereIn('exam_id', $examIds)
+                            ->get();
+    }
+
+    private function filterReportExamsWithEnteredMarks($exams, $existingMarks)
+    {
+        $enteredExamIds = $existingMarks->filter(function ($mark) {
+            return ($mark->obtain_marks !== null && $mark->obtain_marks !== '');
+        })->pluck('exam_id')->map(function ($examId) {
+            return (int) $examId;
+        })->unique()->values()->all();
+
+        return $exams->filter(function ($exam) use ($enteredExamIds) {
+            return in_array((int) $exam->id, $enteredExamIds, true);
+        })->values();
+    }
+
+    private function buildReportStudentRows($students, $exams, $existingMarks, int $unitId, int $classId)
+    {
+        $marksByStudent = $existingMarks->groupBy('student_id')->map(function ($group) {
+            return $group->keyBy('exam_id');
+        });
+
+        return $students->map(function ($student) use ($exams, $marksByStudent, $unitId, $classId) {
+            $studentMarks = $marksByStudent->get($student->id, collect());
+            $totalObtained = 0;
+            $enteredFullMarks = 0;
+            $configuredFullMarks = 0;
+            $enteredCount = 0;
+
+            $examRows = $exams->map(function ($exam) use ($studentMarks, $unitId, $classId, &$totalObtained, &$enteredFullMarks, &$configuredFullMarks, &$enteredCount) {
+                $fullMarks = $this->getExamFullMarkValue($exam, $unitId, $classId);
+                $mark = $studentMarks->get($exam->id);
+                $hasValue = ($mark && $mark->obtain_marks !== null && $mark->obtain_marks !== '');
+                $obtainMarks = (($hasValue) ? (float) $mark->obtain_marks : null);
+                $percentage = (($hasValue && $fullMarks > 0) ? (($obtainMarks / $fullMarks) * 100) : null);
+
+                $configuredFullMarks += $fullMarks;
+
+                if ($hasValue) {
+                    $totalObtained += $obtainMarks;
+                    $enteredFullMarks += $fullMarks;
+                    $enteredCount++;
+                }
+
+                return [
+                    'exam'               => $exam,
+                    'full_marks'         => $fullMarks,
+                    'full_marks_label'   => $this->formatMarksDisplay($fullMarks),
+                    'obtain_marks'       => $obtainMarks,
+                    'obtain_marks_label' => (($hasValue) ? $this->formatMarksDisplay($obtainMarks) : '-'),
+                    'percentage'         => $percentage,
+                    'percentage_label'   => (($hasValue) ? number_format((float) $percentage, 2, '.', '') : '-'),
+                    'has_value'          => $hasValue,
+                ];
+            })->values();
+
+            $examCount = $examRows->count();
+            $pendingCount = max($examCount - $enteredCount, 0);
+            $overallPercentage = (($enteredFullMarks > 0) ? (($totalObtained / $enteredFullMarks) * 100) : 0);
+            $status = (($enteredCount === 0) ? 'Pending' : (($pendingCount === 0) ? 'Completed' : 'Partial'));
+
+            return [
+                'student'                    => $student,
+                'exam_rows'                  => $examRows,
+                'exam_count'                 => $examCount,
+                'entered_count'              => $enteredCount,
+                'pending_count'              => $pendingCount,
+                'configured_full_marks'      => $configuredFullMarks,
+                'configured_full_marks_label' => $this->formatMarksDisplay($configuredFullMarks),
+                'entered_full_marks'         => $enteredFullMarks,
+                'entered_full_marks_label'   => $this->formatMarksDisplay($enteredFullMarks),
+                'total_obtained'             => $totalObtained,
+                'total_obtained_label'       => $this->formatMarksDisplay($totalObtained),
+                'overall_percentage'         => $overallPercentage,
+                'overall_percentage_label'   => number_format($overallPercentage, 2, '.', ''),
+                'status'                     => $status,
+            ];
+        })->values();
+    }
+
     public function index(Request $request)
     {
         $data['module'] = $this->data;
@@ -451,6 +647,93 @@ class ExamStudentMarkController extends Controller
 
         $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
         return view('front.pages.' . $page_name, $data);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $validator = $this->validateReportRequest($request);
+        if ($validator->fails()) {
+            return redirect()->route('exam.marks.index')->withErrors($validator)->withInput();
+        }
+
+        $unitId = (int) $request->input('unit_id');
+        $branchId = (int) $request->input('branch_id');
+        $classId = (int) $request->input('class_id');
+        $sessionId = (int) $request->input('session_id');
+
+        $context = $this->getReportContext($unitId, $branchId, $classId, $sessionId);
+        $students = $this->buildStudentQuery($unitId, $branchId, $classId, $sessionId)
+                        ->orderBy('students.full_name', 'ASC')
+                        ->orderBy('students.id', 'ASC')
+                        ->get();
+        $exams = $this->getReportExams($unitId, $classId);
+        $marks = $this->getReportMarks(
+            $unitId,
+            $branchId,
+            $classId,
+            $sessionId,
+            $students->pluck('id')->values()->all(),
+            $exams->pluck('id')->values()->all()
+        );
+        $exams = $this->filterReportExamsWithEnteredMarks($exams, $marks);
+        $rows = $this->buildReportStudentRows($students, $exams, $marks, $unitId, $classId);
+
+        $reportData = [
+            'context'      => $context,
+            'exams'        => $exams,
+            'rows'         => $rows,
+            'generated_at' => date('d-m-Y h:i A'),
+        ];
+
+        $safeParts = array_filter([
+            $context['unit_name'],
+            $context['branch_name'],
+            $context['class_name'],
+            $context['session_name'],
+        ]);
+        $safeName = preg_replace('/[^A-Za-z0-9]+/', '-', implode('-', $safeParts));
+        $safeName = trim((string) $safeName, '-');
+        $fileName = 'exam-marks-report-' . (($safeName !== '') ? $safeName : 'class') . '-' . date('YmdHis') . '.xls';
+        $html = view('front.pages.exam.marks.excel-report', $reportData)->render();
+
+        return response("\xEF\xBB\xBF" . $html)
+                ->header('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
+                ->header('Content-Disposition', 'attachment; filename=' . $fileName);
+    }
+
+    public function reportCard(Request $request, $id)
+    {
+        $validator = $this->validateReportRequest($request);
+        if ($validator->fails()) {
+            return redirect()->route('exam.marks.index')->withErrors($validator)->withInput();
+        }
+
+        $studentId = (int) Helper::decoded($id);
+        $unitId = (int) $request->input('unit_id');
+        $branchId = (int) $request->input('branch_id');
+        $classId = (int) $request->input('class_id');
+        $sessionId = (int) $request->input('session_id');
+
+        $student = $this->buildStudentQuery($unitId, $branchId, $classId, $sessionId)
+                        ->where('students.id', '=', $studentId)
+                        ->first();
+
+        if (!$student) {
+            return redirect()->route('exam.marks.index')->with('error_message', 'Student not found for the selected report filters.');
+        }
+
+        $context = $this->getReportContext($unitId, $branchId, $classId, $sessionId);
+        $exams = $this->getReportExams($unitId, $classId);
+        $marks = $this->getReportMarks($unitId, $branchId, $classId, $sessionId, [$studentId], $exams->pluck('id')->values()->all());
+        $exams = $this->filterReportExamsWithEnteredMarks($exams, $marks);
+        $reportRow = $this->buildReportStudentRows(collect([$student]), $exams, $marks, $unitId, $classId)->first();
+
+        return view('front.pages.exam.marks.report-card', [
+            'title'        => 'Student Report Card',
+            'context'      => $context,
+            'report_row'   => $reportRow,
+            'generated_at' => date('d-m-Y h:i A'),
+        ]);
     }
 
     public function save(Request $request)
