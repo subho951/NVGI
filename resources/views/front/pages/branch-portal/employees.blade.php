@@ -165,6 +165,47 @@
             vertical-align: middle;
         }
 
+        .employee-avatar-wrap {
+            display: flex;
+            justify-content: center;
+        }
+
+        .employee-avatar,
+        .employee-avatar-fallback {
+            width: 48px;
+            height: 48px;
+            border: 2px solid #d9e5ef;
+            border-radius: 50%;
+            background: #ffffff;
+            object-fit: cover;
+            box-shadow: 0 6px 14px rgba(23, 48, 71, 0.12);
+        }
+
+        .employee-avatar-fallback {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .employee-avatar-fallback.male {
+            border-color: #bedbf2;
+            background: #e9f5ff;
+            color: #2672a9;
+        }
+
+        .employee-avatar-fallback.female {
+            border-color: #f1c8db;
+            background: #fff0f7;
+            color: #bd4f82;
+        }
+
+        .employee-avatar-fallback.neutral {
+            border-color: #d9e1e8;
+            background: #f2f5f7;
+            color: #718395;
+        }
+
         .status-pill {
             display: inline-flex;
             border-radius: 999px;
@@ -265,6 +306,7 @@
                             <tr>
                                 <th>Sl.</th>
                                 <th>Employee No</th>
+                                <th>Photo</th>
                                 <th>Name</th>
                                 <th>Gender</th>
                                 <th>Email</th>
@@ -277,9 +319,29 @@
                         </thead>
                         <tbody>
                             @foreach($employeeRows as $employee)
+                                @php
+                                    $employeeImage = trim((string) $employee->image);
+                                    $hasEmployeeImage = $employeeImage !== '' && file_exists(public_path(ltrim($employeeImage, '/\\')));
+                                    $gender = strtolower(trim((string) $employee->gender));
+                                    $avatarClass = $gender === 'male' ? 'male' : ($gender === 'female' ? 'female' : 'neutral');
+                                    $avatarIcon = $gender === 'male' ? 'fa-person' : ($gender === 'female' ? 'fa-person-dress' : 'fa-user');
+                                @endphp
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $employee->employee_no }}</td>
+                                    <td>
+                                        <div class="employee-avatar-wrap">
+                                            @if($hasEmployeeImage)
+                                                <img src="{{ url('public' . $employeeImage) }}"
+                                                     alt="{{ $employee->employee_name !== '' ? $employee->employee_name : 'Employee' }}"
+                                                     class="employee-avatar"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                                            @endif
+                                            <span class="employee-avatar-fallback {{ $avatarClass }}" style="{{ $hasEmployeeImage ? 'display:none;' : '' }}">
+                                                <i class="fa-solid {{ $avatarIcon }}"></i>
+                                            </span>
+                                        </div>
+                                    </td>
                                     <td>{{ $employee->employee_name !== '' ? $employee->employee_name : '-' }}</td>
                                     <td>{{ $employee->gender ?: '-' }}</td>
                                     <td>{{ $employee->email ?: '-' }}</td>
