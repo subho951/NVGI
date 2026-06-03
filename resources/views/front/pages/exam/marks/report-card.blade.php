@@ -301,7 +301,7 @@
             <img src="{{ $logoUrl }}" alt="{{ $siteName !== '' ? $siteName : 'Site logo' }}" class="site-logo">
             <div>
                 <h1>{{ $siteName !== '' ? $siteName : 'Student Report Card' }}</h1>
-                <p>Student Exam Wise Marks Report Card</p>
+                <p>Student Subject Wise Exam Progress Report</p>
             </div>
         </div>
 
@@ -336,12 +336,13 @@
                 </div>
             </div>
 
-            <h2 class="section-title">Exam Wise Marks</h2>
+            <h2 class="section-title">Exam And Subject Wise Marks</h2>
             <table>
                 <thead>
                     <tr>
                         <th style="width: 48px;">Sl.</th>
                         <th>Exam</th>
+                        <th>Subject</th>
                         <th style="width: 110px;">Full Marks</th>
                         <th style="width: 120px;">Obtained Marks</th>
                         <th style="width: 95px;">Marks %</th>
@@ -349,22 +350,26 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php $reportSl = 1; @endphp
                     @forelse($report_row['exam_rows'] as $examRow)
-                        <tr>
-                            <td class="center">{{ $loop->iteration }}</td>
-                            <td>{{ $examRow['exam']->name }}</td>
-                            <td class="center">{{ $examRow['full_marks_label'] }}</td>
-                            <td class="center">{{ $examRow['obtain_marks_label'] }}</td>
-                            <td class="center">{{ $examRow['has_value'] ? $examRow['percentage_label'] . '%' : '-' }}</td>
-                            <td class="center">
-                                <span class="status {{ $examRow['has_value'] ? 'status-entered' : 'status-pending' }}">
-                                    {{ $examRow['has_value'] ? 'Entered' : 'Pending' }}
-                                </span>
-                            </td>
-                        </tr>
+                        @foreach($examRow['subject_rows'] as $subjectRow)
+                            <tr>
+                                <td class="center">{{ $reportSl++ }}</td>
+                                <td>{{ $examRow['exam']->name }}</td>
+                                <td>{{ $subjectRow['subject_name'] }}</td>
+                                <td class="center">{{ $subjectRow['full_marks_label'] }}</td>
+                                <td class="center">{{ $subjectRow['obtain_marks_label'] }}</td>
+                                <td class="center">{{ $subjectRow['has_value'] ? $subjectRow['percentage_label'] . '%' : '-' }}</td>
+                                <td class="center">
+                                    <span class="status {{ $subjectRow['has_value'] ? 'status-entered' : 'status-pending' }}">
+                                        {{ $subjectRow['has_value'] ? 'Entered' : 'Pending' }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
                     @empty
                         <tr>
-                            <td colspan="6" class="center">No exam marks have been entered for this student.</td>
+                            <td colspan="7" class="center">No subject-wise exam setup is available for this student.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -372,11 +377,15 @@
 
             <div class="summary-grid">
                 <div class="summary-item">
-                    <span>Exams With Entered Marks</span>
+                    <span>Assigned Exams</span>
                     <strong>{{ $report_row['exam_count'] }}</strong>
                 </div>
                 <div class="summary-item">
-                    <span>Entered Marks Records</span>
+                    <span>Assigned Subjects</span>
+                    <strong>{{ $report_row['subject_count'] }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Entered Subject Marks</span>
                     <strong>{{ $report_row['entered_count'] }}</strong>
                 </div>
                 <div class="summary-item">
@@ -388,7 +397,11 @@
                     <strong>{{ $report_row['total_obtained_label'] }}</strong>
                 </div>
                 <div class="summary-item">
-                    <span>Total Full Marks</span>
+                    <span>Assigned Full Marks</span>
+                    <strong>{{ $report_row['configured_full_marks_label'] }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Entered Full Marks</span>
                     <strong>{{ $report_row['entered_full_marks_label'] }}</strong>
                 </div>
                 <div class="summary-item">
@@ -398,7 +411,7 @@
             </div>
 
             <p class="report-note">
-                Only exams with entered marks are included in this report card.
+                Assigned subjects without entered marks are shown as pending, so this card can be used as a progress report.
             </p>
 
             <div class="report-footer">

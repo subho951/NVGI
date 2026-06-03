@@ -12,4 +12,9 @@ class Subject extends Model
     protected $fillable = [
         'name',
     ];
+
+    public function classLinks()
+    {
+        return $this->hasMany(ClassSubject::class, 'subject_id')->where('status', '=', 1);
+    }
 }

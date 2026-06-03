@@ -13,4 +13,9 @@ class Classes extends Model
         'name',
         'unit_id'
     ];
+
+    public function subjectLinks()
+    {
+        return $this->hasMany(ClassSubject::class, 'class_id')->where('status', '=', 1)->orderBy('subject_id', 'ASC');
+    }
 }

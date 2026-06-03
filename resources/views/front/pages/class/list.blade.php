@@ -1,116 +1,225 @@
 @extends('front.layouts.afterlogin')
 @section('content')
-<?php
+@php
+    use App\Helpers\Helper;
 
-use App\Helpers\Helper;
+    $controllerRoute = $module['controller_route'];
+    $selectedUnitId = (string) old('unit_id', '');
+    $selectedSubjectIds = array_map('strval', (array) ($selected_subject_ids ?? []));
+@endphp
 
-$controllerRoute = $module['controller_route'];
-?>
-<h2>Manage <?= $module['title'] ?></h2>
-@if(session('success_message'))
-<div class="alert alert-success bg-success text-light border-0 alert-dismissible fade show autohide" role="alert">
-    {{ session('success_message') }}
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-@endif
-@if(session('error_message'))
-<div class="alert alert-danger bg-danger text-light border-0 alert-dismissible fade show autohide" role="alert">
-    {{ session('error_message') }}
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-@endif
+<style>
+    .class-subject-page {
+        color: #152537;
+    }
+    .class-subject-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    .class-subject-head h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #102f4a;
+    }
+    .class-subject-card {
+        border: 1px solid #dbe5ef;
+        border-radius: 10px;
+        background: #ffffff;
+        box-shadow: 0 12px 28px rgba(16, 47, 74, 0.06);
+    }
+    .class-subject-card .card-body {
+        padding: 16px;
+    }
+    .class-subject-title {
+        margin: 0 0 12px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #476176;
+    }
+    .class-subject-page .form-label {
+        font-size: 0.76rem;
+        font-weight: 800;
+        color: #4c6175;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .class-subject-page .form-control,
+    .class-subject-page .form-select {
+        border-color: #d3dfeb;
+        border-radius: 8px;
+        font-size: 0.86rem;
+    }
+    .class-subject-table {
+        margin-bottom: 0;
+        font-size: 0.86rem;
+    }
+    .class-subject-table thead th {
+        background: #102f4a;
+        color: #ffffff;
+        border-color: #102f4a;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .subject-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .subject-chip {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #cfddeb;
+        border-radius: 999px;
+        background: #f5f9fc;
+        color: #173b5a;
+        padding: 4px 8px;
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+    .status-chip {
+        display: inline-flex;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 0.74rem;
+        font-weight: 800;
+    }
+    .status-chip.active {
+        background: #dff5e9;
+        color: #11683e;
+    }
+    .status-chip.blocked {
+        background: #fff0ca;
+        color: #866000;
+    }
+</style>
 
-@if ($errors->any())
-<div class="alert alert-danger">
-    <strong>Please fix the following errors:</strong>
-    <ul class="mb-0">
-        @foreach ($errors->all() as $error)
-        <li>{{ $error }}</li>
-        @endforeach
-    </ul>
-</div>
-@endif
-<!--<h6 class="mb-4 text-danger">Developer's Note : ID should be : NVGI/{Unit Name}{1st letter of branch}/1,2,3...</h6>-->
-<div class="card shadow bg-light mb-4">
-    <div class="card-body">
-        <h6 class="text-center alert alert-info alert-sm py-2 px-2"><?= $action ?> <?= $module['title'] ?></h6>
-        <form method="POST" action="" class="row g-3">
-            @csrf
-            <div class="col-md-1">
-                Select Unit
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" name="unit_id" id="unit_id" required>
-                    <option selected disabled>Click here</option>
-                    <?php if ($units) {
-                        foreach ($units as $unit) { ?>
-                            <option value="<?= $unit->id ?>"><?= $unit->name ?></option>
-                    <?php }
-                    } ?>
-                </select>
-                @error('unit_id') <span class="text-danger">{{ $message }}</span> @enderror
-            </div>
-            <div class="col-md-2">
-                Name of the <?= $module['title'] ?>
-            </div>
-            <div class="col-md-3">
-                <input class="form-control form-control-sm" name="name" id="name" placeholder="Write <?= $module['title'] ?> Name" required>
-                @error('name') <span class="text-danger">{{ $message }}</span> @enderror
-            </div>
-
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-success btn-sm w-100"><?= $action ?></button>
-            </div>
-        </form>
+<div class="class-subject-page">
+    <div class="class-subject-head">
+        <h2>Class Subject Mapping</h2>
     </div>
-</div>
-<div class="card shadow bg-light">
-    <div class="card-body">
-        <h6 class="text-center alert alert-info alert-sm py-2 px-2">List of <?= $module['title'] ?></h6>
-        <div class="table-responsive">
-            <table id="example" class="table table-bordered datatable">
-                <thead>
-                    <th>#</th>
-                    <th>Name of the Unit</th>
-                    <th>Name of the <?= $module['title'] ?></th>
-                    <th>Action</th>
-                </thead>
-                <tbody>
-                    <?php if (count($rows) > 0) {
-                        $sl = 1;
-                        foreach ($rows as $row) { ?>
+
+    @if(session('success_message'))
+        <div class="alert alert-success bg-success text-light border-0 alert-dismissible fade show autohide" role="alert">
+            {{ session('success_message') }}
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if(session('error_message'))
+        <div class="alert alert-danger bg-danger text-light border-0 alert-dismissible fade show autohide" role="alert">
+            {{ session('error_message') }}
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <strong>Please fix the following errors:</strong>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <div class="card class-subject-card mb-3">
+        <div class="card-body">
+            <h6 class="class-subject-title">{{ $action }} Class And Subjects</h6>
+            <form method="POST" action="" class="row g-3 align-items-end">
+                @csrf
+                <div class="col-lg-2 col-md-4">
+                    <label for="unit_id" class="form-label">Unit</label>
+                    <select class="form-select form-select-sm" name="unit_id" id="unit_id" required>
+                        <option value="">Select</option>
+                        @foreach($units as $unit)
+                            <option value="{{ $unit->id }}" {{ ($selectedUnitId === (string) $unit->id ? 'selected' : '') }}>{{ $unit->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-lg-3 col-md-4">
+                    <label for="name" class="form-label">Class Name</label>
+                    <input class="form-control form-control-sm" name="name" id="name" placeholder="Write class name" value="{{ old('name') }}" required>
+                </div>
+                <div class="col-lg-5 col-md-8">
+                    <label for="subject_ids" class="form-label">Class Subjects</label>
+                    <select class="form-select form-select-sm" name="subject_ids[]" id="subject_ids" multiple size="4" required>
+                        @foreach($subjects as $subject)
+                            <option value="{{ $subject->id }}" {{ (in_array((string) $subject->id, $selectedSubjectIds, true) ? 'selected' : '') }}>{{ $subject->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <button type="submit" class="btn btn-success btn-sm w-100">{{ $action }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card class-subject-card">
+        <div class="card-body">
+            <h6 class="class-subject-title">Class Register</h6>
+            <div class="table-responsive">
+                <table id="example" class="table table-hover table-bordered align-middle class-subject-table datatable">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">#</th>
+                            <th>Unit</th>
+                            <th>Class</th>
+                            <th>Subjects</th>
+                            <th style="width: 110px;">Status</th>
+                            <th style="width: 150px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($rows as $row)
+                            @php
+                                $encodedId = Helper::encoded($row->id);
+                                $statusUrl = $controllerRoute . '/change-status/';
+                            @endphp
                             <tr>
-                                <td><?= $sl++ ?></td>
-                                <td><?= $row->unit_name ?></td>
-                                <td><?= $row->name ?></td>
+                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $row->unit_name }}</td>
+                                <td class="fw-bold">{{ $row->name }}</td>
                                 <td>
-                                    <?php
-                                    $encoded_id     = Helper::encoded($row->id);
-                                    $delete_url     = $controllerRoute . '/delete/';
-                                    $status_url     = $controllerRoute . '/change-status/';
-                                    $edit_url       = $controllerRoute . '/edit/';
-                                    ?>
-                                    <a href="<?= url($controllerRoute . '/edit/' . Helper::encoded($row->id)) ?>" class="text-primary" title="Edit <?= $module['title'] ?>">Edit</a>
-                                    |
-                                    <?php if ($row->status) { ?>
-                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to deactivate this record?')" class="text-success" title="Active <?= $module['title'] ?>">Active</a>
-                                    <?php } else { ?>
-                                        <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>">Blocked</a>
-                                    <?php } ?>
-                                    <!-- |
-                            <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $delete_url ?>', 'This record will be permanently deleted. Do you want to proceed?')" class="text-danger" title="Delete <?= $module['title'] ?>">Delete</a> -->
+                                    @if($row->subjectLinks && $row->subjectLinks->count() > 0)
+                                        <div class="subject-chip-list">
+                                            @foreach($row->subjectLinks as $subjectLink)
+                                                @if($subjectLink->subject)
+                                                    <span class="subject-chip">{{ $subjectLink->subject->name }}</span>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span class="text-muted">No subjects mapped</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="status-chip {{ $row->status ? 'active' : 'blocked' }}">{{ $row->status ? 'Active' : 'Blocked' }}</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url($controllerRoute . '/edit/' . $encodedId) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+                                    @if($row->status)
+                                        <a href="javascript:void(0);" onclick="showConfirmBox('{{ $encodedId }}', '{{ $statusUrl }}', 'Are you sure you want to deactivate this record?')" class="btn btn-outline-warning btn-sm">Block</a>
+                                    @else
+                                        <a href="javascript:void(0);" onclick="showConfirmBox('{{ $encodedId }}', '{{ $statusUrl }}', 'Are you sure you want to activate this record?')" class="btn btn-outline-success btn-sm">Activate</a>
+                                    @endif
                                 </td>
                             </tr>
-                        <?php }
-                    } else { ?>
-                        <tr>
-                            <td colspan="3" class="text-danger text-center">
-                                No records found
-                            </td>
-                        </tr>
-                    <?php } ?>
-                </tbody>
-            </table>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-danger text-center">No records found</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

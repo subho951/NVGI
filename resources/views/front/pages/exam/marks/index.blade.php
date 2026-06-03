@@ -493,7 +493,7 @@
     .marks-table {
         width: 100%;
         margin-bottom: 0;
-        min-width: 1360px;
+        min-width: 1400px;
     }
 
     .marks-table thead th {
@@ -520,16 +520,76 @@
         background: #f8fbff;
     }
 
-    .exam-mark-row[data-state="saved"] td {
+    .subject-marks-cell {
+        min-width: 640px;
+    }
+
+    .subject-mark-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 7px;
+        align-items: stretch;
+    }
+
+    .subject-mark-box {
+        border: 1px solid #d9e4ee;
+        border-radius: 8px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        padding: 8px 9px;
+        box-shadow: 0 8px 18px rgba(17, 34, 52, 0.04);
+        transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        display: grid;
+        grid-template-columns: minmax(190px, 1fr) minmax(290px, 1.2fr) auto;
+        gap: 9px;
+        align-items: center;
+    }
+
+    .subject-mark-box[data-state="saved"] {
+        border-color: #bde6cb;
         background: #f8fff9;
     }
 
-    .exam-mark-row[data-state="dirty"] td {
+    .subject-mark-box[data-state="dirty"] {
+        border-color: #f3d79d;
         background: #fff9ef;
     }
 
-    .exam-mark-row[data-state="empty"] td {
+    .subject-mark-box[data-state="empty"] {
+        border-color: #d9e4ee;
         background: #ffffff;
+    }
+
+    .subject-mark-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    .subject-mark-controls {
+        display: grid;
+        grid-template-columns: minmax(72px, 0.85fr) minmax(100px, 1fr) auto;
+        gap: 7px;
+        align-items: center;
+    }
+
+    .subject-mark-box .subject-chip {
+        max-width: calc(100% - 82px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .subject-mark-box .marks-save-btn {
+        min-width: 82px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .subject-mark-foot {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0;
     }
 
     .student-photo-wrap {
@@ -548,7 +608,7 @@
     }
 
     .student-meta {
-        min-width: 210px;
+        min-width: 190px;
     }
 
     .student-name {
@@ -616,7 +676,7 @@
         justify-content: center;
         gap: 7px;
         flex-wrap: wrap;
-        min-width: 236px;
+        min-width: 132px;
     }
 
     .marks-report-card-btn {
@@ -655,7 +715,7 @@
     }
 
     .marks-table .input-group {
-        min-width: 120px;
+        min-width: 96px;
     }
 
     .exam-marks-empty {
@@ -757,7 +817,7 @@
         background: #b73949;
     }
 
-    .exam-mark-row.is-flash td {
+    .subject-mark-box.is-flash {
         animation: examFlash 1.2s ease;
     }
 
@@ -810,6 +870,175 @@
             max-width: none;
         }
     }
+
+    .exam-marks-page {
+        --exam-shadow: 0 10px 24px rgba(17, 34, 52, 0.06);
+    }
+
+    .exam-marks-hero {
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 12px 28px rgba(16, 37, 58, 0.16);
+    }
+
+    .exam-marks-hero::before,
+    .exam-marks-hero::after {
+        display: none;
+    }
+
+    .exam-marks-eyebrow {
+        margin-bottom: 5px;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+    }
+
+    .exam-marks-hero h2 {
+        font-size: 1.35rem;
+        margin-bottom: 4px;
+    }
+
+    .exam-marks-hero p {
+        font-size: 0.84rem;
+        line-height: 1.45;
+    }
+
+    .exam-hero-btn {
+        border-radius: 7px;
+        min-height: 34px;
+        padding: 0 11px;
+        font-size: 0.82rem;
+    }
+
+    .exam-marks-card,
+    .exam-summary-card,
+    .exam-pane-summary,
+    .marks-tab-btn,
+    .marks-table-shell,
+    .exam-marks-empty,
+    .exam-guide-card {
+        border-radius: 8px;
+    }
+
+    .exam-marks-card .card-body,
+    .marks-tab-content {
+        padding: 12px;
+    }
+
+    .exam-results-head {
+        padding: 12px 12px 0;
+    }
+
+    .exam-results-head h3 {
+        font-size: 1rem;
+    }
+
+    .exam-results-head p,
+    .exam-results-subnote,
+    .exam-form-note {
+        font-size: 0.8rem;
+    }
+
+    .exam-marks-summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .exam-summary-card {
+        padding: 9px 10px;
+        box-shadow: none;
+    }
+
+    .exam-summary-label {
+        margin-bottom: 5px;
+        font-size: 0.68rem;
+    }
+
+    .exam-summary-value {
+        font-size: 0.88rem;
+    }
+
+    .marks-tabs-wrap {
+        padding: 10px 12px 0;
+    }
+
+    .marks-tabs {
+        gap: 7px;
+    }
+
+    .marks-tab-btn {
+        min-width: 210px;
+        padding: 8px 10px;
+    }
+
+    .marks-tab-name {
+        font-size: 0.86rem;
+        margin-bottom: 6px;
+    }
+
+    .marks-tab-chip,
+    .marks-info-chip {
+        font-size: 0.7rem;
+        padding: 4px 7px;
+    }
+
+    .exam-pane-summary {
+        padding: 9px 10px;
+        margin-bottom: 10px;
+    }
+
+    .exam-pane-title {
+        font-size: 0.9rem;
+    }
+
+    .marks-table {
+        min-width: 1400px;
+    }
+
+    .marks-table thead th {
+        padding: 8px 7px;
+        font-size: 0.68rem;
+    }
+
+    .marks-table tbody td {
+        padding: 7px;
+        font-size: 0.8rem;
+    }
+
+    .student-photo {
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+    }
+
+    .student-name {
+        font-size: 0.82rem;
+    }
+
+    .student-serial,
+    .student-light {
+        font-size: 0.72rem;
+    }
+
+    .subject-chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        border: 1px solid #cfddeb;
+        background: #f6f9fc;
+        color: #143b5f;
+        padding: 5px 9px;
+        font-size: 0.74rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .marks-save-btn,
+    .marks-report-card-btn {
+        border-radius: 7px;
+        font-size: 0.76rem;
+    }
 </style>
 
 <div class="exam-marks-page">
@@ -818,7 +1047,7 @@
             <p class="exam-marks-eyebrow">Exam Marks Center</p>
             <h2>Student Wise Marks Entry</h2>
             <p>
-                Generate a focused marks entry sheet by unit, branch, class, session, and one or more exams.
+                Generate a focused subject-wise marks entry sheet by unit, branch, class, session, and one or more exams.
                 Marks are saved inline without reloading the page, so the workflow stays fast and clean.
             </p>
         </div>
@@ -937,7 +1166,7 @@
             <div class="exam-results-head">
                 <div>
                     <h3>Generated Marks Grid</h3>
-                    <p>Every exam opens in its own tab so the entry flow stays clear, even when multiple exams are selected.</p>
+                    <p>Every exam opens in its own tab with the assigned subjects for this class.</p>
                 </div>
                 <div class="exam-results-subnote">
                     <i class="fa-solid fa-circle-info"></i>
@@ -1002,6 +1231,7 @@
                                     <span class="marks-tab-name">{{ $section['exam']->name }}</span>
                                     <span class="marks-tab-meta">
                                         <span class="marks-tab-chip">{{ $section['student_count'] }} students</span>
+                                        <span class="marks-tab-chip">{{ $section['subject_count'] }} subjects</span>
                                         <span class="marks-tab-chip success"><span data-tab-entered>{{ $section['entered_count'] }}</span> entered</span>
                                         <span class="marks-tab-chip danger"><span data-tab-pending>{{ $section['pending_count'] }}</span> pending</span>
                                     </span>
@@ -1021,14 +1251,16 @@
                                 <div>
                                     <p class="exam-pane-title">
                                         {{ $section['exam']->name }}
-                                        <small>Marks entry table for {{ $section['student_count'] }} active students</small>
+                                        <small>{{ $section['subject_count'] }} assigned subjects, {{ $section['entry_count'] }} student-subject entries</small>
                                     </p>
                                 </div>
                                 <div class="exam-pane-metrics">
                                     <span class="marks-info-chip"><i class="fa-solid fa-users"></i> Students: <strong data-exam-summary-students>{{ $section['student_count'] }}</strong></span>
+                                    <span class="marks-info-chip"><i class="fa-solid fa-book-open"></i> Subjects: <strong data-exam-summary-subjects>{{ $section['subject_count'] }}</strong></span>
+                                    <span class="marks-info-chip"><i class="fa-solid fa-list-check"></i> Entries: <strong data-exam-summary-entries>{{ $section['entry_count'] }}</strong></span>
                                     <span class="marks-info-chip"><i class="fa-solid fa-circle-check"></i> Entered: <strong data-exam-summary-entered>{{ $section['entered_count'] }}</strong></span>
                                     <span class="marks-info-chip"><i class="fa-solid fa-hourglass-half"></i> Pending: <strong data-exam-summary-pending>{{ $section['pending_count'] }}</strong></span>
-                                    <span class="marks-info-chip"><i class="fa-solid fa-star"></i> Full Marks: <strong data-exam-summary-full>{{ $section['full_marks_label'] }}</strong></span>
+                                    <span class="marks-info-chip"><i class="fa-solid fa-star"></i> Total Full Marks: <strong data-exam-summary-full>{{ $section['full_marks_label'] }}</strong></span>
                                 </div>
                             </div>
 
@@ -1036,15 +1268,13 @@
                                 <table class="table table-bordered align-middle marks-table">
                                     <thead>
                                         <tr>
-                                            <th class="text-center" style="width:60px;">#</th>
-                                            <th class="text-center" style="width:220px;">Student</th>
-                                            <th class="text-center" style="width:90px;">Photo</th>
-                                            <th class="text-center" style="width:210px;">Father Name</th>
-                                            <th class="text-center" style="width:140px;">Father Mobile</th>
-                                            <th class="text-center" style="width:100px;">Full Marks</th>
-                                            <th class="text-center" style="width:140px;">Obtain Marks</th>
-                                            <th class="text-center" style="width:140px;">Marks %</th>
-                                            <th class="text-center" style="width:250px;">Action</th>
+                                            <th class="text-center" style="width:52px;">#</th>
+                                            <th class="text-center" style="width:200px;">Student</th>
+                                            <th class="text-center" style="width:76px;">Photo</th>
+                                            <th class="text-center" style="width:170px;">Father Name</th>
+                                            <th class="text-center" style="width:118px;">Father Mobile</th>
+                                            <th class="text-center" style="width:660px;">Subject Marks</th>
+                                            <th class="text-center" style="width:150px;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1055,21 +1285,8 @@
                                                 $fatherName = (!empty(trim((string) $student->father_name)) && strcasecmp(trim((string) $student->father_name), 'No Name') !== 0) ? $student->father_name : '-';
                                                 $fatherMobile = (!empty(trim((string) $student->father_mobile)) ? $student->father_mobile : '-');
                                                 $photoUrl = (($student->photo != '') ? (config('constants.app_url') . config('constants.uploads_url_path') . $student->photo) : config('constants.no_image_avatar'));
-                                                $savedState = ($row['has_value'] ? 'saved' : 'empty');
-                                                $rowButtonText = ($row['has_value'] ? 'Update' : 'Save');
-                                                $rowStatusText = ($row['has_value'] ? 'Saved' : 'Pending');
-                                                $rowStatusClass = ($row['has_value'] ? 'bg-success' : 'bg-secondary');
                                             @endphp
-                                            <tr class="exam-mark-row"
-                                                data-exam-id="{{ $examId }}"
-                                                data-student-id="{{ $student->id }}"
-                                                data-unit-id="{{ $selectedUnitId }}"
-                                                data-branch-id="{{ $selectedBranchId }}"
-                                                data-class-id="{{ $selectedClassId }}"
-                                                data-session-id="{{ $selectedSessionId }}"
-                                                data-full-marks="{{ $row['full_marks'] }}"
-                                                data-original-marks="{{ $row['obtain_marks'] }}"
-                                                data-state="{{ $savedState }}">
+                                            <tr class="student-mark-row">
                                                 <td class="fw-bold text-center">{{ $loop->iteration }}</td>
                                                 <td class="student-meta">
                                                     <span class="student-name">{{ $studentName }}</span>
@@ -1082,30 +1299,57 @@
                                                 </td>
                                                 <td class="student-light">{{ $fatherName }}</td>
                                                 <td class="student-light">{{ $fatherMobile }}</td>
-                                                <td class="text-center">
-                                                    <span class="marks-full-chip">{{ $row['full_marks_label'] }}</span>
-                                                </td>
-                                                <td>
-                                                    <input type="text"
-                                                           class="form-control form-control-sm marks-obtain-input"
-                                                           value="{{ $row['obtain_marks'] }}"
-                                                           inputmode="numeric"
-                                                           autocomplete="off"
-                                                           pattern="[0-9]*"
-                                                           maxlength="6"
-                                                           placeholder="0">
-                                                </td>
-                                                <td>
-                                                    <div class="input-group input-group-sm marks-percentage-group">
-                                                        <input type="text" class="form-control form-control-sm marks-percentage-input" value="{{ $row['percentage'] }}" readonly placeholder="0.00">
-                                                        <span class="input-group-text">%</span>
+                                                <td class="subject-marks-cell">
+                                                    <div class="subject-mark-grid">
+                                                        @foreach($row['subject_marks'] as $subjectMark)
+                                                            @php
+                                                                $savedState = ($subjectMark['has_value'] ? 'saved' : 'empty');
+                                                                $rowButtonText = ($subjectMark['has_value'] ? 'Update' : 'Save');
+                                                                $rowStatusText = ($subjectMark['has_value'] ? 'Saved' : 'Pending');
+                                                                $rowStatusClass = ($subjectMark['has_value'] ? 'bg-success' : 'bg-secondary');
+                                                                $subjectName = (!empty($subjectMark['subject_name']) ? $subjectMark['subject_name'] : '-');
+                                                            @endphp
+                                                            <div class="exam-mark-entry subject-mark-box"
+                                                                 data-exam-id="{{ $examId }}"
+                                                                 data-subject-id="{{ $subjectMark['subject_id'] }}"
+                                                                 data-student-id="{{ $student->id }}"
+                                                                 data-unit-id="{{ $selectedUnitId }}"
+                                                                 data-branch-id="{{ $selectedBranchId }}"
+                                                                 data-class-id="{{ $selectedClassId }}"
+                                                                 data-session-id="{{ $selectedSessionId }}"
+                                                                 data-full-marks="{{ $subjectMark['full_marks'] }}"
+                                                                 data-original-marks="{{ $subjectMark['obtain_marks'] }}"
+                                                                 data-state="{{ $savedState }}">
+                                                                <div class="subject-mark-head">
+                                                                    <span class="subject-chip">{{ $subjectName }}</span>
+                                                                    <span class="marks-full-chip">{{ $subjectMark['full_marks_label'] }}</span>
+                                                                </div>
+                                                                <div class="subject-mark-controls">
+                                                                    <input type="text"
+                                                                           class="form-control form-control-sm marks-obtain-input"
+                                                                           value="{{ $subjectMark['obtain_marks'] }}"
+                                                                           inputmode="decimal"
+                                                                           autocomplete="off"
+                                                                           pattern="[0-9.]*"
+                                                                           maxlength="8"
+                                                                           placeholder="0">
+                                                                    <div class="input-group input-group-sm marks-percentage-group">
+                                                                        <input type="text" class="form-control form-control-sm marks-percentage-input" value="{{ $subjectMark['percentage'] }}" readonly placeholder="0.00">
+                                                                        <span class="input-group-text">%</span>
+                                                                    </div>
+                                                                    <button type="button" class="btn btn-success btn-sm marks-save-btn exam-mark-save-btn">
+                                                                        <i class="fa-solid fa-floppy-disk"></i> {{ $rowButtonText }}
+                                                                    </button>
+                                                                </div>
+                                                                <div class="subject-mark-foot">
+                                                                    <span class="marks-row-status {{ $rowStatusClass }}">{{ $rowStatusText }}</span>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
                                                     </div>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="marks-action-wrap">
-                                                        <button type="button" class="btn btn-success btn-sm marks-save-btn exam-mark-save-btn">
-                                                            <i class="fa-solid fa-floppy-disk"></i> {{ $rowButtonText }}
-                                                        </button>
                                                         <a href="{{ route('exam.marks.report-card', [
                                                             'id' => \App\Helpers\Helper::encoded($student->id),
                                                             'unit_id' => $selectedUnitId,
@@ -1117,9 +1361,6 @@
                                                            target="_blank">
                                                             <i class="fa-solid fa-file-lines"></i> Report Card
                                                         </a>
-                                                    </div>
-                                                    <div class="mt-2">
-                                                        <span class="marks-row-status {{ $rowStatusClass }}">{{ $rowStatusText }}</span>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1252,21 +1493,21 @@
             $select.prop('disabled', unitId === '');
         }
 
-        function getRowCurrentMarks($row) {
-            return $.trim($row.find('.marks-obtain-input').val() || '');
+        function getEntryCurrentMarks($entry) {
+            return $.trim($entry.find('.marks-obtain-input').val() || '');
         }
 
-        function refreshRowPercentage($row) {
-            const fullMarks = parseFloat($row.data('full-marks')) || 0;
-            const currentValue = getRowCurrentMarks($row);
-            const $percentageInput = $row.find('.marks-percentage-input');
+        function refreshEntryPercentage($entry) {
+            const fullMarks = parseFloat($entry.data('full-marks')) || 0;
+            const currentValue = getEntryCurrentMarks($entry);
+            const $percentageInput = $entry.find('.marks-percentage-input');
 
             if (currentValue === '') {
                 $percentageInput.val('');
                 return;
             }
 
-            const marksValue = parseInt(currentValue, 10);
+            const marksValue = parseFloat(currentValue);
             if (isNaN(marksValue)) {
                 $percentageInput.val('');
                 return;
@@ -1279,10 +1520,10 @@
             $percentageInput.val(percentage);
         }
 
-        function refreshRowState($row) {
-            const currentValue = getRowCurrentMarks($row);
-            const originalValue = String($row.data('original-marks') || '');
-            const $status = $row.find('.marks-row-status');
+        function refreshEntryState($entry) {
+            const currentValue = getEntryCurrentMarks($entry);
+            const originalValue = String($entry.data('original-marks') || '');
+            const $status = $entry.find('.marks-row-status');
             let state = 'empty';
             let label = 'Pending';
             let badgeClass = 'bg-secondary';
@@ -1303,7 +1544,7 @@
                 badgeClass = 'bg-warning';
             }
 
-            $row.attr('data-state', state);
+            $entry.attr('data-state', state);
             $status.removeClass('bg-success bg-warning bg-secondary').addClass(badgeClass).text(label);
         }
 
@@ -1313,6 +1554,8 @@
 
             if ($pane.length) {
                 $pane.find('[data-exam-summary-students]').text(counts.student_count);
+                $pane.find('[data-exam-summary-subjects]').text(counts.subject_count);
+                $pane.find('[data-exam-summary-entries]').text(counts.entry_count);
                 $pane.find('[data-exam-summary-entered]').text(counts.entered_count);
                 $pane.find('[data-exam-summary-pending]').text(counts.pending_count);
             }
@@ -1323,23 +1566,23 @@
             }
         }
 
-        function applySavedRowState($row, response) {
-            $row.attr('data-state', 'saved');
-            $row.data('original-marks', response.data.obtain_marks);
-            $row.attr('data-original-marks', response.data.obtain_marks);
-            $row.find('.marks-obtain-input').val(response.data.obtain_marks);
-            $row.find('.marks-percentage-input').val(response.data.marks_percentage);
-            $row.find('.marks-row-status')
+        function applySavedEntryState($entry, response) {
+            $entry.attr('data-state', 'saved');
+            $entry.data('original-marks', response.data.obtain_marks);
+            $entry.attr('data-original-marks', response.data.obtain_marks);
+            $entry.find('.marks-obtain-input').val(response.data.obtain_marks);
+            $entry.find('.marks-percentage-input').val(response.data.marks_percentage);
+            $entry.find('.marks-row-status')
                 .removeClass('bg-success bg-warning bg-secondary')
                 .addClass('bg-success')
                 .text('Saved');
-            $row.find('.marks-save-btn')
+            $entry.find('.marks-save-btn')
                 .html('<i class="fa-solid fa-floppy-disk"></i> Update')
                 .prop('disabled', false);
-            $row.addClass('is-flash');
+            $entry.addClass('is-flash');
 
             setTimeout(function () {
-                $row.removeClass('is-flash');
+                $entry.removeClass('is-flash');
             }, 1200);
         }
 
@@ -1365,40 +1608,46 @@
             });
         }
 
-        $('.exam-mark-row').each(function () {
-            const $row = $(this);
-            refreshRowPercentage($row);
-            refreshRowState($row);
+        $('.exam-mark-entry').each(function () {
+            const $entry = $(this);
+            refreshEntryPercentage($entry);
+            refreshEntryState($entry);
         });
 
         $(document).on('input', '.marks-obtain-input', function () {
             const $input = $(this);
-            const sanitizedValue = $input.val().replace(/[^0-9]/g, '');
+            let sanitizedValue = $input.val().replace(/[^0-9.]/g, '');
+            const firstDotIndex = sanitizedValue.indexOf('.');
+
+            if (firstDotIndex !== -1) {
+                sanitizedValue = sanitizedValue.slice(0, firstDotIndex + 1) + sanitizedValue.slice(firstDotIndex + 1).replace(/\./g, '');
+            }
+
             if ($input.val() !== sanitizedValue) {
                 $input.val(sanitizedValue);
             }
 
-            const $row = $input.closest('.exam-mark-row');
-            refreshRowPercentage($row);
-            refreshRowState($row);
+            const $entry = $input.closest('.exam-mark-entry');
+            refreshEntryPercentage($entry);
+            refreshEntryState($entry);
         });
 
         $(document).on('keydown', '.marks-obtain-input', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                $(this).closest('.exam-mark-row').find('.exam-mark-save-btn').trigger('click');
+                $(this).closest('.exam-mark-entry').find('.exam-mark-save-btn').trigger('click');
             }
         });
 
         $(document).on('click', '.exam-mark-save-btn', function () {
             const $btn = $(this);
-            const $row = $btn.closest('.exam-mark-row');
-            const obtainMarksText = getRowCurrentMarks($row);
-            const obtainMarks = parseInt(obtainMarksText, 10);
-            const fullMarks = parseFloat($row.data('full-marks')) || 0;
+            const $entry = $btn.closest('.exam-mark-entry');
+            const obtainMarksText = getEntryCurrentMarks($entry);
+            const obtainMarks = parseFloat(obtainMarksText);
+            const fullMarks = parseFloat($entry.data('full-marks')) || 0;
 
             if (obtainMarksText === '' || isNaN(obtainMarks) || obtainMarks < 0) {
-                showExamToast('Please enter a valid integer mark.', 'error');
+                showExamToast('Please enter a valid mark.', 'error');
                 return;
             }
 
@@ -1413,12 +1662,13 @@
                 dataType: "json",
                 data: {
                     _token: csrfToken,
-                    student_id: $row.data('student-id'),
-                    exam_id: $row.data('exam-id'),
-                    unit_id: $row.data('unit-id'),
-                    branch_id: $row.data('branch-id'),
-                    class_id: $row.data('class-id'),
-                    session_id: $row.data('session-id'),
+                    student_id: $entry.data('student-id'),
+                    exam_id: $entry.data('exam-id'),
+                    subject_id: $entry.data('subject-id'),
+                    unit_id: $entry.data('unit-id'),
+                    branch_id: $entry.data('branch-id'),
+                    class_id: $entry.data('class-id'),
+                    session_id: $entry.data('session-id'),
                     obtain_marks: obtainMarks
                 },
                 beforeSend: function () {
@@ -1426,8 +1676,8 @@
                 },
                 success: function (response) {
                     if (response && response.data) {
-                        applySavedRowState($row, response);
-                        updateExamCounts($row.data('exam-id'), response.data);
+                        applySavedEntryState($entry, response);
+                        updateExamCounts($entry.data('exam-id'), response.data);
                         showExamToast(response.message, 'success');
                     } else {
                         showExamToast('Saved successfully.', 'success');
@@ -1441,10 +1691,10 @@
                     showExamToast(message, 'error');
                 },
                 complete: function () {
-                    const originalValue = String($row.data('original-marks') || '');
+                    const originalValue = String($entry.data('original-marks') || '');
                     const buttonLabel = (originalValue !== '' ? 'Update' : 'Save');
                     $btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk"></i> ' + buttonLabel);
-                    refreshRowState($row);
+                    refreshEntryState($entry);
                 }
             });
         });

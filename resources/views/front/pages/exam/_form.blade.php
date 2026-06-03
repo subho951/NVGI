@@ -3,29 +3,52 @@
     $examDescriptionValue = old('description', (($single_row) ? $single_row->description : ''));
     $unitInput = old('unit_id');
     $classInput = old('class_id');
+    $subjectInput = old('subject_id');
     $markInput = old('full_marks');
     $formRows = [];
+    $classSubjectOptions = collect($class_subjects ?? []);
 
     if (is_array($unitInput) && count($unitInput) > 0) {
         foreach ($unitInput as $index => $unitId) {
+            $selectedSubjects = ((is_array($subjectInput) && array_key_exists($index, $subjectInput)) ? $subjectInput[$index] : []);
+            if (!is_array($selectedSubjects)) {
+                $selectedSubjects = (($selectedSubjects !== null && $selectedSubjects !== '') ? [$selectedSubjects] : []);
+            }
+
             $formRows[] = [
                 'unit_id' => $unitId,
                 'class_id' => ((is_array($classInput) && array_key_exists($index, $classInput)) ? $classInput[$index] : ''),
+                'subject_ids' => array_values(array_unique(array_map('strval', $selectedSubjects))),
                 'full_marks' => ((is_array($markInput) && array_key_exists($index, $markInput)) ? $markInput[$index] : ''),
             ];
         }
     } elseif (($single_row) && $single_row->fullMarks && count($single_row->fullMarks) > 0) {
+        $groupedRows = [];
         foreach ($single_row->fullMarks as $markRow) {
-            $formRows[] = [
-                'unit_id' => $markRow->unit_id,
-                'class_id' => $markRow->class_id,
-                'full_marks' => $markRow->full_marks,
-            ];
+            $rowKey = $markRow->unit_id . '-' . $markRow->class_id . '-' . $markRow->full_marks;
+            if (!isset($groupedRows[$rowKey])) {
+                $groupedRows[$rowKey] = [
+                    'unit_id' => $markRow->unit_id,
+                    'class_id' => $markRow->class_id,
+                    'subject_ids' => [],
+                    'full_marks' => $markRow->full_marks,
+                ];
+            }
+
+            if ((int) $markRow->subject_id > 0) {
+                $groupedRows[$rowKey]['subject_ids'][] = (string) $markRow->subject_id;
+            }
+        }
+
+        foreach ($groupedRows as $groupedRow) {
+            $groupedRow['subject_ids'] = array_values(array_unique($groupedRow['subject_ids']));
+            $formRows[] = $groupedRow;
         }
     } else {
         $formRows[] = [
             'unit_id' => '',
             'class_id' => '',
+            'subject_ids' => [],
             'full_marks' => '',
         ];
     }
@@ -51,8 +74,8 @@
     <div class="col-12">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
             <div>
-                <label class="form-label mb-0">Unit wise class wise full marks <span class="text-danger">*</span></label>
-                <div class="exam-inline-hint">Build the blueprint that powers the exam marks entry screen.</div>
+                <label class="form-label mb-0">Class and subject wise full marks <span class="text-danger">*</span></label>
+                <div class="exam-inline-hint">Subject selection is optional; choose one or more only when this exam needs subject-wise marks entry.</div>
             </div>
             <button type="button" class="btn btn-outline-primary btn-sm exam-row-add-btn" id="addExamMarkRow">
                 <i class="fa-solid fa-plus me-1"></i> Add Row
@@ -63,7 +86,7 @@
             <i class="fa-solid fa-lightbulb mt-1"></i>
             <div>
                 <strong>Configuration tip</strong>
-                <div class="mt-1">Use one row for each unit/class combination. The same pair cannot be repeated, which keeps the marks setup clean and accurate.</div>
+                <div class="mt-1">Use one row for each class. If subjects are selected, the same full marks will apply to each selected subject.</div>
             </div>
         </div>
 
@@ -74,15 +97,20 @@
                         <tr>
                             <th>Unit Name</th>
                             <th>Class Name</th>
+                            <th>Subject Name</th>
                             <th style="width: 160px;">Full Marks</th>
                             <th style="width: 110px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($formRows as $formRow)
+                            @php
+                                $rowIndex = $loop->index;
+                                $rowSubjectIds = array_map('strval', (array) ($formRow['subject_ids'] ?? []));
+                            @endphp
                             <tr class="exam-mark-row">
                                 <td>
-                                    <select class="form-select form-select-sm exam-unit-select" name="unit_id[]" required>
+                                    <select class="form-select form-select-sm exam-unit-select" name="unit_id[{{ $rowIndex }}]" required>
                                         <option value="">Select</option>
                                         @foreach($units as $unit)
                                             <option value="{{ $unit->id }}" {{ ((string) $formRow['unit_id'] === (string) $unit->id) ? 'selected' : '' }}>
@@ -92,7 +120,7 @@
                                     </select>
                                 </td>
                                 <td>
-                                    <select class="form-select form-select-sm exam-class-select" name="class_id[]" data-selected-class="{{ $formRow['class_id'] }}" required>
+                                    <select class="form-select form-select-sm exam-class-select" name="class_id[{{ $rowIndex }}]" data-selected-class="{{ $formRow['class_id'] }}" required>
                                         <option value="">Select</option>
                                         @foreach($classes as $class)
                                             @if((string) $formRow['unit_id'] === (string) $class->unit_id)
@@ -104,7 +132,19 @@
                                     </select>
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="full_marks[]" value="{{ $formRow['full_marks'] }}" placeholder="Enter full marks" required>
+                                    <select class="form-select form-select-sm exam-subject-select" name="subject_id[{{ $rowIndex }}][]" data-selected-subjects="{{ implode(',', $rowSubjectIds) }}" multiple size="4">
+                                        @foreach($classSubjectOptions as $classSubject)
+                                            @if((string) $formRow['class_id'] === (string) $classSubject->class_id && $classSubject->subject)
+                                                <option value="{{ $classSubject->subject_id }}" {{ (in_array((string) $classSubject->subject_id, $rowSubjectIds, true) ? 'selected' : '') }}>
+                                                    {{ $classSubject->subject->name }}
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                    <div class="exam-inline-hint mt-1">Optional. Hold Ctrl to select more than one subject.</div>
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="full_marks[{{ $rowIndex }}]" value="{{ $formRow['full_marks'] }}" placeholder="Enter full marks" required>
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-outline-danger btn-sm exam-row-remove-btn remove-exam-mark-row">
@@ -121,6 +161,9 @@
             <span class="text-danger d-block mt-2">{{ $message }}</span>
         @enderror
         @error('class_id')
+            <span class="text-danger d-block mt-2">{{ $message }}</span>
+        @enderror
+        @error('subject_id')
             <span class="text-danger d-block mt-2">{{ $message }}</span>
         @enderror
         @error('full_marks')

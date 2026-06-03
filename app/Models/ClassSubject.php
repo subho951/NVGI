@@ -5,23 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ExamFullMark extends Model
+class ClassSubject extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'exam_id',
         'unit_id',
         'class_id',
         'subject_id',
-        'full_marks',
         'status',
     ];
-
-    public function exam()
-    {
-        return $this->belongsTo(Exam::class, 'exam_id');
-    }
 
     public function unit()
     {

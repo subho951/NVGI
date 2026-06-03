@@ -18,6 +18,7 @@ class ExamStudentMark extends Model
         'class_id',
         'session_id',
         'student_id',
+        'subject_id',
         'full_marks',
         'obtain_marks',
         'marks_percentage',
@@ -52,5 +53,10 @@ class ExamStudentMark extends Model
     public function student()
     {
         return $this->belongsTo(Student::class, 'student_id')->withTrashed();
+    }
+
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class, 'subject_id')->withTrashed();
     }
 }

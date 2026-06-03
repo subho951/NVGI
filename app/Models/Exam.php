@@ -17,6 +17,9 @@ class Exam extends Model
 
     public function fullMarks()
     {
-        return $this->hasMany(ExamFullMark::class, 'exam_id')->orderBy('unit_id', 'ASC')->orderBy('class_id', 'ASC');
+        return $this->hasMany(ExamFullMark::class, 'exam_id')
+                    ->orderBy('unit_id', 'ASC')
+                    ->orderBy('class_id', 'ASC')
+                    ->orderBy('subject_id', 'ASC');
     }
 }

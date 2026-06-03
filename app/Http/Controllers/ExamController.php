@@ -6,6 +6,8 @@ use App\Helpers\Helper;
 use App\Models\Classes;
 use App\Models\Exam;
 use App\Models\ExamFullMark;
+use App\Models\ClassSubject;
+use App\Models\Subject;
 use App\Models\Unit;
 use App\Services\SiteAuthService;
 use Illuminate\Http\Request;
@@ -76,6 +78,22 @@ class ExamController extends Controller
         return $classes;
     }
 
+    private function getClassSubjectOptions()
+    {
+        return ClassSubject::with(['subject' => function ($query) {
+                            $query->select('id', 'name');
+                        }])
+                        ->where('status', '=', 1)
+                        ->whereNull('deleted_at')
+                        ->orderBy('class_id', 'ASC')
+                        ->orderBy('subject_id', 'ASC')
+                        ->get()
+                        ->filter(function ($row) {
+                            return ($row->subject !== null);
+                        })
+                        ->values();
+    }
+
     private function validateExamPayload(Request $request, ?Exam $exam = null)
     {
         $nameRule = Rule::unique('exams', 'name')->whereNull('deleted_at');
@@ -90,6 +108,7 @@ class ExamController extends Controller
             'unit_id.*'         => ['required', 'integer', 'exists:units,id'],
             'class_id'          => ['required', 'array', 'min:1'],
             'class_id.*'        => ['required', 'integer', 'exists:classes,id'],
+            'subject_id'        => ['nullable', 'array'],
             'full_marks'        => ['required', 'array', 'min:1'],
             'full_marks.*'      => ['required', 'numeric', 'min:0'],
         ]);
@@ -97,8 +116,9 @@ class ExamController extends Controller
         $validator->after(function ($validator) use ($request) {
             $unitIds = (array) $request->input('unit_id', []);
             $classIds = (array) $request->input('class_id', []);
+            $subjectIds = (array) $request->input('subject_id', []);
             $fullMarks = (array) $request->input('full_marks', []);
-            $rowCount = max(count($unitIds), count($classIds), count($fullMarks));
+            $rowCount = max(count($unitIds), count($classIds), count($subjectIds), count($fullMarks));
 
             if ($rowCount < 1) {
                 $validator->errors()->add('unit_id', 'Please add at least one unit wise class wise full marks row.');
@@ -109,6 +129,7 @@ class ExamController extends Controller
             for ($i = 0; $i < $rowCount; $i++) {
                 $unitId = isset($unitIds[$i]) ? (int) $unitIds[$i] : 0;
                 $classId = isset($classIds[$i]) ? (int) $classIds[$i] : 0;
+                $rowSubjectIds = $this->getSubjectIdsForPayloadRow($subjectIds, $i);
 
                 if ($unitId > 0 && $classId > 0) {
                     $classExists = Classes::where('id', '=', $classId)
@@ -119,11 +140,41 @@ class ExamController extends Controller
                         $validator->errors()->add('class_id.' . $i, 'Selected class does not belong to the selected unit for row ' . ($i + 1) . '.');
                     }
 
-                    $pairKey = $unitId . '-' . $classId;
-                    if (isset($seenPairs[$pairKey])) {
-                        $validator->errors()->add('class_id.' . $i, 'Duplicate unit and class combination is not allowed for row ' . ($i + 1) . '.');
+                    if (count($rowSubjectIds) < 1) {
+                        $pairKey = $unitId . '-' . $classId . '-0';
+                        if (isset($seenPairs[$pairKey])) {
+                            $validator->errors()->add('class_id.' . $i, 'Duplicate unit and class combination without subjects is not allowed for row ' . ($i + 1) . '.');
+                        }
+                        $seenPairs[$pairKey] = true;
                     }
-                    $seenPairs[$pairKey] = true;
+
+                    foreach ($rowSubjectIds as $subjectId) {
+                        $subjectExists = Subject::where('id', '=', $subjectId)
+                                            ->where('status', '=', 1)
+                                            ->whereNull('deleted_at')
+                                            ->exists();
+
+                        if (!$subjectExists) {
+                            $validator->errors()->add('subject_id.' . $i, 'One selected subject is not active for row ' . ($i + 1) . '.');
+                        }
+
+                        $subjectMapped = ClassSubject::where('unit_id', '=', $unitId)
+                                                    ->where('class_id', '=', $classId)
+                                                    ->where('subject_id', '=', $subjectId)
+                                                    ->where('status', '=', 1)
+                                                    ->whereNull('deleted_at')
+                                                    ->exists();
+
+                        if (!$subjectMapped) {
+                            $validator->errors()->add('subject_id.' . $i, 'Selected subject is not assigned to this class for row ' . ($i + 1) . '.');
+                        }
+
+                        $pairKey = $unitId . '-' . $classId . '-' . $subjectId;
+                        if (isset($seenPairs[$pairKey])) {
+                            $validator->errors()->add('subject_id.' . $i, 'Duplicate unit, class, and subject combination is not allowed for row ' . ($i + 1) . '.');
+                        }
+                        $seenPairs[$pairKey] = true;
+                    }
                 }
             }
         });
@@ -131,10 +182,25 @@ class ExamController extends Controller
         return $validator;
     }
 
+    private function getSubjectIdsForPayloadRow(array $subjectIds, int $index): array
+    {
+        if (!array_key_exists($index, $subjectIds)) {
+            return [];
+        }
+
+        $value = $subjectIds[$index];
+        $ids = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(array_map('intval', $ids), function ($subjectId) {
+            return $subjectId > 0;
+        })));
+    }
+
     private function persistExamMarks(Exam $exam, Request $request): void
     {
         $unitIds = array_values((array) $request->input('unit_id', []));
         $classIds = array_values((array) $request->input('class_id', []));
+        $subjectIds = (array) $request->input('subject_id', []);
         $fullMarks = array_values((array) $request->input('full_marks', []));
 
         ExamFullMark::where('exam_id', '=', $exam->id)->delete();
@@ -142,19 +208,27 @@ class ExamController extends Controller
         foreach ($unitIds as $index => $unitId) {
             $unitId = (int) $unitId;
             $classId = isset($classIds[$index]) ? (int) $classIds[$index] : 0;
+            $rowSubjectIds = $this->getSubjectIdsForPayloadRow($subjectIds, $index);
             $fullMark = isset($fullMarks[$index]) ? $fullMarks[$index] : null;
 
             if (!$unitId || !$classId || $fullMark === null || $fullMark === '') {
                 continue;
             }
 
-            ExamFullMark::create([
-                'exam_id'    => $exam->id,
-                'unit_id'    => $unitId,
-                'class_id'   => $classId,
-                'full_marks' => $fullMark,
-                'status'     => 1,
-            ]);
+            if (count($rowSubjectIds) < 1) {
+                $rowSubjectIds = [0];
+            }
+
+            foreach ($rowSubjectIds as $subjectId) {
+                ExamFullMark::create([
+                    'exam_id'    => $exam->id,
+                    'unit_id'    => $unitId,
+                    'class_id'   => $classId,
+                    'subject_id' => $subjectId,
+                    'full_marks' => $fullMark,
+                    'status'     => 1,
+                ]);
+            }
         }
     }
 
@@ -164,7 +238,7 @@ class ExamController extends Controller
         $data['module'] = $this->data;
         $title = $this->data['title'] . ' List';
         $page_name = 'exam.list';
-        $data['rows'] = Exam::with(['fullMarks.unit', 'fullMarks.examClass'])
+        $data['rows'] = Exam::with(['fullMarks.unit', 'fullMarks.examClass', 'fullMarks.subject'])
                         ->where('status', '!=', 3)
                         ->orderBy('id', 'DESC')
                         ->get();
@@ -172,6 +246,7 @@ class ExamController extends Controller
         $data['single_row'] = null;
         $data['units'] = $this->getUnitOptions();
         $data['classes'] = $this->getClassOptions();
+        $data['class_subjects'] = $this->getClassSubjectOptions();
 
         if ($request->isMethod('post')) {
             $validator = $this->validateExamPayload($request);
@@ -204,11 +279,11 @@ class ExamController extends Controller
         $id = Helper::decoded($id);
         $title = $this->data['title'] . ' Update';
         $page_name = 'exam.edit';
-        $data['single_row'] = Exam::with(['fullMarks.unit', 'fullMarks.examClass'])
+        $data['single_row'] = Exam::with(['fullMarks.unit', 'fullMarks.examClass', 'fullMarks.subject'])
                                 ->where($this->data['primary_key'], '=', $id)
                                 ->firstOrFail();
         $data['action'] = 'Edit';
-        $data['rows'] = Exam::with(['fullMarks.unit', 'fullMarks.examClass'])
+        $data['rows'] = Exam::with(['fullMarks.unit', 'fullMarks.examClass', 'fullMarks.subject'])
                         ->where('status', '!=', 3)
                         ->orderBy('id', 'DESC')
                         ->get();
@@ -217,6 +292,7 @@ class ExamController extends Controller
         $selectedClassIds = $data['single_row']->fullMarks->pluck('class_id')->filter()->unique()->values()->all();
         $data['units'] = $this->getUnitOptions($selectedUnitIds);
         $data['classes'] = $this->getClassOptions($selectedClassIds);
+        $data['class_subjects'] = $this->getClassSubjectOptions();
 
         if ($request->isMethod('post')) {
             $validator = $this->validateExamPayload($request, $data['single_row']);

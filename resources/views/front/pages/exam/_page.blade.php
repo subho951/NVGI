@@ -9,8 +9,8 @@
     $isEditMode = (($action ?? '') === 'Edit');
     $heroTitle = $isEditMode ? 'Update exam blueprint' : 'Manage exam blueprint';
     $heroCopy = $isEditMode
-        ? 'Refine the exam setup and its full marks matrix in a polished single-screen workflow.'
-        : 'Create, review, and maintain exam blueprints with a premium management experience.';
+        ? 'Refine the exam setup and its subject-wise full marks matrix in a polished single-screen workflow.'
+        : 'Create, review, and maintain subject-wise exam blueprints with a premium management experience.';
 @endphp
 
 @include('front.pages.exam._theme')
@@ -126,7 +126,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div>
                     <h5>{{ $action }} {{ $module['title'] }}</h5>
-                    <div class="exam-card-subtitle">Create or refine the exam blueprint and its unit/class marks matrix.</div>
+                    <div class="exam-card-subtitle">Create or refine the exam blueprint and its class subject marks matrix.</div>
                 </div>
                 <span class="exam-section-chip">
                     <i class="fa-solid fa-sparkles"></i>
@@ -139,7 +139,7 @@
                 <i class="fa-solid fa-circle-info mt-1"></i>
                 <div>
                     <strong>Blueprint guidance</strong>
-                    <div class="mt-1">Each row pairs one unit with one class and a full marks value. Duplicate combinations are blocked automatically and used by the marks entry screen.</div>
+                    <div class="mt-1">Each row pairs one unit, class, and assigned subject with a full marks value. Duplicate combinations are blocked automatically and used by the marks entry screen.</div>
                 </div>
             </div>
             @include('front.pages.exam._form')
@@ -151,7 +151,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div>
                     <h5>Exam Register</h5>
-                    <div class="exam-card-subtitle">Review all active and inactive exam blueprints from one place.</div>
+                    <div class="exam-card-subtitle">Review all subject-wise exam blueprints from one place.</div>
                 </div>
                 <span class="exam-section-chip">
                     <i class="fa-solid fa-table-list"></i>

@@ -12,7 +12,7 @@
                     <th>Exam Name</th>
                     <th>Unit Name(s)</th>
                     <th>Description</th>
-                    <th>Unit wise class wise full marks</th>
+                    <th>Class subject full marks</th>
                     <th style="width: 120px;">Status</th>
                     <th style="width: 190px;">Action</th>
                 </tr>
@@ -23,33 +23,51 @@
                         $encodedId = Helper::encoded($row->id);
                         $statusUrl = $controllerRoute . '/change-status/';
                         $unitNames = [];
-                        $markDetails = [];
+                        $markGroups = [];
+                        $subjectRowsCount = 0;
 
                         if ($row->fullMarks && $row->fullMarks->count() > 0) {
                             foreach ($row->fullMarks as $markRow) {
                                 $unitName = ($markRow->unit) ? $markRow->unit->name : '';
                                 $className = ($markRow->examClass) ? $markRow->examClass->name : '';
+                                $subjectName = ($markRow->subject) ? $markRow->subject->name : '';
+                                $marksValue = (string) $markRow->full_marks;
+                                $groupKey = (int) $markRow->unit_id . '-' . (int) $markRow->class_id;
 
                                 if ($unitName && !in_array($unitName, $unitNames, true)) {
                                     $unitNames[] = $unitName;
                                 }
 
-                                $markDetails[] = [
-                                    'unit' => $unitName,
-                                    'class' => $className,
-                                    'marks' => $markRow->full_marks,
-                                ];
+                                if (!isset($markGroups[$groupKey])) {
+                                    $markGroups[$groupKey] = [
+                                        'unit' => $unitName,
+                                        'class' => $className,
+                                        'subjects' => [],
+                                        'marks' => [],
+                                    ];
+                                }
+
+                                $subjectLabel = !empty($subjectName) ? $subjectName : 'Subject not assigned';
+                                if (!in_array($subjectLabel, $markGroups[$groupKey]['subjects'], true)) {
+                                    $markGroups[$groupKey]['subjects'][] = $subjectLabel;
+                                }
+
+                                if (!in_array($marksValue, $markGroups[$groupKey]['marks'], true)) {
+                                    $markGroups[$groupKey]['marks'][] = $marksValue;
+                                }
+
+                                $subjectRowsCount++;
                             }
                         }
 
-                        $marksCount = count($markDetails);
+                        $classRowsCount = count($markGroups);
                     @endphp
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>
                             <div class="exam-table-meta">
                                 <span class="exam-table-name">{{ $row->name }}</span>
-                                <span class="exam-table-subtext">{{ number_format($marksCount) }} blueprint row{{ ($marksCount === 1) ? '' : 's' }}</span>
+                                <span class="exam-table-subtext">{{ number_format($classRowsCount) }} class row{{ ($classRowsCount === 1) ? '' : 's' }} / {{ number_format($subjectRowsCount) }} subject row{{ ($subjectRowsCount === 1) ? '' : 's' }}</span>
                             </div>
                         </td>
                         <td>
@@ -69,14 +87,22 @@
                             </div>
                         </td>
                         <td>
-                            @if($marksCount > 0)
+                            @if($classRowsCount > 0)
                                 <div class="d-flex flex-column gap-2">
-                                    @foreach($markDetails as $markDetail)
+                                    @foreach($markGroups as $markGroup)
                                         <div class="d-flex flex-wrap align-items-center gap-2">
-                                            <span class="exam-tag">{{ !empty($markDetail['unit']) ? $markDetail['unit'] : '-' }}</span>
+                                            <span class="exam-tag">{{ !empty($markGroup['unit']) ? $markGroup['unit'] : '-' }}</span>
                                             <span class="text-muted">/</span>
-                                            <span class="exam-tag">{{ !empty($markDetail['class']) ? $markDetail['class'] : '-' }}</span>
-                                            <span class="exam-status-pill exam-status-active">{{ $markDetail['marks'] }}</span>
+                                            <span class="exam-tag">{{ !empty($markGroup['class']) ? $markGroup['class'] : '-' }}</span>
+                                            <span class="text-muted">/</span>
+                                            <span class="exam-tags">
+                                                @foreach($markGroup['subjects'] as $subjectLabel)
+                                                    <span class="exam-tag">{{ $subjectLabel }}</span>
+                                                @endforeach
+                                            </span>
+                                            @foreach($markGroup['marks'] as $marksValue)
+                                                <span class="exam-status-pill exam-status-active">{{ $marksValue }}</span>
+                                            @endforeach
                                         </div>
                                     @endforeach
                                 </div>

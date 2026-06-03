@@ -440,4 +440,121 @@
             gap: 6px;
         }
     }
+
+    .exam-hero-card {
+        border-radius: 8px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 12px 28px rgba(16, 47, 74, 0.14);
+    }
+
+    .exam-hero-card::after {
+        display: none;
+    }
+
+    .exam-kicker {
+        margin-bottom: 6px;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+    }
+
+    .exam-hero-card h2 {
+        font-size: 1.45rem;
+        margin-bottom: 5px;
+    }
+
+    .exam-hero-card p {
+        font-size: 0.84rem;
+        line-height: 1.45;
+    }
+
+    .exam-stat-card,
+    .exam-card,
+    .exam-form-table-wrap,
+    .exam-table-wrap,
+    .exam-note {
+        border-radius: 8px;
+    }
+
+    .exam-stat-card {
+        padding: 11px 12px;
+        box-shadow: none;
+    }
+
+    .exam-stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        font-size: .95rem;
+    }
+
+    .exam-stat-label {
+        font-size: .68rem;
+    }
+
+    .exam-stat-value {
+        font-size: 1rem;
+    }
+
+    .exam-stat-mini {
+        font-size: .72rem;
+    }
+
+    .exam-card .card-header,
+    .exam-card .card-body {
+        padding: 12px 14px;
+    }
+
+    .exam-card-header h5 {
+        font-size: .95rem;
+    }
+
+    .exam-card-subtitle,
+    .exam-inline-hint,
+    .exam-note {
+        font-size: .78rem;
+    }
+
+    .exam-section-chip,
+    .exam-tag,
+    .exam-status-pill {
+        font-size: .72rem;
+        padding: 4px 8px;
+    }
+
+    .exam-form-table thead th,
+    .exam-table thead th {
+        padding: 8px 7px;
+        font-size: .68rem;
+    }
+
+    .exam-form-table tbody td,
+    .exam-table tbody td {
+        padding: 8px 7px;
+        font-size: .8rem;
+    }
+
+    .exam-row-add-btn,
+    .exam-row-remove-btn,
+    .exam-action-btn,
+    .exam-submit-btn,
+    .exam-hero-actions .btn {
+        border-radius: 7px;
+        min-height: 32px;
+        font-size: .78rem;
+    }
+
+    .exam-ui .form-control,
+    .exam-ui .form-select {
+        border-radius: 7px;
+        min-height: 34px;
+        font-size: .82rem;
+    }
+
+    .exam-ui .dataTables_wrapper .dt-buttons .btn,
+    .exam-ui .dataTables_wrapper .dataTables_filter input,
+    .exam-ui .dataTables_wrapper .dataTables_length select,
+    .exam-ui .dataTables_wrapper .dataTables_paginate .paginate_button {
+        border-radius: 7px !important;
+    }
 </style>

@@ -155,13 +155,14 @@ class ExamStudentMarkController extends Controller
         return null;
     }
 
-    private function getExamFullMarkValue(Exam $exam, int $unitId, int $classId): float
+    private function getExamSubjectRows(Exam $exam, int $unitId, int $classId)
     {
-        $fullMarkRow = $exam->fullMarks->first(function ($markRow) use ($unitId, $classId) {
-            return ((int) $markRow->unit_id === (int) $unitId && (int) $markRow->class_id === (int) $classId);
-        });
-
-        return (($fullMarkRow) ? (float) $fullMarkRow->full_marks : 0);
+        return $exam->fullMarks->filter(function ($markRow) use ($unitId, $classId) {
+            return ((int) $markRow->unit_id === (int) $unitId
+                && (int) $markRow->class_id === (int) $classId
+                && (int) $markRow->subject_id > 0
+                && (int) $markRow->status === 1);
+        })->values();
     }
 
     private function formatMarksDisplay($value): string
@@ -213,59 +214,88 @@ class ExamStudentMarkController extends Controller
     private function buildExamSections($students, $exams, $existingMarks, int $unitId, int $classId)
     {
         $examSections = [];
-        $existingMarksByExam = $existingMarks->groupBy('exam_id')->map(function ($group) {
-            return $group->keyBy('student_id');
+        $existingMarksByExam = $existingMarks->groupBy('exam_id')->map(function ($examGroup) {
+            return $examGroup->groupBy('subject_id')->map(function ($subjectGroup) {
+                return $subjectGroup->keyBy('student_id');
+            });
         });
 
         foreach ($exams as $exam) {
-            $fullMarks = $this->getExamFullMarkValue($exam, $unitId, $classId);
+            $subjectRows = $this->getExamSubjectRows($exam, $unitId, $classId);
             $marksForExam = $existingMarksByExam->get($exam->id, collect());
             $rows = [];
             $enteredCount = 0;
+            $configuredFullMarks = 0;
+
+            foreach ($subjectRows as $subjectRow) {
+                $configuredFullMarks += (float) $subjectRow->full_marks;
+            }
 
             foreach ($students as $student) {
-                $mark = $marksForExam->get($student->id);
-                $obtainMarks = '';
-                $hasValue = false;
+                $subjectMarks = [];
+                $studentEnteredCount = 0;
 
-                if ($mark && $mark->obtain_marks !== null && $mark->obtain_marks !== '') {
-                    $obtainMarks = (string) $mark->obtain_marks;
-                    $hasValue = true;
-                }
+                foreach ($subjectRows as $subjectRow) {
+                    $subjectId = (int) $subjectRow->subject_id;
+                    $subject = $subjectRow->subject;
+                    $fullMarks = (float) $subjectRow->full_marks;
+                    $marksForSubject = $marksForExam->get($subjectId, collect());
+                    $mark = $marksForSubject->get($student->id);
+                    $obtainMarks = '';
+                    $hasValue = false;
 
-                $percentage = '';
-                if ($hasValue) {
-                    $percentage = (($fullMarks > 0)
-                        ? number_format(((float) $obtainMarks / $fullMarks) * 100, 2, '.', '')
-                        : '0.00');
-                }
+                    if ($mark && $mark->obtain_marks !== null && $mark->obtain_marks !== '') {
+                        $obtainMarks = $this->formatMarksDisplay($mark->obtain_marks);
+                        $hasValue = true;
+                    }
 
-                if ($hasValue) {
-                    $enteredCount++;
+                    $percentage = '';
+                    if ($hasValue) {
+                        $percentage = (($fullMarks > 0)
+                            ? number_format(((float) $obtainMarks / $fullMarks) * 100, 2, '.', '')
+                            : '0.00');
+                    }
+
+                    if ($hasValue) {
+                        $enteredCount++;
+                        $studentEnteredCount++;
+                    }
+
+                    $subjectMarks[] = [
+                        'subject'          => $subject,
+                        'subject_id'       => $subjectId,
+                        'subject_name'     => (($subject) ? $subject->name : 'Subject'),
+                        'mark'             => $mark,
+                        'mark_id'          => (($mark) ? (int) $mark->id : 0),
+                        'obtain_marks'     => $obtainMarks,
+                        'percentage'       => $percentage,
+                        'has_value'        => $hasValue,
+                        'full_marks'       => $fullMarks,
+                        'full_marks_label' => $this->formatMarksDisplay($fullMarks),
+                    ];
                 }
 
                 $rows[] = [
-                    'student'         => $student,
-                    'mark'            => $mark,
-                    'mark_id'         => (($mark) ? (int) $mark->id : 0),
-                    'obtain_marks'    => $obtainMarks,
-                    'percentage'      => $percentage,
-                    'has_value'       => $hasValue,
-                    'full_marks'      => $fullMarks,
-                    'full_marks_label' => $this->formatMarksDisplay($fullMarks),
+                    'student'        => $student,
+                    'subject_marks'  => $subjectMarks,
+                    'entered_count'  => $studentEnteredCount,
+                    'pending_count'  => max($subjectRows->count() - $studentEnteredCount, 0),
                 ];
             }
 
-            $studentCount = count($rows);
+            $entryCount = $students->count() * $subjectRows->count();
 
             $examSections[] = [
-                'exam'             => $exam,
-                'full_marks'       => $fullMarks,
-                'full_marks_label' => $this->formatMarksDisplay($fullMarks),
-                'rows'             => $rows,
-                'student_count'    => $studentCount,
-                'entered_count'    => $enteredCount,
-                'pending_count'    => max($studentCount - $enteredCount, 0),
+                'exam'                    => $exam,
+                'subject_rows'            => $subjectRows,
+                'subject_count'           => $subjectRows->count(),
+                'configured_full_marks'   => $configuredFullMarks,
+                'full_marks_label'        => $this->formatMarksDisplay($configuredFullMarks),
+                'rows'                    => $rows,
+                'student_count'           => $students->count(),
+                'entry_count'             => $entryCount,
+                'entered_count'           => $enteredCount,
+                'pending_count'           => max($entryCount - $enteredCount, 0),
             ];
         }
 
@@ -352,14 +382,19 @@ class ExamStudentMarkController extends Controller
         return Exam::with(['fullMarks' => function ($query) use ($unitId, $classId) {
                         $query->where('status', '=', 1)
                             ->where('unit_id', '=', $unitId)
-                            ->where('class_id', '=', $classId);
+                            ->where('class_id', '=', $classId)
+                            ->where('subject_id', '>', 0)
+                            ->with(['subject' => function ($subjectQuery) {
+                                $subjectQuery->select('id', 'name');
+                            }]);
                     }])
                     ->where('status', '=', 1)
                     ->whereNull('deleted_at')
                     ->whereHas('fullMarks', function ($query) use ($unitId, $classId) {
                         $query->where('status', '=', 1)
                             ->where('unit_id', '=', $unitId)
-                            ->where('class_id', '=', $classId);
+                            ->where('class_id', '=', $classId)
+                            ->where('subject_id', '>', 0);
                     })
                     ->orderBy('id', 'ASC')
                     ->get();
@@ -374,6 +409,7 @@ class ExamStudentMarkController extends Controller
         return ExamStudentMark::select(
                                 'id',
                                 'exam_id',
+                                'subject_id',
                                 'student_id',
                                 'full_marks',
                                 'obtain_marks',
@@ -391,23 +427,12 @@ class ExamStudentMarkController extends Controller
                             ->get();
     }
 
-    private function filterReportExamsWithEnteredMarks($exams, $existingMarks)
-    {
-        $enteredExamIds = $existingMarks->filter(function ($mark) {
-            return ($mark->obtain_marks !== null && $mark->obtain_marks !== '');
-        })->pluck('exam_id')->map(function ($examId) {
-            return (int) $examId;
-        })->unique()->values()->all();
-
-        return $exams->filter(function ($exam) use ($enteredExamIds) {
-            return in_array((int) $exam->id, $enteredExamIds, true);
-        })->values();
-    }
-
     private function buildReportStudentRows($students, $exams, $existingMarks, int $unitId, int $classId)
     {
         $marksByStudent = $existingMarks->groupBy('student_id')->map(function ($group) {
-            return $group->keyBy('exam_id');
+            return $group->groupBy('exam_id')->map(function ($examGroup) {
+                return $examGroup->keyBy('subject_id');
+            });
         });
 
         return $students->map(function ($student) use ($exams, $marksByStudent, $unitId, $classId) {
@@ -416,43 +441,79 @@ class ExamStudentMarkController extends Controller
             $enteredFullMarks = 0;
             $configuredFullMarks = 0;
             $enteredCount = 0;
+            $subjectCount = 0;
 
             $examRows = $exams->map(function ($exam) use ($studentMarks, $unitId, $classId, &$totalObtained, &$enteredFullMarks, &$configuredFullMarks, &$enteredCount) {
-                $fullMarks = $this->getExamFullMarkValue($exam, $unitId, $classId);
-                $mark = $studentMarks->get($exam->id);
-                $hasValue = ($mark && $mark->obtain_marks !== null && $mark->obtain_marks !== '');
-                $obtainMarks = (($hasValue) ? (float) $mark->obtain_marks : null);
-                $percentage = (($hasValue && $fullMarks > 0) ? (($obtainMarks / $fullMarks) * 100) : null);
+                $examMarks = $studentMarks->get($exam->id, collect());
+                $examFullMarks = 0;
+                $examObtained = 0;
+                $examEnteredCount = 0;
 
-                $configuredFullMarks += $fullMarks;
+                $subjectRows = $this->getExamSubjectRows($exam, $unitId, $classId)->map(function ($subjectRow) use ($examMarks, &$totalObtained, &$enteredFullMarks, &$configuredFullMarks, &$enteredCount, &$examFullMarks, &$examObtained, &$examEnteredCount) {
+                    $subjectId = (int) $subjectRow->subject_id;
+                    $subject = $subjectRow->subject;
+                    $fullMarks = (float) $subjectRow->full_marks;
+                    $mark = $examMarks->get($subjectId);
+                    $hasValue = ($mark && $mark->obtain_marks !== null && $mark->obtain_marks !== '');
+                    $obtainMarks = (($hasValue) ? (float) $mark->obtain_marks : null);
+                    $percentage = (($hasValue && $fullMarks > 0) ? (($obtainMarks / $fullMarks) * 100) : null);
 
-                if ($hasValue) {
-                    $totalObtained += $obtainMarks;
-                    $enteredFullMarks += $fullMarks;
-                    $enteredCount++;
-                }
+                    $configuredFullMarks += $fullMarks;
+                    $examFullMarks += $fullMarks;
+
+                    if ($hasValue) {
+                        $totalObtained += $obtainMarks;
+                        $enteredFullMarks += $fullMarks;
+                        $examObtained += $obtainMarks;
+                        $examEnteredCount++;
+                        $enteredCount++;
+                    }
+
+                    return [
+                        'subject_id'          => $subjectId,
+                        'subject'             => $subject,
+                        'subject_name'        => (($subject) ? $subject->name : 'Subject'),
+                        'full_marks'          => $fullMarks,
+                        'full_marks_label'    => $this->formatMarksDisplay($fullMarks),
+                        'obtain_marks'        => $obtainMarks,
+                        'obtain_marks_label'  => (($hasValue) ? $this->formatMarksDisplay($obtainMarks) : '-'),
+                        'percentage'          => $percentage,
+                        'percentage_label'    => (($hasValue) ? number_format((float) $percentage, 2, '.', '') : '-'),
+                        'has_value'           => $hasValue,
+                    ];
+                })->values();
+
+                $examSubjectCount = $subjectRows->count();
+                $examPendingCount = max($examSubjectCount - $examEnteredCount, 0);
+                $examPercentage = (($examFullMarks > 0) ? (($examObtained / $examFullMarks) * 100) : 0);
 
                 return [
-                    'exam'               => $exam,
-                    'full_marks'         => $fullMarks,
-                    'full_marks_label'   => $this->formatMarksDisplay($fullMarks),
-                    'obtain_marks'       => $obtainMarks,
-                    'obtain_marks_label' => (($hasValue) ? $this->formatMarksDisplay($obtainMarks) : '-'),
-                    'percentage'         => $percentage,
-                    'percentage_label'   => (($hasValue) ? number_format((float) $percentage, 2, '.', '') : '-'),
-                    'has_value'          => $hasValue,
+                    'exam'                     => $exam,
+                    'subject_rows'             => $subjectRows,
+                    'subject_count'            => $examSubjectCount,
+                    'entered_count'            => $examEnteredCount,
+                    'pending_count'            => $examPendingCount,
+                    'configured_full_marks'    => $examFullMarks,
+                    'configured_full_marks_label' => $this->formatMarksDisplay($examFullMarks),
+                    'total_obtained'           => $examObtained,
+                    'total_obtained_label'     => $this->formatMarksDisplay($examObtained),
+                    'overall_percentage'       => $examPercentage,
+                    'overall_percentage_label' => number_format($examPercentage, 2, '.', ''),
+                    'status'                   => (($examEnteredCount === 0) ? 'Pending' : (($examPendingCount === 0) ? 'Completed' : 'Partial')),
                 ];
             })->values();
 
             $examCount = $examRows->count();
-            $pendingCount = max($examCount - $enteredCount, 0);
-            $overallPercentage = (($enteredFullMarks > 0) ? (($totalObtained / $enteredFullMarks) * 100) : 0);
+            $subjectCount = $examRows->sum('subject_count');
+            $pendingCount = max($subjectCount - $enteredCount, 0);
+            $overallPercentage = (($configuredFullMarks > 0) ? (($totalObtained / $configuredFullMarks) * 100) : 0);
             $status = (($enteredCount === 0) ? 'Pending' : (($pendingCount === 0) ? 'Completed' : 'Partial'));
 
             return [
                 'student'                    => $student,
                 'exam_rows'                  => $examRows,
                 'exam_count'                 => $examCount,
+                'subject_count'              => $subjectCount,
                 'entered_count'              => $enteredCount,
                 'pending_count'              => $pendingCount,
                 'configured_full_marks'      => $configuredFullMarks,
@@ -562,7 +623,8 @@ class ExamStudentMarkController extends Controller
 
                 if (count($selectedExamIds) > 0) {
                     $exams = Exam::with(['fullMarks' => function ($query) {
-                                    $query->where('status', '=', 1);
+                                    $query->where('status', '=', 1)
+                                        ->where('subject_id', '>', 0);
                                 }])
                                 ->whereIn('id', $selectedExamIds)
                                 ->where('status', '=', 1)
@@ -574,12 +636,14 @@ class ExamStudentMarkController extends Controller
                     }
 
                     foreach ($exams as $exam) {
-                        $matchingFullMark = $exam->fullMarks->first(function ($fullMarkRow) use ($unitId, $classId) {
-                            return ((int) $fullMarkRow->unit_id === (int) $unitId && (int) $fullMarkRow->class_id === (int) $classId);
+                        $matchingSubjectRows = $exam->fullMarks->filter(function ($fullMarkRow) use ($unitId, $classId) {
+                            return ((int) $fullMarkRow->unit_id === (int) $unitId
+                                && (int) $fullMarkRow->class_id === (int) $classId
+                                && (int) $fullMarkRow->subject_id > 0);
                         });
 
-                        if (!$matchingFullMark) {
-                            $validator->errors()->add('exam_ids', 'Exam "' . $exam->name . '" does not have a full marks setup for the selected unit and class.');
+                        if ($matchingSubjectRows->count() === 0) {
+                            $validator->errors()->add('exam_ids', 'Exam "' . $exam->name . '" does not have subject-wise full marks for the selected unit and class.');
                         }
                     }
                 }
@@ -601,16 +665,30 @@ class ExamStudentMarkController extends Controller
 
             $studentIds = $students->pluck('id')->values()->all();
             $exams = Exam::with(['fullMarks' => function ($query) {
-                            $query->where('status', '=', 1);
+                            $query->where('status', '=', 1)
+                                ->where('subject_id', '>', 0)
+                                ->with(['subject' => function ($subjectQuery) {
+                                    $subjectQuery->select('id', 'name');
+                                }]);
                         }])
                         ->whereIn('id', $selectedExamIds)
                         ->where('status', '=', 1)
                         ->orderBy('name', 'ASC')
                         ->get();
+            $subjectIds = $exams->flatMap(function ($exam) use ($unitId, $classId) {
+                                return $this->getExamSubjectRows($exam, $unitId, $classId)->pluck('subject_id');
+                            })
+                            ->map(function ($subjectId) {
+                                return (int) $subjectId;
+                            })
+                            ->unique()
+                            ->values()
+                            ->all();
 
             $existingMarks = ExamStudentMark::select(
                                         'id',
                                         'exam_id',
+                                        'subject_id',
                                         'student_id',
                                         'obtain_marks',
                                         'marks_percentage',
@@ -622,6 +700,7 @@ class ExamStudentMarkController extends Controller
                                     ->where('class_id', '=', $classId)
                                     ->where('session_id', '=', $sessionId)
                                     ->whereIn('exam_id', $selectedExamIds)
+                                    ->whereIn('subject_id', $subjectIds)
                                     ->whereIn('student_id', $studentIds)
                                     ->get();
 
@@ -640,8 +719,8 @@ class ExamStudentMarkController extends Controller
             $data['selected_branch_name'] = (($branch) ? $branch->name : '');
             $data['selected_class_name'] = (($class) ? $class->name : '');
             $data['student_count'] = $students->count();
-            $data['entered_count'] = $examSections[0]['entered_count'] ?? 0;
-            $data['pending_count'] = $examSections[0]['pending_count'] ?? 0;
+            $data['entered_count'] = collect($examSections)->sum('entered_count');
+            $data['pending_count'] = collect($examSections)->sum('pending_count');
             $data['exam_sections'] = $examSections;
         }
 
@@ -675,7 +754,6 @@ class ExamStudentMarkController extends Controller
             $students->pluck('id')->values()->all(),
             $exams->pluck('id')->values()->all()
         );
-        $exams = $this->filterReportExamsWithEnteredMarks($exams, $marks);
         $rows = $this->buildReportStudentRows($students, $exams, $marks, $unitId, $classId);
 
         $reportData = [
@@ -725,7 +803,6 @@ class ExamStudentMarkController extends Controller
         $context = $this->getReportContext($unitId, $branchId, $classId, $sessionId);
         $exams = $this->getReportExams($unitId, $classId);
         $marks = $this->getReportMarks($unitId, $branchId, $classId, $sessionId, [$studentId], $exams->pluck('id')->values()->all());
-        $exams = $this->filterReportExamsWithEnteredMarks($exams, $marks);
         $reportRow = $this->buildReportStudentRows(collect([$student]), $exams, $marks, $unitId, $classId)->first();
 
         return view('front.pages.exam.marks.report-card', [
@@ -763,7 +840,11 @@ class ExamStudentMarkController extends Controller
                 $query->where('status', '=', 1)
                     ->whereNull('deleted_at');
             })],
-            'obtain_marks' => ['required', 'integer', 'min:0'],
+            'subject_id'   => ['required', 'integer', Rule::exists('subjects', 'id')->where(function ($query) {
+                $query->where('status', '=', 1)
+                    ->whereNull('deleted_at');
+            })],
+            'obtain_marks' => ['required', 'numeric', 'min:0'],
         ]);
 
         if ($validator->fails()) {
@@ -779,7 +860,8 @@ class ExamStudentMarkController extends Controller
         $sessionId = (int) $request->input('session_id');
         $studentId = (int) $request->input('student_id');
         $examId = (int) $request->input('exam_id');
-        $obtainMarks = (int) $request->input('obtain_marks');
+        $subjectId = (int) $request->input('subject_id');
+        $obtainMarks = (float) $request->input('obtain_marks');
 
         $student = $this->buildStudentQuery($unitId, $branchId, $classId, $sessionId)
                         ->where('students.id', '=', $studentId)
@@ -793,7 +875,11 @@ class ExamStudentMarkController extends Controller
         }
 
         $exam = Exam::with(['fullMarks' => function ($query) {
-                        $query->where('status', '=', 1);
+                        $query->where('status', '=', 1)
+                            ->where('subject_id', '>', 0)
+                            ->with(['subject' => function ($subjectQuery) {
+                                $subjectQuery->select('id', 'name');
+                            }]);
                     }])
                     ->where('id', '=', $examId)
                     ->where('status', '=', 1)
@@ -806,14 +892,16 @@ class ExamStudentMarkController extends Controller
             ], 404);
         }
 
-        $fullMarkRow = $exam->fullMarks->first(function ($markRow) use ($unitId, $classId) {
-            return ((int) $markRow->unit_id === (int) $unitId && (int) $markRow->class_id === (int) $classId);
+        $fullMarkRow = $exam->fullMarks->first(function ($markRow) use ($unitId, $classId, $subjectId) {
+            return ((int) $markRow->unit_id === (int) $unitId
+                && (int) $markRow->class_id === (int) $classId
+                && (int) $markRow->subject_id === (int) $subjectId);
         });
 
         if (!$fullMarkRow) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Full marks setup not found for the selected exam, unit and class.',
+                'message' => 'Subject-wise full marks setup not found for the selected exam, unit and class.',
             ], 422);
         }
 
@@ -837,6 +925,7 @@ class ExamStudentMarkController extends Controller
                 'class_id'   => $classId,
                 'session_id' => $sessionId,
                 'student_id' => $studentId,
+                'subject_id' => $subjectId,
             ],
             [
                 'full_marks'       => $fullMarks,
@@ -851,6 +940,15 @@ class ExamStudentMarkController extends Controller
                                     ->values()
                                     ->all();
         $studentCount = count($filteredStudentIds);
+        $examSubjectIds = $this->getExamSubjectRows($exam, $unitId, $classId)->pluck('subject_id')
+                                    ->map(function ($item) {
+                                        return (int) $item;
+                                    })
+                                    ->unique()
+                                    ->values()
+                                    ->all();
+        $subjectCount = count($examSubjectIds);
+        $entryCount = $studentCount * $subjectCount;
         $enteredCount = ExamStudentMark::where('exam_id', '=', $examId)
                                         ->where('unit_id', '=', $unitId)
                                         ->where('branch_id', '=', $branchId)
@@ -858,25 +956,31 @@ class ExamStudentMarkController extends Controller
                                         ->where('session_id', '=', $sessionId)
                                         ->where('status', '=', 1)
                                         ->whereNull('deleted_at')
+                                        ->whereIn('subject_id', $examSubjectIds)
                                         ->whereIn('student_id', $filteredStudentIds)
                                         ->whereNotNull('obtain_marks')
                                         ->count();
-        $pendingCount = max($studentCount - $enteredCount, 0);
+        $pendingCount = max($entryCount - $enteredCount, 0);
+        $subjectName = (($fullMarkRow->subject) ? $fullMarkRow->subject->name : 'Subject');
 
         return response()->json([
             'status'  => true,
-            'message' => 'Saved ' . $student->full_name . ' (' . $student->student_id_serial . ') - ' . $obtainMarks . ' out of ' . $this->formatMarksDisplay($fullMarks) . ' in ' . $exam->name . '.',
+            'message' => 'Saved ' . $student->full_name . ' (' . $student->student_id_serial . ') - ' . $this->formatMarksDisplay($obtainMarks) . ' out of ' . $this->formatMarksDisplay($fullMarks) . ' in ' . $exam->name . ' / ' . $subjectName . '.',
             'data'    => [
                 'id'               => $mark->id,
                 'student_id'       => $studentId,
                 'exam_id'          => $examId,
+                'subject_id'       => $subjectId,
+                'subject_name'     => $subjectName,
                 'student_name'     => $student->full_name,
                 'student_serial'   => $student->student_id_serial,
-                'obtain_marks'     => (string) $obtainMarks,
+                'obtain_marks'     => $this->formatMarksDisplay($obtainMarks),
                 'marks_percentage' => number_format($percentage, 2, '.', ''),
                 'full_marks'       => $this->formatMarksDisplay($fullMarks),
                 'updated_by'       => $updatedBy,
                 'student_count'    => $studentCount,
+                'subject_count'    => $subjectCount,
+                'entry_count'      => $entryCount,
                 'entered_count'    => $enteredCount,
                 'pending_count'    => $pendingCount,
             ],
