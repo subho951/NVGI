@@ -8,6 +8,9 @@
     $selectedSubjectIds = array_map('strval', (array) ($selected_subject_ids ?? []));
 @endphp
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.css">
+<script src="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.js"></script>
+
 <style>
     .class-subject-page {
         color: #152537;
@@ -54,6 +57,32 @@
         border-color: #d3dfeb;
         border-radius: 8px;
         font-size: 0.86rem;
+    }
+    .class-subject-page .choices {
+        margin-bottom: 0;
+    }
+    .class-subject-page .choices__inner {
+        min-height: 31px !important;
+        border: 1px solid #d3dfeb !important;
+        border-radius: 8px !important;
+        padding: 2px 7px !important;
+        background: #ffffff !important;
+        font-size: 0.86rem;
+    }
+    .class-subject-page .choices__input {
+        min-width: 140px;
+        margin-bottom: 0;
+        background: #ffffff;
+    }
+    .class-subject-page .choices__list--multiple .choices__item {
+        border: 1px solid #1a8d76;
+        background-color: #1a8d76;
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+    .class-subject-page .choices__list--dropdown,
+    .class-subject-page .choices__list[aria-expanded] {
+        z-index: 12;
     }
     .class-subject-table {
         margin-bottom: 0;
@@ -150,7 +179,7 @@
                 </div>
                 <div class="col-lg-5 col-md-8">
                     <label for="subject_ids" class="form-label">Class Subjects</label>
-                    <select class="form-select form-select-sm" name="subject_ids[]" id="subject_ids" multiple size="4" required>
+                    <select class="form-select form-select-sm class-subject-multi-select" name="subject_ids[]" id="subject_ids" multiple required>
                         @foreach($subjects as $subject)
                             <option value="{{ $subject->id }}" {{ (in_array((string) $subject->id, $selectedSubjectIds, true) ? 'selected' : '') }}>{{ $subject->name }}</option>
                         @endforeach
@@ -224,4 +253,25 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.Choices && document.getElementById('subject_ids')) {
+            new Choices('#subject_ids', {
+                removeItemButton: true,
+                searchEnabled: true,
+                searchResultLimit: 12,
+                renderChoiceLimit: 12,
+                closeDropdownOnSelect: false,
+                shouldSort: false,
+                itemSelectText: '',
+                maxItemCount: -1,
+                placeholder: true,
+                placeholderValue: 'Select class subjects'
+            });
+        }
+    });
+</script>
 @endsection
