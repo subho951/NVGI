@@ -604,6 +604,11 @@ $employeeStats = [
                                 <th>Age</th>
                                 <th>DOJ</th>
                                 <th>Salary</th>
+                                <th>Bank Name</th>
+                                <th>Bank Branch</th>
+                                <th>Account No.</th>
+                                <th>IFSC Code</th>
+                                <th>Account Type</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -636,6 +641,11 @@ $employeeStats = [
                                     <td><?= ($row->age !== null ? e($row->age) : '<span class="employee-empty">--</span>') ?></td>
                                     <td><?= (!empty($row->doj) ? date('d-m-Y', strtotime($row->doj)) : '<span class="employee-empty">--</span>') ?></td>
                                     <td><?= number_format((float)$row->salary, 2) ?></td>
+                                    <td><?= (!empty($row->bank_name) ? e($row->bank_name) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td><?= (!empty($row->bank_branch) ? e($row->bank_branch) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td class="font-monospace"><?= (!empty($row->account_no) ? e($row->account_no) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td class="font-monospace"><?= (!empty($row->ifsc_code) ? e($row->ifsc_code) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td><?= (!empty($row->account_type) ? e(ucfirst(strtolower($row->account_type))) : '<span class="employee-empty">--</span>') ?></td>
                                     <td>
                                         <?php if ((int)$row->status === 1) { ?>
                                             <span class="employee-badge active"><i class="fa-solid fa-circle-check"></i> Active</span>

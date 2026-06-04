@@ -65,6 +65,7 @@ $pageSegment  = $pageName[0];
       }
 
       const isStudentListPage = @json(request()->is('student/list'));
+      const isEmployeeListPage = @json(request()->is('employee/list'));
       const exportColumnFilter = function(idx, data, node) {
         // Exclude Action/Actions columns from all exports.
         const headerText = (node && node.textContent ? node.textContent : '').trim().toLowerCase();
@@ -93,7 +94,7 @@ $pageSegment  = $pageName[0];
             extend: 'pdfHtml5',
             className: 'btn btn-danger btn-sm',
             orientation: 'landscape',
-            pageSize: isStudentListPage ? 'A3' : 'A4',
+            pageSize: (isStudentListPage || isEmployeeListPage) ? 'A3' : 'A4',
             exportOptions: {
               columns: exportColumnFilter,
               format: {
@@ -112,14 +113,14 @@ $pageSegment  = $pageName[0];
               }
             },
             customize: function(doc) {
-              if (!isStudentListPage) {
+              if (!isStudentListPage && !isEmployeeListPage) {
                 return;
               }
 
-              // Fit wide student list exports by reducing font and forcing compact column widths.
+              // Fit wide list exports by reducing font and forcing compact column widths.
               doc.pageMargins = [8, 12, 8, 12];
-              doc.defaultStyle.fontSize = 6;
-              doc.styles.tableHeader.fontSize = 7;
+              doc.defaultStyle.fontSize = isEmployeeListPage ? 5 : 6;
+              doc.styles.tableHeader.fontSize = isEmployeeListPage ? 6 : 7;
               doc.styles.tableHeader.alignment = 'center';
               doc.styles.tableHeader.fillColor = '#123a63';
               doc.styles.tableHeader.color = '#ffffff';
@@ -130,19 +131,17 @@ $pageSegment  = $pageName[0];
 
               if (tableNode && tableNode.table && tableNode.table.body && tableNode.table.body.length) {
                 const columnCount = tableNode.table.body[0].length;
-                // Student list export excludes "Action", so expected export columns are 12.
-                if (columnCount === 12) {
-                  // Keep more width for fee columns, especially Monthly Fees (last column).
-                  const baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 110];
-                  const totalBase = baseWidths.reduce((sum, width) => sum + width, 0);
-                  const pageWidth = (doc.pageSize && typeof doc.pageSize === 'object' && doc.pageSize.width) ? doc.pageSize.width : 1190;
-                  const availableWidth = Math.max(600, Math.floor(pageWidth - doc.pageMargins[0] - doc.pageMargins[2]));
-                  const scaled = baseWidths.map((width) => Math.max(20, Math.floor((width / totalBase) * availableWidth)));
-                  const usedWidth = scaled.reduce((sum, width) => sum + width, 0);
-                  scaled[scaled.length - 1] += (availableWidth - usedWidth);
-                  tableNode.table.widths = scaled;
-                } else if (columnCount === 13) {
-                  const baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 96, 14];
+                let baseWidths = null;
+
+                if (isStudentListPage && columnCount === 12) {
+                  baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 110];
+                } else if (isStudentListPage && columnCount === 13) {
+                  baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 96, 14];
+                } else if (isEmployeeListPage && columnCount === 17) {
+                  baseWidths = [18, 54, 82, 42, 78, 54, 86, 42, 26, 42, 48, 70, 70, 70, 58, 54, 54];
+                }
+
+                if (baseWidths) {
                   const totalBase = baseWidths.reduce((sum, width) => sum + width, 0);
                   const pageWidth = (doc.pageSize && typeof doc.pageSize === 'object' && doc.pageSize.width) ? doc.pageSize.width : 1190;
                   const availableWidth = Math.max(600, Math.floor(pageWidth - doc.pageMargins[0] - doc.pageMargins[2]));
