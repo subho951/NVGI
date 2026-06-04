@@ -433,6 +433,7 @@ $doj = old('doj', (($isEdit) ? $row->doj : ''));
 $age = old('age', (($isEdit) ? $row->age : ''));
 $salary = old('salary', (($isEdit) ? $row->salary : ''));
 $gender = old('gender', (($isEdit) ? $row->gender : ''));
+$category = old('category', (($isEdit) ? $row->category : ''));
 $aadhar_no = old('aadhar_no', (($isEdit) ? $row->aadhar_no : ''));
 $bank_name = old('bank_name', (($isEdit) ? $row->bank_name : ''));
 $bank_branch = old('bank_branch', (($isEdit) ? $row->bank_branch : ''));
@@ -483,6 +484,7 @@ $contactPreviewParts = array_values(array_filter([
 }));
 $contactPreviewText = !empty($contactPreviewParts) ? implode(' | ', $contactPreviewParts) : 'Add contact details';
 $genderPreview = !empty($gender) ? $gender : 'Select gender';
+$categoryPreview = !empty($category) ? $category : 'Select category';
 $agePreview = ($age !== '' && $age !== null) ? $age : '--';
 $profileStateLabel = $isEdit ? 'Updating existing profile' : 'Creating new profile';
 $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
@@ -618,6 +620,15 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                     <label for="salary" class="form-label">Salary <span class="text-danger">*</span></label>
                                     <input type="number" step="0.01" min="0" class="form-control" name="salary" id="salary" placeholder="Salary" value="<?= e($salary) ?>" required>
                                 </div>
+                                <div class="col-md-4">
+                                    <label for="category" class="form-label">Category</label>
+                                    <select class="form-select" name="category" id="category">
+                                        <option value="">Select Category</option>
+                                        <?php foreach (($categoryOptions ?? []) as $categoryOption) { ?>
+                                            <option value="<?= e($categoryOption) ?>" <?= (($category === $categoryOption) ? 'selected' : '') ?>><?= e($categoryOption) ?></option>
+                                        <?php } ?>
+                                    </select>
+                                </div>
                                 <div class="col-md-8">
                                     <label for="branch" class="form-label">Branch <span class="text-danger">*</span></label>
                                     <select class="form-select" name="branch[]" id="branch" multiple required>
@@ -630,8 +641,8 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                         } ?>
                                     </select>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="employee-hint mt-md-4 pt-md-3">
+                                <div class="col-12">
+                                    <div class="employee-hint">
                                         Choose one or more branches to define the employee's work access and reporting scope.
                                     </div>
                                 </div>
@@ -739,6 +750,10 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                 </span>
                             </div>
                             <div class="employee-summary-item">
+                                <span class="employee-summary-label">Category</span>
+                                <span class="employee-summary-value" id="employee_preview_category"><?= e($categoryPreview) ?></span>
+                            </div>
+                            <div class="employee-summary-item">
                                 <span class="employee-summary-label">Branches</span>
                                 <span class="employee-summary-value" id="employee_preview_branch_count"><?= e($selectedBranchCount) ?></span>
                             </div>
@@ -840,6 +855,7 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
         setPreviewText('employee_preview_name', displayName);
         setPreviewText('employee_preview_contact', buildContactPreview());
         setPreviewText('employee_preview_gender', getFieldValue('gender') || 'Select gender');
+        setPreviewText('employee_preview_category', getFieldValue('category') || 'Select category');
         setPreviewText('employee_preview_age', getFieldValue('age') || '--');
         setPreviewText('employee_preview_no', getFieldValue('employee_no') || 'Auto-generated on save');
 
@@ -938,7 +954,7 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
         var dobInput = document.getElementById('dob');
         var branchSelect = document.getElementById('branch');
         var imageInput = document.getElementById('image');
-        var previewFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'gender', 'employee_no'];
+        var previewFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'gender', 'category', 'employee_no'];
 
         previewFields.forEach(function(fieldId) {
             var element = document.getElementById(fieldId);

@@ -81,6 +81,7 @@ class EmployeeController extends Controller
                                     ->where('status', '!=', 3)
                                     ->orderBy('name', 'ASC')
                                     ->get();
+        $data['categoryOptions'] = $this->employeeCategoryOptions();
         $data['employee_no_preview'] = $this->generateEmployeeNo();
 
         if ($request->isMethod('post')) {
@@ -115,6 +116,7 @@ class EmployeeController extends Controller
                     'salary'        => (float)$request->salary,
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
+                    'category'      => $this->normalizeNullableString($request->category),
                     'aadhar_no'     => $this->normalizeNullableString($request->aadhar_no),
                     'bank_name'     => $this->normalizeNullableString($request->bank_name),
                     'bank_branch'   => $this->normalizeNullableString($request->bank_branch),
@@ -157,6 +159,7 @@ class EmployeeController extends Controller
                                     ->where('status', '!=', 3)
                                     ->orderBy('name', 'ASC')
                                     ->get();
+        $data['categoryOptions'] = $this->employeeCategoryOptions();
 
         if (!$data['row']) {
             return redirect($this->data['controller_route'] . '/list')->with('error_message', 'Employee not found !!!');
@@ -191,6 +194,7 @@ class EmployeeController extends Controller
                     'salary'        => (float)$request->salary,
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
+                    'category'      => $this->normalizeNullableString($request->category),
                     'aadhar_no'     => $this->normalizeNullableString($request->aadhar_no),
                     'bank_name'     => $this->normalizeNullableString($request->bank_name),
                     'bank_branch'   => $this->normalizeNullableString($request->bank_branch),
@@ -297,6 +301,7 @@ class EmployeeController extends Controller
             'doj'           => 'required|date|before_or_equal:today',
             'salary'        => 'required|numeric|min:0',
             'gender'        => 'nullable|in:Male,Female,Others',
+            'category'      => ['nullable', Rule::in($this->employeeCategoryOptions())],
             'branch'        => 'required|array|min:1',
             'branch.*'      => [
                 'integer',
@@ -305,6 +310,16 @@ class EmployeeController extends Controller
                 }),
             ],
             'image'         => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,svg,ico,avif',
+        ];
+    }
+
+    private function employeeCategoryOptions()
+    {
+        return [
+            'VHS TEACHER',
+            'TSA TEACHER',
+            'FRONT-DESK',
+            'GROUP-D',
         ];
     }
 

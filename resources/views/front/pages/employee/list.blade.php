@@ -233,39 +233,132 @@
     }
 
     .employee-table-wrap {
-        padding: 0 18px 18px;
+        padding: 0 12px 16px;
+    }
+
+    .employee-table-wrap .table-responsive {
+        overflow-x: visible;
     }
 
     .employee-table {
+        width: 100% !important;
         margin-bottom: 0 !important;
+        table-layout: fixed;
     }
 
     .employee-table thead th {
-        padding: 0.92rem 0.75rem;
+        padding: 0.62rem 0.46rem;
         border-bottom: 0;
         background: var(--employee-navy);
         color: #fff;
-        font-size: 0.76rem;
+        font-size: 0.66rem;
         font-weight: 700;
-        letter-spacing: 0.07em;
+        letter-spacing: 0.04em;
+        line-height: 1.18;
         text-transform: uppercase;
         vertical-align: middle;
-        white-space: nowrap;
+        white-space: normal;
     }
 
     .employee-table tbody td {
+        padding: 0.56rem 0.46rem;
         color: #21384d;
-        font-size: 0.9rem;
+        font-size: 0.78rem;
+        line-height: 1.25;
         vertical-align: middle;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     .employee-table tbody tr:hover {
         background: #f6fbff;
     }
 
+    .employee-table th:nth-child(1),
+    .employee-table td:nth-child(1) {
+        width: 3%;
+    }
+
+    .employee-table th:nth-child(2),
+    .employee-table td:nth-child(2) {
+        width: 13%;
+    }
+
+    .employee-table th:nth-child(3),
+    .employee-table td:nth-child(3) {
+        width: 8%;
+    }
+
+    .employee-table th:nth-child(4),
+    .employee-table td:nth-child(4) {
+        width: 13%;
+    }
+
+    .employee-table th:nth-child(5),
+    .employee-table td:nth-child(5) {
+        width: 13%;
+    }
+
+    .employee-table th:nth-child(6),
+    .employee-table td:nth-child(6) {
+        width: 10%;
+    }
+
+    .employee-table th:nth-child(7),
+    .employee-table td:nth-child(7) {
+        width: 10%;
+    }
+
+    .employee-table th:nth-child(8),
+    .employee-table td:nth-child(8) {
+        width: 17%;
+    }
+
+    .employee-table th:nth-child(9),
+    .employee-table td:nth-child(9) {
+        width: 7%;
+    }
+
+    .employee-table th:nth-child(10),
+    .employee-table td:nth-child(10) {
+        width: 6%;
+    }
+
     .employee-name {
         color: var(--employee-ink);
         font-weight: 700;
+    }
+
+    .employee-cell-main {
+        color: var(--employee-ink);
+        font-weight: 800;
+    }
+
+    .employee-cell-sub {
+        margin-top: 2px;
+        color: #61768a;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    .employee-cell-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .employee-cell-line {
+        display: block;
+    }
+
+    .employee-cell-label {
+        display: inline-block;
+        margin-right: 4px;
+        color: #75889a;
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
     }
 
     .employee-empty {
@@ -301,27 +394,28 @@
     .employee-branch-tag {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        margin: 0 6px 6px 0;
-        padding: 4px 9px;
+        gap: 4px;
+        margin: 0 4px 4px 0;
+        padding: 3px 7px;
         border: 1px solid #d8e4ef;
         border-radius: 999px;
         background: #eef4fa;
         color: #234766;
-        font-size: 0.72rem;
+        font-size: 0.66rem;
         font-weight: 600;
     }
 
     .employee-action {
-        width: 34px;
-        height: 34px;
+        width: 28px;
+        height: 28px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-right: 6px;
+        margin-right: 3px;
         border: 1px solid transparent;
-        border-radius: 10px;
+        border-radius: 8px;
         text-decoration: none;
+        font-size: 0.78rem;
         transition: all 0.18s ease;
     }
 
@@ -594,21 +688,13 @@ $employeeStats = [
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Employee No</th>
-                                <th>Name</th>
-                                <th>Gender</th>
-                                <th>Email</th>
-                                <th>Phone</th>
+                                <th>Employee</th>
+                                <th>Category</th>
+                                <th>Contact</th>
                                 <th>Branches</th>
-                                <th>DOB</th>
-                                <th>Age</th>
-                                <th>DOJ</th>
-                                <th>Salary</th>
-                                <th>Bank Name</th>
-                                <th>Bank Branch</th>
-                                <th>Account No.</th>
-                                <th>IFSC Code</th>
-                                <th>Account Type</th>
+                                <th>Personal</th>
+                                <th>Work</th>
+                                <th>Bank Details</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -620,14 +706,31 @@ $employeeStats = [
                                 $encodedId = Helper::encoded($row->id);
                                 $statusUrl = $controllerRoute . '/change-status/';
                                 $editUrl = $controllerRoute . '/edit/' . $encodedId;
+                                $dobText = !empty($row->dob) ? date('d-m-Y', strtotime($row->dob)) : '--';
+                                $dojText = !empty($row->doj) ? date('d-m-Y', strtotime($row->doj)) : '--';
+                                $ageText = $row->age !== null ? $row->age : '--';
                             ?>
                                 <tr>
                                     <td><?= $sl++ ?></td>
-                                    <td><?= e($row->employee_no) ?></td>
-                                    <td class="employee-name"><?= e($row->employee_name) ?></td>
-                                    <td><?= (!empty($row->gender) ? e($row->gender) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td><?= (!empty($row->email) ? e($row->email) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td><?= (!empty($row->phone) ? e($row->phone) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td>
+                                        <div class="employee-cell-main"><?= e($row->employee_name) ?></div>
+                                        <div class="employee-cell-sub"><?= e($row->employee_no) ?></div>
+                                    </td>
+                                    <td><?= (!empty($row->category) ? e($row->category) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td>
+                                        <?php if (!empty($row->email) || !empty($row->phone)) { ?>
+                                            <div class="employee-cell-stack">
+                                                <?php if (!empty($row->email)) { ?>
+                                                    <span class="employee-cell-line"><?= e($row->email) ?></span>
+                                                <?php } ?>
+                                                <?php if (!empty($row->phone)) { ?>
+                                                    <span class="employee-cell-line"><?= e($row->phone) ?></span>
+                                                <?php } ?>
+                                            </div>
+                                        <?php } else { ?>
+                                            <span class="employee-empty">--</span>
+                                        <?php } ?>
+                                    </td>
                                     <td>
                                         <?php if (!empty($row->branch_names)) { ?>
                                             <?php foreach ($row->branch_names as $branchName) { ?>
@@ -637,15 +740,42 @@ $employeeStats = [
                                             <span class="employee-empty">--</span>
                                         <?php } ?>
                                     </td>
-                                    <td><?= (!empty($row->dob) ? date('d-m-Y', strtotime($row->dob)) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td><?= ($row->age !== null ? e($row->age) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td><?= (!empty($row->doj) ? date('d-m-Y', strtotime($row->doj)) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td><?= number_format((float)$row->salary, 2) ?></td>
-                                    <td><?= (!empty($row->bank_name) ? e($row->bank_name) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td><?= (!empty($row->bank_branch) ? e($row->bank_branch) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td class="font-monospace"><?= (!empty($row->account_no) ? e($row->account_no) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td class="font-monospace"><?= (!empty($row->ifsc_code) ? e($row->ifsc_code) : '<span class="employee-empty">--</span>') ?></td>
-                                    <td><?= (!empty($row->account_type) ? e(ucfirst(strtolower($row->account_type))) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td>
+                                        <div class="employee-cell-stack">
+                                            <span class="employee-cell-line"><span class="employee-cell-label">Gender</span><?= (!empty($row->gender) ? e($row->gender) : '--') ?></span>
+                                            <span class="employee-cell-line"><span class="employee-cell-label">DOB</span><?= e($dobText) ?></span>
+                                            <span class="employee-cell-line"><span class="employee-cell-label">Age</span><?= e($ageText) ?></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="employee-cell-stack">
+                                            <span class="employee-cell-line"><span class="employee-cell-label">DOJ</span><?= e($dojText) ?></span>
+                                            <span class="employee-cell-line"><span class="employee-cell-label">Salary</span><?= number_format((float)$row->salary, 2) ?></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($row->bank_name) || !empty($row->bank_branch) || !empty($row->account_no) || !empty($row->ifsc_code) || !empty($row->account_type)) { ?>
+                                            <div class="employee-cell-stack">
+                                                <?php if (!empty($row->bank_name)) { ?>
+                                                    <span class="employee-cell-line"><?= e($row->bank_name) ?></span>
+                                                <?php } ?>
+                                                <?php if (!empty($row->bank_branch)) { ?>
+                                                    <span class="employee-cell-line"><span class="employee-cell-label">Branch</span><?= e($row->bank_branch) ?></span>
+                                                <?php } ?>
+                                                <?php if (!empty($row->account_no)) { ?>
+                                                    <span class="employee-cell-line font-monospace"><span class="employee-cell-label">A/C</span><?= e($row->account_no) ?></span>
+                                                <?php } ?>
+                                                <?php if (!empty($row->ifsc_code)) { ?>
+                                                    <span class="employee-cell-line font-monospace"><span class="employee-cell-label">IFSC</span><?= e($row->ifsc_code) ?></span>
+                                                <?php } ?>
+                                                <?php if (!empty($row->account_type)) { ?>
+                                                    <span class="employee-cell-line"><span class="employee-cell-label">Type</span><?= e(ucfirst(strtolower($row->account_type))) ?></span>
+                                                <?php } ?>
+                                            </div>
+                                        <?php } else { ?>
+                                            <span class="employee-empty">--</span>
+                                        <?php } ?>
+                                    </td>
                                     <td>
                                         <?php if ((int)$row->status === 1) { ?>
                                             <span class="employee-badge active"><i class="fa-solid fa-circle-check"></i> Active</span>
@@ -653,7 +783,7 @@ $employeeStats = [
                                             <span class="employee-badge inactive"><i class="fa-solid fa-circle-xmark"></i> Inactive</span>
                                         <?php } ?>
                                     </td>
-                                    <td class="text-nowrap">
+                                    <td>
                                         <a href="<?= url($editUrl) ?>" class="employee-action edit" title="Edit <?= $module['title'] ?>">
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </a>

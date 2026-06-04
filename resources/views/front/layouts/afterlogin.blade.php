@@ -137,8 +137,8 @@ $pageSegment  = $pageName[0];
                   baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 110];
                 } else if (isStudentListPage && columnCount === 13) {
                   baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 96, 14];
-                } else if (isEmployeeListPage && columnCount === 17) {
-                  baseWidths = [18, 54, 82, 42, 78, 54, 86, 42, 26, 42, 48, 70, 70, 70, 58, 54, 54];
+                } else if (isEmployeeListPage && columnCount === 9) {
+                  baseWidths = [24, 104, 68, 104, 104, 82, 82, 136, 58];
                 }
 
                 if (baseWidths) {
@@ -164,7 +164,7 @@ $pageSegment  = $pageName[0];
           }
         ],
         pageLength: 10,
-        scrollX: true,
+        scrollX: !isEmployeeListPage,
         autoWidth: false
       });
     });

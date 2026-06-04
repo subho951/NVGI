@@ -25,6 +25,7 @@ class Employee extends Model
         'salary',
         'branch',
         'gender',
+        'category',
         'aadhar_no',
         'bank_name',
         'bank_branch',
