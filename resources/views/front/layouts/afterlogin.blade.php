@@ -66,15 +66,50 @@ $pageSegment  = $pageName[0];
 
       const isStudentListPage = @json(request()->is('student/list'));
       const isEmployeeListPage = @json(request()->is('employee/list'));
-      const exportColumnFilter = function(idx, data, node) {
+      const cleanExportBody = function(data) {
+        if (typeof data !== 'string') {
+          return data;
+        }
+
+        return data
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<[^>]*>/g, '')
+          .replace(/\u00a0/g, ' ')
+          .replace(/[ \t]+/g, ' ')
+          .trim();
+      };
+      const isActionColumn = function(idx, node) {
         // Exclude Action/Actions columns from all exports.
         const headerText = (node && node.textContent ? node.textContent : '').trim().toLowerCase();
         if (headerText === 'action' || headerText === 'actions') {
-          return false;
+          return true;
         }
 
         // Fallback for student list where action is the last column.
         if (isStudentListPage && idx === 12) {
+          return true;
+        }
+
+        return false;
+      };
+      const excelColumnFilter = function(idx, data, node) {
+        if (isActionColumn(idx, node)) {
+          return false;
+        }
+
+        const headerText = (node && node.textContent ? node.textContent : '').trim().toLowerCase();
+        if (isEmployeeListPage && headerText === 'bank details') {
+          return false;
+        }
+
+        return true;
+      };
+      const pdfColumnFilter = function(idx, data, node) {
+        if (isActionColumn(idx, node)) {
+          return false;
+        }
+
+        if (isEmployeeListPage && node && node.classList && node.classList.contains('employee-export-only')) {
           return false;
         }
 
@@ -87,7 +122,10 @@ $pageSegment  = $pageName[0];
             extend: 'excel',
             className: 'btn btn-success btn-sm',
             exportOptions: {
-              columns: exportColumnFilter
+              columns: excelColumnFilter,
+              format: {
+                body: cleanExportBody
+              }
             }
           },
           {
@@ -96,20 +134,9 @@ $pageSegment  = $pageName[0];
             orientation: 'landscape',
             pageSize: (isStudentListPage || isEmployeeListPage) ? 'A3' : 'A4',
             exportOptions: {
-              columns: exportColumnFilter,
+              columns: pdfColumnFilter,
               format: {
-                body: function(data) {
-                  if (typeof data !== 'string') {
-                    return data;
-                  }
-                  // Strip HTML and normalize spaces so long markup does not bloat PDF widths.
-                  return data
-                    .replace(/<br\s*\/?>/gi, '\n')
-                    .replace(/<[^>]*>/g, '')
-                    .replace(/\u00a0/g, ' ')
-                    .replace(/[ \t]+/g, ' ')
-                    .trim();
-                }
+                body: cleanExportBody
               }
             },
             customize: function(doc) {

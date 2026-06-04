@@ -314,14 +314,18 @@
         width: 17%;
     }
 
-    .employee-table th:nth-child(9),
-    .employee-table td:nth-child(9) {
+    .employee-table th:nth-child(14),
+    .employee-table td:nth-child(14) {
         width: 7%;
     }
 
-    .employee-table th:nth-child(10),
-    .employee-table td:nth-child(10) {
+    .employee-table th:nth-child(15),
+    .employee-table td:nth-child(15) {
         width: 6%;
+    }
+
+    .employee-export-only {
+        display: none !important;
     }
 
     .employee-name {
@@ -695,6 +699,11 @@ $employeeStats = [
                                 <th>Personal</th>
                                 <th>Work</th>
                                 <th>Bank Details</th>
+                                <th class="employee-export-only">Bank Name</th>
+                                <th class="employee-export-only">Bank Branch</th>
+                                <th class="employee-export-only">Account No.</th>
+                                <th class="employee-export-only">IFSC Code</th>
+                                <th class="employee-export-only">Account Type</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -776,6 +785,11 @@ $employeeStats = [
                                             <span class="employee-empty">--</span>
                                         <?php } ?>
                                     </td>
+                                    <td class="employee-export-only"><?= (!empty($row->bank_name) ? e($row->bank_name) : '') ?></td>
+                                    <td class="employee-export-only"><?= (!empty($row->bank_branch) ? e($row->bank_branch) : '') ?></td>
+                                    <td class="employee-export-only"><?= (!empty($row->account_no) ? e($row->account_no) : '') ?></td>
+                                    <td class="employee-export-only"><?= (!empty($row->ifsc_code) ? e($row->ifsc_code) : '') ?></td>
+                                    <td class="employee-export-only"><?= (!empty($row->account_type) ? e(ucfirst(strtolower($row->account_type))) : '') ?></td>
                                     <td>
                                         <?php if ((int)$row->status === 1) { ?>
                                             <span class="employee-badge active"><i class="fa-solid fa-circle-check"></i> Active</span>
