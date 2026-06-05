@@ -379,6 +379,10 @@
         border-color: #6e99c1;
     }
 
+    .employee-conditional-time[hidden] {
+        display: none !important;
+    }
+
     @media (max-width: 991px) {
         .employee-hero {
             padding: 22px;
@@ -433,7 +437,23 @@ $doj = old('doj', (($isEdit) ? $row->doj : ''));
 $age = old('age', (($isEdit) ? $row->age : ''));
 $salary = old('salary', (($isEdit) ? $row->salary : ''));
 $gender = old('gender', (($isEdit) ? $row->gender : ''));
-$category = old('category', (($isEdit) ? $row->category : ''));
+$categoryInput = old('category', (($isEdit) ? $row->category : []));
+$selectedCategories = [];
+$availableCategories = array_values(array_map('strval', ($categoryOptions ?? [])));
+
+if (is_array($categoryInput)) {
+    $selectedCategories = $categoryInput;
+} else {
+    $decodedCategories = json_decode((string)$categoryInput, true);
+    $selectedCategories = is_array($decodedCategories) ? $decodedCategories : [trim((string)$categoryInput)];
+}
+
+$selectedCategories = array_values(array_unique(array_filter(array_map('strval', $selectedCategories), function ($value) use ($availableCategories) {
+    return trim($value) !== '' && in_array($value, $availableCategories, true);
+})));
+$hasVhsTeacherCategory = in_array('VHS TEACHER', $selectedCategories, true);
+$in_time = old('in_time', (($isEdit) ? substr((string)$row->in_time, 0, 5) : ''));
+$out_time = old('out_time', (($isEdit) ? substr((string)$row->out_time, 0, 5) : ''));
 $aadhar_no = old('aadhar_no', (($isEdit) ? $row->aadhar_no : ''));
 $bank_name = old('bank_name', (($isEdit) ? $row->bank_name : ''));
 $bank_branch = old('bank_branch', (($isEdit) ? $row->bank_branch : ''));
@@ -484,7 +504,7 @@ $contactPreviewParts = array_values(array_filter([
 }));
 $contactPreviewText = !empty($contactPreviewParts) ? implode(' | ', $contactPreviewParts) : 'Add contact details';
 $genderPreview = !empty($gender) ? $gender : 'Select gender';
-$categoryPreview = !empty($category) ? $category : 'Select category';
+$categoryPreview = !empty($selectedCategories) ? implode(', ', $selectedCategories) : 'Select category';
 $agePreview = ($age !== '' && $age !== null) ? $age : '--';
 $profileStateLabel = $isEdit ? 'Updating existing profile' : 'Creating new profile';
 $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
@@ -622,10 +642,9 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                 </div>
                                 <div class="col-md-4">
                                     <label for="category" class="form-label">Category</label>
-                                    <select class="form-select" name="category" id="category">
-                                        <option value="">Select Category</option>
+                                    <select class="form-select" name="category[]" id="category" multiple>
                                         <?php foreach (($categoryOptions ?? []) as $categoryOption) { ?>
-                                            <option value="<?= e($categoryOption) ?>" <?= (($category === $categoryOption) ? 'selected' : '') ?>><?= e($categoryOption) ?></option>
+                                            <option value="<?= e($categoryOption) ?>" <?= (in_array($categoryOption, $selectedCategories, true) ? 'selected' : '') ?>><?= e($categoryOption) ?></option>
                                         <?php } ?>
                                     </select>
                                 </div>
@@ -644,6 +663,18 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                 <div class="col-12">
                                     <div class="employee-hint">
                                         Choose one or more branches to define the employee's work access and reporting scope.
+                                    </div>
+                                </div>
+                                <div class="col-12 employee-conditional-time" id="vhs_time_fields" <?= $hasVhsTeacherCategory ? '' : 'hidden' ?>>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="in_time" class="form-label">In Time</label>
+                                            <input type="time" class="form-control" name="in_time" id="in_time" value="<?= e($in_time) ?>" <?= $hasVhsTeacherCategory ? '' : 'disabled' ?>>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="out_time" class="form-label">Out Time</label>
+                                            <input type="time" class="form-control" name="out_time" id="out_time" value="<?= e($out_time) ?>" <?= $hasVhsTeacherCategory ? '' : 'disabled' ?>>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -855,7 +886,7 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
         setPreviewText('employee_preview_name', displayName);
         setPreviewText('employee_preview_contact', buildContactPreview());
         setPreviewText('employee_preview_gender', getFieldValue('gender') || 'Select gender');
-        setPreviewText('employee_preview_category', getFieldValue('category') || 'Select category');
+        setPreviewText('employee_preview_category', buildCategoryPreview());
         setPreviewText('employee_preview_age', getFieldValue('age') || '--');
         setPreviewText('employee_preview_no', getFieldValue('employee_no') || 'Auto-generated on save');
 
@@ -863,6 +894,7 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
         var selectedOptions = branchSelect ? Array.prototype.slice.call(branchSelect.selectedOptions || []) : [];
         setPreviewText('employee_preview_branch_count', String(selectedOptions.length));
         renderBranchPreview(selectedOptions);
+        toggleVhsTimeFields();
     }
 
     function getFieldValue(id) {
@@ -884,6 +916,61 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
         }
 
         return contactParts.length ? contactParts.join(' | ') : 'Add contact details';
+    }
+
+    function getSelectedOptionValues(id) {
+        var select = document.getElementById(id);
+
+        if (!select) {
+            return [];
+        }
+
+        return Array.prototype.slice.call(select.selectedOptions || []).map(function(option) {
+            return option.value;
+        }).filter(function(value) {
+            return value !== '';
+        });
+    }
+
+    function buildCategoryPreview() {
+        var select = document.getElementById('category');
+
+        if (!select) {
+            return 'Select category';
+        }
+
+        var selectedTexts = Array.prototype.slice.call(select.selectedOptions || []).map(function(option) {
+            return option.text;
+        }).filter(function(value) {
+            return value !== '';
+        });
+
+        return selectedTexts.length ? selectedTexts.join(', ') : 'Select category';
+    }
+
+    function toggleVhsTimeFields() {
+        var timeFields = document.getElementById('vhs_time_fields');
+        var inTimeInput = document.getElementById('in_time');
+        var outTimeInput = document.getElementById('out_time');
+        var hasVhsTeacher = getSelectedOptionValues('category').indexOf('VHS TEACHER') !== -1;
+
+        if (!timeFields) {
+            return;
+        }
+
+        timeFields.hidden = !hasVhsTeacher;
+
+        [inTimeInput, outTimeInput].forEach(function(input) {
+            if (!input) {
+                return;
+            }
+
+            input.disabled = !hasVhsTeacher;
+
+            if (!hasVhsTeacher) {
+                input.value = '';
+            }
+        });
     }
 
     function calculateAge() {
@@ -952,6 +1039,7 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
 
     document.addEventListener('DOMContentLoaded', function() {
         var dobInput = document.getElementById('dob');
+        var categorySelect = document.getElementById('category');
         var branchSelect = document.getElementById('branch');
         var imageInput = document.getElementById('image');
         var previewFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'gender', 'category', 'employee_no'];
@@ -990,6 +1078,17 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                 shouldSort: false,
                 placeholder: true,
                 placeholderValue: 'Select branches',
+                itemSelectText: ''
+            });
+        }
+
+        if (categorySelect && typeof Choices !== 'undefined') {
+            new Choices(categorySelect, {
+                removeItemButton: true,
+                searchEnabled: true,
+                shouldSort: false,
+                placeholder: true,
+                placeholderValue: 'Select categories',
                 itemSelectText: ''
             });
         }

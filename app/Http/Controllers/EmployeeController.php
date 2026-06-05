@@ -45,6 +45,9 @@ class EmployeeController extends Controller
                             ->get()
                             ->map(function ($row) use ($branchMap) {
                                 $row->employee_name = $this->buildEmployeeName($row);
+                                $row->category_names = $this->employeeCategoryLabels($row->category);
+                                $row->in_time_display = $this->formatTimeForDisplay($row->in_time);
+                                $row->out_time_display = $this->formatTimeForDisplay($row->out_time);
 
                                 $branchIds = json_decode((string)$row->branch, true);
                                 if (!is_array($branchIds)) {
@@ -91,6 +94,8 @@ class EmployeeController extends Controller
             $nextSlNo = $this->getNextEmployeeSlNo();
             $employeeNo = $this->formatEmployeeNo($nextSlNo);
             $branchIds = $this->normalizeBranchIds($request->input('branch', []));
+            $categoryValues = $this->normalizeCategoryValues($request->input('category', []));
+            $hasVhsTeacherCategory = in_array('VHS TEACHER', $categoryValues, true);
             $age = $this->calculateAge($request->dob);
             $imagePath = null;
 
@@ -116,7 +121,9 @@ class EmployeeController extends Controller
                     'salary'        => (float)$request->salary,
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
-                    'category'      => $this->normalizeNullableString($request->category),
+                    'category'      => $this->serializeCategoryValues($categoryValues),
+                    'in_time'       => $hasVhsTeacherCategory ? $this->normalizeTimeValue($request->in_time) : null,
+                    'out_time'      => $hasVhsTeacherCategory ? $this->normalizeTimeValue($request->out_time) : null,
                     'aadhar_no'     => $this->normalizeNullableString($request->aadhar_no),
                     'bank_name'     => $this->normalizeNullableString($request->bank_name),
                     'bank_branch'   => $this->normalizeNullableString($request->bank_branch),
@@ -170,6 +177,8 @@ class EmployeeController extends Controller
 
             $userId = $this->currentUserId();
             $branchIds = $this->normalizeBranchIds($request->input('branch', []));
+            $categoryValues = $this->normalizeCategoryValues($request->input('category', []));
+            $hasVhsTeacherCategory = in_array('VHS TEACHER', $categoryValues, true);
             $age = $this->calculateAge($request->dob);
             $oldImage = $data['row']->image;
             $newImagePath = $oldImage;
@@ -194,7 +203,9 @@ class EmployeeController extends Controller
                     'salary'        => (float)$request->salary,
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
-                    'category'      => $this->normalizeNullableString($request->category),
+                    'category'      => $this->serializeCategoryValues($categoryValues),
+                    'in_time'       => $hasVhsTeacherCategory ? $this->normalizeTimeValue($request->in_time) : null,
+                    'out_time'      => $hasVhsTeacherCategory ? $this->normalizeTimeValue($request->out_time) : null,
                     'aadhar_no'     => $this->normalizeNullableString($request->aadhar_no),
                     'bank_name'     => $this->normalizeNullableString($request->bank_name),
                     'bank_branch'   => $this->normalizeNullableString($request->bank_branch),
@@ -301,7 +312,10 @@ class EmployeeController extends Controller
             'doj'           => 'required|date|before_or_equal:today',
             'salary'        => 'required|numeric|min:0',
             'gender'        => 'nullable|in:Male,Female,Others',
-            'category'      => ['nullable', Rule::in($this->employeeCategoryOptions())],
+            'category'      => 'nullable|array',
+            'category.*'    => ['string', Rule::in($this->employeeCategoryOptions())],
+            'in_time'       => 'nullable|date_format:H:i',
+            'out_time'      => 'nullable|date_format:H:i',
             'branch'        => 'required|array|min:1',
             'branch.*'      => [
                 'integer',
@@ -321,6 +335,60 @@ class EmployeeController extends Controller
             'FRONT-DESK',
             'GROUP-D',
         ];
+    }
+
+    private function normalizeCategoryValues($categories = [])
+    {
+        if (!is_array($categories)) {
+            $decodedCategories = json_decode((string)$categories, true);
+            $categories = is_array($decodedCategories) ? $decodedCategories : [$categories];
+        }
+
+        $validCategories = $this->employeeCategoryOptions();
+        $categories = array_map(function ($category) {
+            return trim((string)$category);
+        }, $categories);
+        $categories = array_filter($categories, function ($category) use ($validCategories) {
+            return $category !== '' && in_array($category, $validCategories, true);
+        });
+
+        return array_values(array_unique($categories));
+    }
+
+    private function serializeCategoryValues(array $categories)
+    {
+        return !empty($categories) ? json_encode(array_values($categories)) : null;
+    }
+
+    private function employeeCategoryLabels($categories)
+    {
+        return $this->normalizeCategoryValues($categories);
+    }
+
+    private function normalizeTimeValue($value)
+    {
+        $value = trim((string)$value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        return Carbon::createFromFormat('H:i', $value)->format('H:i');
+    }
+
+    private function formatTimeForDisplay($value)
+    {
+        $value = trim((string)$value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('H:i', substr($value, 0, 5))->format('H:i');
+        } catch (\Throwable $e) {
+            return $value;
+        }
     }
 
     private function generateEmployeeNo()

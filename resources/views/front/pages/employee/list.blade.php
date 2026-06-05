@@ -725,7 +725,15 @@ $employeeStats = [
                                         <div class="employee-cell-main"><?= e($row->employee_name) ?></div>
                                         <div class="employee-cell-sub"><?= e($row->employee_no) ?></div>
                                     </td>
-                                    <td><?= (!empty($row->category) ? e($row->category) : '<span class="employee-empty">--</span>') ?></td>
+                                    <td>
+                                        <?php if (!empty($row->category_names)) { ?>
+                                            <?php foreach ($row->category_names as $categoryName) { ?>
+                                                <span class="employee-branch-tag"><?= e($categoryName) ?></span>
+                                            <?php } ?>
+                                        <?php } else { ?>
+                                            <span class="employee-empty">--</span>
+                                        <?php } ?>
+                                    </td>
                                     <td>
                                         <?php if (!empty($row->email) || !empty($row->phone)) { ?>
                                             <div class="employee-cell-stack">
@@ -760,6 +768,12 @@ $employeeStats = [
                                         <div class="employee-cell-stack">
                                             <span class="employee-cell-line"><span class="employee-cell-label">DOJ</span><?= e($dojText) ?></span>
                                             <span class="employee-cell-line"><span class="employee-cell-label">Salary</span><?= number_format((float)$row->salary, 2) ?></span>
+                                            <?php if (!empty($row->in_time_display)) { ?>
+                                                <span class="employee-cell-line"><span class="employee-cell-label">In</span><?= e($row->in_time_display) ?></span>
+                                            <?php } ?>
+                                            <?php if (!empty($row->out_time_display)) { ?>
+                                                <span class="employee-cell-line"><span class="employee-cell-label">Out</span><?= e($row->out_time_display) ?></span>
+                                            <?php } ?>
                                         </div>
                                     </td>
                                     <td>
