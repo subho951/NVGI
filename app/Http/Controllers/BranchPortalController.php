@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Employee;
+use App\Models\EmployeeScheduleRoster;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -72,15 +75,7 @@ class BranchPortalController extends Controller
     public function employees(Request $request)
     {
         $branch = $request->attributes->get('branch_portal');
-        $centreBranchIds = Branch::whereRaw('LOWER(name) = ?', [Str::lower(trim((string) $branch->name))])
-            ->where('status', '=', 1)
-            ->whereNull('deleted_at')
-            ->pluck('id')
-            ->map(function ($branchId) {
-                return (int) $branchId;
-            })
-            ->values()
-            ->all();
+        $centreBranchIds = $this->centreBranchIds($branch);
 
         $rows = Employee::where('status', '!=', 3)
             ->where(function ($query) use ($centreBranchIds) {
@@ -106,6 +101,50 @@ class BranchPortalController extends Controller
         ]);
     }
 
+    public function rosters(Request $request)
+    {
+        $branch = $request->attributes->get('branch_portal');
+        $centreBranchIds = $this->centreBranchIds($branch);
+        $targetMonth = $this->resolveRosterMonth($request->input('month', Carbon::now()->format('Y-m')));
+        $category = $this->resolveRosterCategory($request->input('category', ''));
+        $employeeId = (int) $request->input('employee_id', 0);
+
+        $employeeOptions = $this->branchEmployees($centreBranchIds, $category)
+            ->map(function ($employee) {
+                return [
+                    'id' => (int) $employee->id,
+                    'employee_no' => (string) $employee->employee_no,
+                    'employee_name' => $employee->employee_name,
+                    'label' => trim((string) $employee->employee_no . ' - ' . $employee->employee_name),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $rows = $this->branchRosterRows($targetMonth, $centreBranchIds, $category, $employeeId);
+
+        return view('front.pages.branch-portal.rosters', [
+            'title' => 'Branch Schedule Roster',
+            'branch' => $branch,
+            'centre_branch_ids' => $centreBranchIds,
+            'categories' => $this->rosterCategories(),
+            'selected_month_value' => $targetMonth->format('Y-m'),
+            'selected_month_label' => $targetMonth->format('F Y'),
+            'selected_category' => $category,
+            'selected_employee_id' => $employeeId,
+            'month_options' => $this->monthOptions($targetMonth),
+            'employee_options' => $employeeOptions,
+            'calendar_dates' => $this->calendarDates($targetMonth),
+            'calendar_groups' => $this->buildRosterCalendarGroups($rows, $targetMonth),
+            'stats' => [
+                'rows' => $rows->count(),
+                'employees' => $rows->pluck('employee_id')->unique()->count(),
+                'categories' => $rows->pluck('category')->unique()->count(),
+                'dates' => $rows->pluck('roster_date')->unique()->count(),
+            ],
+        ]);
+    }
+
     public function logout(Request $request)
     {
         $request->session()->forget('branch_portal');
@@ -125,5 +164,294 @@ class BranchPortalController extends Controller
         ])->map(function ($namePart) {
             return trim((string) $namePart);
         })->filter()->implode(' ');
+    }
+
+    private function centreBranchIds($branch): array
+    {
+        return Branch::whereRaw('LOWER(name) = ?', [Str::lower(trim((string) $branch->name))])
+            ->where('status', '=', 1)
+            ->whereNull('deleted_at')
+            ->pluck('id')
+            ->map(function ($branchId) {
+                return (int) $branchId;
+            })
+            ->values()
+            ->all();
+    }
+
+    private function branchEmployees(array $centreBranchIds, string $category = '')
+    {
+        return Employee::where('status', '!=', 3)
+            ->where(function ($query) use ($centreBranchIds) {
+                foreach ($centreBranchIds as $branchId) {
+                    $query->orWhereJsonContains('branch', $branchId);
+                }
+            })
+            ->orderBy('employee_no', 'ASC')
+            ->orderBy('first_name', 'ASC')
+            ->orderBy('last_name', 'ASC')
+            ->get()
+            ->map(function ($employee) {
+                $employee->employee_name = $this->buildEmployeeName($employee);
+
+                return $employee;
+            })
+            ->filter(function ($employee) use ($category) {
+                return $category === '' || in_array($category, $this->employeeCategoryValues($employee->category), true);
+            })
+            ->values();
+    }
+
+    private function branchRosterRows(Carbon $targetMonth, array $centreBranchIds, string $category = '', int $employeeId = 0)
+    {
+        $rosterDates = $this->rosterDates($targetMonth)
+            ->map(function ($date) {
+                return $date->toDateString();
+            })
+            ->values()
+            ->all();
+
+        if (empty($centreBranchIds) || empty($rosterDates)) {
+            return collect();
+        }
+
+        $query = EmployeeScheduleRoster::whereIn('branch_id', $centreBranchIds)
+            ->whereIn('category', $this->rosterCategories())
+            ->where('roster_month', '=', (int) $targetMonth->month)
+            ->where('roster_year', '=', (int) $targetMonth->year)
+            ->whereIn('roster_date', $rosterDates)
+            ->where('status', '!=', 3);
+
+        if ($category !== '') {
+            $query->where('category', '=', $category);
+        }
+
+        if ($employeeId > 0) {
+            $query->where('employee_id', '=', $employeeId);
+        }
+
+        return $query
+            ->orderBy('category', 'ASC')
+            ->orderBy('employee_no', 'ASC')
+            ->orderBy('roster_date', 'ASC')
+            ->get();
+    }
+
+    private function buildRosterCalendarGroups($rows, Carbon $targetMonth): array
+    {
+        return $rows
+            ->groupBy('category')
+            ->map(function ($groupRows, $category) use ($targetMonth) {
+                $calendarData = $this->buildCalendarData($groupRows, $targetMonth);
+
+                return [
+                    'category' => (string) $category,
+                    'rows' => $groupRows->count(),
+                    'employees_count' => $groupRows->pluck('employee_id')->unique()->count(),
+                    'employees' => $calendarData['employees'],
+                    'cells' => $calendarData['cells'],
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function buildCalendarData($rows, Carbon $targetMonth): array
+    {
+        $employees = $rows
+            ->groupBy('employee_id')
+            ->map(function ($employeeRows) {
+                $firstRow = $employeeRows->first();
+
+                return [
+                    'id' => (int) $firstRow->employee_id,
+                    'employee_no' => (string) $firstRow->employee_no,
+                    'employee_name' => (string) $firstRow->employee_name,
+                ];
+            })
+            ->sortBy('employee_no', SORT_NATURAL)
+            ->values()
+            ->all();
+
+        $cells = [];
+        $colorClasses = ['blue', 'mint', 'pink', 'amber', 'violet'];
+
+        foreach ($rows as $row) {
+            $employeeId = (int) $row->employee_id;
+            $dateKey = Carbon::parse($row->roster_date)->toDateString();
+
+            if (!isset($cells[$employeeId])) {
+                $cells[$employeeId] = [];
+            }
+
+            if (!isset($cells[$employeeId][$dateKey])) {
+                $cells[$employeeId][$dateKey] = [];
+            }
+
+            $cells[$employeeId][$dateKey][] = [
+                'branch_name' => (string) $row->branch_name,
+                'branch_code' => $this->branchCode($row->branch_name),
+                'unit_name' => (string) $row->unit_name,
+                'time_display' => $this->displayTimeRange($row->in_time, $row->out_time),
+                'shift_class' => $colorClasses[((int) $row->branch_id) % count($colorClasses)],
+            ];
+        }
+
+        return [
+            'dates' => $this->calendarDates($targetMonth),
+            'employees' => $employees,
+            'cells' => $cells,
+        ];
+    }
+
+    private function calendarDates(Carbon $targetMonth): array
+    {
+        return $this->monthDates($targetMonth)
+            ->map(function ($date) use ($targetMonth) {
+                $isRosterWorkingDate = $this->isRosterWorkingDate($date);
+
+                return [
+                    'date' => $date->toDateString(),
+                    'day_label' => $date->format('l'),
+                    'day_initial' => strtoupper(substr($date->format('D'), 0, 1)),
+                    'date_label' => $date->format('j'),
+                    'month_label' => $date->format('M'),
+                    'is_current_month' => $date->month === $targetMonth->month && $date->year === $targetMonth->year,
+                    'is_today' => $date->isToday(),
+                    'is_saturday' => $date->isSaturday(),
+                    'is_roster_working_date' => $isRosterWorkingDate,
+                    'is_skipped_date' => !$isRosterWorkingDate,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function monthDates(Carbon $targetMonth)
+    {
+        return collect(CarbonPeriod::create($targetMonth->copy()->startOfMonth(), $targetMonth->copy()->endOfMonth()))
+            ->map(function ($date) {
+                return $date->copy();
+            })
+            ->values();
+    }
+
+    private function rosterDates(Carbon $targetMonth)
+    {
+        return $this->monthDates($targetMonth)
+            ->filter(function ($date) {
+                return $this->isRosterWorkingDate($date);
+            })
+            ->values();
+    }
+
+    private function isRosterWorkingDate(Carbon $date): bool
+    {
+        if ($date->isSunday()) {
+            return false;
+        }
+
+        if ($date->isSaturday()) {
+            $saturdayNumber = (int) ceil($date->day / 7);
+
+            return !in_array($saturdayNumber, [2, 4], true);
+        }
+
+        return true;
+    }
+
+    private function resolveRosterMonth($monthValue): Carbon
+    {
+        $monthValue = trim((string) $monthValue);
+        if (!preg_match('/^\d{4}-\d{2}$/', $monthValue)) {
+            $monthValue = Carbon::now()->format('Y-m');
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $monthValue . '-01')->startOfMonth();
+        } catch (\Throwable $e) {
+            return Carbon::now()->startOfMonth();
+        }
+    }
+
+    private function monthOptions(Carbon $targetMonth): array
+    {
+        $currentMonth = Carbon::now()->startOfMonth();
+        $months = collect([
+            $currentMonth->copy(),
+            $currentMonth->copy()->addMonth(),
+            $targetMonth->copy()->startOfMonth(),
+        ]);
+
+        return $months->unique(function ($date) {
+            return $date->format('Y-m');
+        })->sortBy(function ($date) {
+            return $date->format('Y-m');
+        })->map(function ($date) {
+            return [
+                'value' => $date->format('Y-m'),
+                'label' => $date->format('F Y'),
+            ];
+        })->values()->all();
+    }
+
+    private function resolveRosterCategory($category): string
+    {
+        $category = trim((string) $category);
+
+        if ($category === '' || strtoupper($category) === 'ALL') {
+            return '';
+        }
+
+        foreach ($this->rosterCategories() as $rosterCategory) {
+            if (strcasecmp($category, $rosterCategory) === 0) {
+                return $rosterCategory;
+            }
+        }
+
+        return '';
+    }
+
+    private function rosterCategories(): array
+    {
+        return ['VHS TEACHER', 'TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
+    }
+
+    private function employeeCategoryValues($category): array
+    {
+        $decodedCategories = json_decode((string) $category, true);
+        $categories = is_array($decodedCategories) ? $decodedCategories : [$category];
+        $categories = array_map(function ($categoryValue) {
+            return trim((string) $categoryValue);
+        }, $categories);
+
+        return array_values(array_filter($categories, function ($categoryValue) {
+            return $categoryValue !== '';
+        }));
+    }
+
+    private function displayTimeRange($inTime, $outTime): string
+    {
+        $inTime = trim((string) $inTime);
+        $outTime = trim((string) $outTime);
+
+        if ($inTime === '' || $outTime === '') {
+            return '';
+        }
+
+        try {
+            return Carbon::createFromFormat('H:i', substr($inTime, 0, 5))->format('g:i a')
+                . ' - '
+                . Carbon::createFromFormat('H:i', substr($outTime, 0, 5))->format('h:i a');
+        } catch (\Throwable $e) {
+            return '';
+        }
+    }
+
+    private function branchCode($branchName): string
+    {
+        $branchName = preg_replace('/[^A-Za-z0-9]/', '', (string) $branchName);
+
+        return strtoupper(substr($branchName, 0, 3));
     }
 }

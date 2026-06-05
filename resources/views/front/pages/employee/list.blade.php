@@ -321,7 +321,7 @@
 
     .employee-table th:nth-child(15),
     .employee-table td:nth-child(15) {
-        width: 6%;
+        width: 10%;
     }
 
     .employee-export-only {
@@ -457,6 +457,59 @@
         transform: translateY(-1px);
     }
 
+    .employee-action.roster-pdf {
+        background: rgba(185, 28, 28, 0.08);
+        color: #b91c1c;
+    }
+
+    .employee-action.roster-mail {
+        background: rgba(29, 95, 139, 0.09);
+        color: #1d5f8b;
+    }
+
+    .employee-action.roster-whatsapp {
+        background: rgba(21, 128, 61, 0.1);
+        color: #15803d;
+    }
+
+    .employee-action.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .employee-action-form {
+        display: inline;
+        margin: 0;
+    }
+
+    .employee-action-form .employee-action {
+        vertical-align: top;
+    }
+
+    .roster-month-form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .roster-month-form label {
+        margin-bottom: 4px;
+        color: #637689;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .roster-month-form .form-select,
+    .roster-month-form .btn {
+        min-height: 36px;
+        border-radius: 9px;
+        font-size: 0.8rem;
+    }
+
     .employee-empty-state {
         padding: 44px 18px;
         text-align: center;
@@ -562,6 +615,20 @@ use App\Helpers\Helper;
 $controllerRoute = $module['controller_route'];
 $employeeRows = collect($rows ?? []);
 $hasEmployeeRows = $employeeRows->isNotEmpty();
+$rosterMonthValue = trim((string) request('roster_month', date('Y-m')));
+if (!preg_match('/^\d{4}-\d{2}$/', $rosterMonthValue)) {
+    $rosterMonthValue = date('Y-m');
+}
+$rosterMonthTimestamp = strtotime($rosterMonthValue . '-01') ?: time();
+$rosterMonthLabel = date('F Y', $rosterMonthTimestamp);
+$rosterMonthOptions = [];
+$currentMonthStart = strtotime(date('Y-m-01'));
+for ($monthOffset = -1; $monthOffset <= 2; $monthOffset++) {
+    $optionTimestamp = strtotime(($monthOffset >= 0 ? '+' : '') . $monthOffset . ' month', $currentMonthStart);
+    $rosterMonthOptions[date('Y-m', $optionTimestamp)] = date('F Y', $optionTimestamp);
+}
+$rosterMonthOptions[$rosterMonthValue] = $rosterMonthLabel;
+ksort($rosterMonthOptions);
 $employeeStats = [
     'total' => $employeeRows->count(),
     'active' => $employeeRows->where('status', 1)->count(),
@@ -680,10 +747,19 @@ $employeeStats = [
                     Use the built-in search and export tools to review or share employee records quickly.
                 </div>
             </div>
-            <div class="employee-mini-note">
-                <i class="fa-solid fa-filter"></i>
-                Search, sort, and export ready
-            </div>
+            <form method="GET" action="{{ url($controllerRoute . '/list') }}" class="roster-month-form">
+                <div>
+                    <label for="roster_month">Roster Month</label>
+                    <select name="roster_month" id="roster_month" class="form-select">
+                        @foreach($rosterMonthOptions as $monthValue => $monthLabel)
+                            <option value="{{ $monthValue }}" {{ $rosterMonthValue === $monthValue ? 'selected' : '' }}>{{ $monthLabel }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-outline-primary fw-bold">
+                    <i class="fa-solid fa-rotate me-1"></i> Load
+                </button>
+            </form>
         </div>
         <div class="employee-table-wrap">
             @if ($hasEmployeeRows)
@@ -812,6 +888,16 @@ $employeeStats = [
                                         <?php } ?>
                                     </td>
                                     <td>
+                                        <?php
+                                            $employeeRosterPdfUrl = url('employee/schedule-roster/employee/' . $row->id . '/pdf') . '?' . http_build_query(['month' => $rosterMonthValue]);
+                                            $employeeRosterEmailUrl = url('employee/schedule-roster/employee/' . $row->id . '/email');
+                                            $phoneDigits = preg_replace('/\D+/', '', (string) $row->phone);
+                                            if (strlen($phoneDigits) === 10) {
+                                                $phoneDigits = '91' . $phoneDigits;
+                                            }
+                                            $whatsappText = 'Schedule roster for ' . $rosterMonthLabel . ': ' . $employeeRosterPdfUrl;
+                                            $whatsappUrl = $phoneDigits !== '' ? ('https://wa.me/' . $phoneDigits . '?text=' . rawurlencode($whatsappText)) : '';
+                                        ?>
                                         <a href="<?= url($editUrl) ?>" class="employee-action edit" title="Edit <?= $module['title'] ?>">
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </a>
@@ -823,6 +909,31 @@ $employeeStats = [
                                             <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encodedId ?>', '<?= $statusUrl ?>', 'Are you sure you want to activate this record?')" class="employee-action toggle inactive" title="Activate <?= $module['title'] ?>">
                                                 <i class="fa-solid fa-toggle-off"></i>
                                             </a>
+                                        <?php } ?>
+                                        <a href="<?= e($employeeRosterPdfUrl) ?>" class="employee-action roster-pdf" title="Download <?= e($rosterMonthLabel) ?> Roster">
+                                            <i class="fa-solid fa-file-pdf"></i>
+                                        </a>
+                                        <?php if (!empty($row->email)) { ?>
+                                            <form method="POST" action="<?= e($employeeRosterEmailUrl) ?>" class="employee-action-form" onsubmit="return confirm('Send <?= e($rosterMonthLabel) ?> roster by email?');">
+                                                @csrf
+                                                <input type="hidden" name="month" value="<?= e($rosterMonthValue) ?>">
+                                                <button type="submit" class="employee-action roster-mail" title="Email <?= e($rosterMonthLabel) ?> Roster">
+                                                    <i class="fa-solid fa-envelope"></i>
+                                                </button>
+                                            </form>
+                                        <?php } else { ?>
+                                            <span class="employee-action roster-mail disabled" title="Email not available">
+                                                <i class="fa-solid fa-envelope"></i>
+                                            </span>
+                                        <?php } ?>
+                                        <?php if ($whatsappUrl !== '') { ?>
+                                            <a href="<?= e($whatsappUrl) ?>" target="_blank" rel="noopener" class="employee-action roster-whatsapp" title="Send <?= e($rosterMonthLabel) ?> Roster on WhatsApp">
+                                                <i class="fa-brands fa-whatsapp"></i>
+                                            </a>
+                                        <?php } else { ?>
+                                            <span class="employee-action roster-whatsapp disabled" title="Phone not available">
+                                                <i class="fa-brands fa-whatsapp"></i>
+                                            </span>
                                         <?php } ?>
                                     </td>
                                 </tr>

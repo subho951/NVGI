@@ -22,6 +22,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesPersonController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeScheduleRosterController;
 use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ExamStudentMarkController;
@@ -73,6 +74,7 @@ use App\Http\Controllers\Common\TableController;
 
     Route::middleware(['branch.portal'])->prefix('branch-portal')->name('branch.portal.')->group(function () {
         Route::get('employees', [BranchPortalController::class, 'employees'])->name('employees');
+        Route::get('rosters', [BranchPortalController::class, 'rosters'])->name('rosters');
         Route::post('logout', [BranchPortalController::class, 'logout'])->name('logout');
     });
 /* Branch Employee Portal */
@@ -231,6 +233,20 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'employee/edit/{id}', [EmployeeController::class, 'edit']);
                 Route::get('employee/delete/{id}', [EmployeeController::class, 'delete']);
                 Route::get('employee/change-status/{id}', [EmployeeController::class, 'change_status']);
+                Route::match(['get', 'post'], 'employee/schedule-roster/vhs', [EmployeeScheduleRosterController::class, 'vhs'])->name('employee.schedule-roster.vhs');
+                Route::get('employee/schedule-roster/vhs/pdf', [EmployeeScheduleRosterController::class, 'vhsPdf'])->name('employee.schedule-roster.vhs.pdf');
+                Route::match(['get', 'post'], 'employee/schedule-roster/front-desk-group-d', [EmployeeScheduleRosterController::class, 'support'])->name('employee.schedule-roster.support');
+                Route::get('employee/schedule-roster/front-desk-group-d/pdf', [EmployeeScheduleRosterController::class, 'supportPdf'])->name('employee.schedule-roster.support.pdf');
+                Route::post('employee/schedule-roster/front-desk-group-d/copy', [EmployeeScheduleRosterController::class, 'supportCopy'])->name('employee.schedule-roster.support.copy');
+                Route::post('employee/schedule-roster/front-desk-group-d/delete', [EmployeeScheduleRosterController::class, 'supportDelete'])->name('employee.schedule-roster.support.delete');
+                Route::match(['get', 'post'], 'employee/schedule-roster/tsa', [EmployeeScheduleRosterController::class, 'tsa'])->name('employee.schedule-roster.tsa');
+                Route::get('employee/schedule-roster/tsa/pdf', [EmployeeScheduleRosterController::class, 'tsaPdf'])->name('employee.schedule-roster.tsa.pdf');
+                Route::post('employee/schedule-roster/tsa/copy', [EmployeeScheduleRosterController::class, 'tsaCopy'])->name('employee.schedule-roster.tsa.copy');
+                Route::post('employee/schedule-roster/tsa/add-class', [EmployeeScheduleRosterController::class, 'tsaAddClass'])->name('employee.schedule-roster.tsa.add-class');
+                Route::post('employee/schedule-roster/tsa/reschedule', [EmployeeScheduleRosterController::class, 'tsaReschedule'])->name('employee.schedule-roster.tsa.reschedule');
+                Route::post('employee/schedule-roster/tsa/delete-date', [EmployeeScheduleRosterController::class, 'tsaDeleteDate'])->name('employee.schedule-roster.tsa.delete-date');
+                Route::get('employee/schedule-roster/employee/{employee}/pdf', [EmployeeScheduleRosterController::class, 'employeeRosterPdf'])->name('employee.schedule-roster.employee.pdf');
+                Route::post('employee/schedule-roster/employee/{employee}/email', [EmployeeScheduleRosterController::class, 'emailEmployeeRoster'])->name('employee.schedule-roster.employee.email');
             /* employee */
             /* CRM */
                 /* sales person */

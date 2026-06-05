@@ -39,6 +39,29 @@
             font-size: 13px;
         }
 
+        .portal-actions,
+        .portal-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .portal-nav a {
+            border: 1px solid #d7e1ea;
+            border-radius: 9px;
+            padding: 7px 10px;
+            color: #143b5f;
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .portal-nav a.active {
+            background: #143b5f;
+            color: #ffffff;
+        }
+
         .portal-main {
             max-width: 1480px;
             margin: 0 auto;
@@ -252,12 +275,18 @@
             <h2 class="portal-title">Branch Employee Management</h2>
             <p class="portal-subtitle">{{ $branch->name }} branch directory</p>
         </div>
-        <form method="POST" action="{{ route('branch.portal.logout') }}">
-            @csrf
-            <button type="submit" class="btn btn-danger btn-sm">
-                <i class="fa-solid fa-right-from-bracket"></i> Logout
-            </button>
-        </form>
+        <div class="portal-actions">
+            <nav class="portal-nav">
+                <a href="{{ route('branch.portal.employees') }}" class="active">Employees</a>
+                <a href="{{ route('branch.portal.rosters') }}">Roster</a>
+            </nav>
+            <form method="POST" action="{{ route('branch.portal.logout') }}">
+                @csrf
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </form>
+        </div>
     </div>
 
     <main class="portal-main">

@@ -283,14 +283,51 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
         </li>
     <?php } ?>
 
-    <?php if(in_array(26, $moduleIds)){?>
+    <?php if((in_array(26, $moduleIds)) || (in_array(28, $moduleIds)) || (in_array(29, $moduleIds)) || (in_array(30, $moduleIds))){?>
         <!-- Employees -->
         <li class="nav-item">
-            <a href="<?= url('employee/list') ?>" class="nav-link <?= (($pageSegment == 'employee') ? 'active-link' : '') ?>">
-                <i class="fa-solid fa-user-tie"></i> <span>Employees</span>
+            <a class="nav-link d-flex justify-content-between align-items-center <?= (($pageSegment == 'employee') ? 'active-link' : '') ?>"
+                data-bs-toggle="collapse"
+                href="#employeeMenu"
+                role="button"
+                aria-expanded="<?= (($pageSegment == 'employee') ? 'true' : 'false') ?>"
+                aria-controls="employeeMenu">
+                <span><i class="fa-solid fa-user-tie"></i> Employees</span>
+                <i class="fa-solid fa-angle-down menu-arrow"></i>
             </a>
-        </li>
-    <?php }?>
+
+            <ul class="collapse list-unstyled ps-3 <?= (($pageSegment == 'employee') ? 'show' : '') ?>" id="employeeMenu">
+                <?php if(in_array(18, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('employee/list') ?>" class="nav-link <?= (($pageSegment == 'employee' && in_array($pageFunction, ['list', 'add', 'edit'])) ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Employee List</span>
+                        </a>
+                    </li>
+                <?php } ?>    
+                <?php if(in_array(28, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('employee/schedule-roster/vhs') ?>" class="nav-link <?= (request()->is('employee/schedule-roster/vhs*') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>VHS Roster</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(29, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('employee/schedule-roster/front-desk-group-d') ?>" class="nav-link <?= (request()->is('employee/schedule-roster/front-desk-group-d*') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>FD/GD Roster</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(30, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('employee/schedule-roster/tsa') ?>" class="nav-link <?= (request()->is('employee/schedule-roster/tsa*') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>TSA Roster</span>
+                        </a>
+                    </li>
+                <?php } ?>
+             </ul>
+         </li>
+     <?php }?>
 
     <?php if((in_array(24, $moduleIds)) || (in_array(25, $moduleIds))){?>
         <!-- Exams -->
