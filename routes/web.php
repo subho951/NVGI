@@ -8,6 +8,7 @@ use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BranchPortalController;
+use App\Http\Controllers\BranchAttendanceController;
 use App\Http\Controllers\FrontdeskController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\SubjectController;
@@ -75,6 +76,10 @@ use App\Http\Controllers\Common\TableController;
     Route::middleware(['branch.portal'])->prefix('branch-portal')->name('branch.portal.')->group(function () {
         Route::get('employees', [BranchPortalController::class, 'employees'])->name('employees');
         Route::get('rosters', [BranchPortalController::class, 'rosters'])->name('rosters');
+        Route::get('attendance', [BranchAttendanceController::class, 'index'])->name('attendance.index');
+        Route::get('attendance/{roster}', [BranchAttendanceController::class, 'mark'])->whereNumber('roster')->name('attendance.mark');
+        Route::post('attendance/{roster}/punch-in', [BranchAttendanceController::class, 'punchIn'])->whereNumber('roster')->name('attendance.punch-in');
+        Route::post('attendance/{roster}/punch-out', [BranchAttendanceController::class, 'punchOut'])->whereNumber('roster')->name('attendance.punch-out');
         Route::post('logout', [BranchPortalController::class, 'logout'])->name('logout');
     });
 /* Branch Employee Portal */
