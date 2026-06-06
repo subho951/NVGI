@@ -23,6 +23,7 @@
         body {
             min-height: 100vh;
             margin: 0;
+            overflow: hidden;
             background: var(--page);
             color: var(--ink);
             font-family: Arial, sans-serif;
@@ -35,9 +36,11 @@
         .attendance-shell {
             display: flex;
             width: min(100%, 680px);
-            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh;
             margin: 0 auto;
             flex-direction: column;
+            overflow: hidden;
             background: var(--page);
         }
 
@@ -127,16 +130,14 @@
 
         .camera-stage {
             display: flex;
-            min-height: 0;
-            flex: 1;
             align-items: center;
             justify-content: center;
-            padding: 22px 18px;
+            padding: 12px 18px;
         }
 
         .camera-circle {
             position: relative;
-            width: min(82vw, 470px);
+            width: min(80vw, 430px);
             aspect-ratio: 1;
             overflow: hidden;
             border: 4px solid var(--action);
@@ -211,25 +212,7 @@
         }
 
         .bottom-actions {
-            padding: 0 18px calc(18px + env(safe-area-inset-bottom));
-        }
-
-        .quote {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            margin-bottom: 14px;
-            padding: 14px 16px;
-            border: 1px solid var(--action-border);
-            border-radius: 14px;
-            background: var(--action-soft);
-            color: #606775;
-            font-size: 13px;
-            font-style: italic;
-        }
-
-        .quote i {
-            color: var(--action);
+            padding: 0 18px max(12px, env(safe-area-inset-bottom));
         }
 
         .punch-button {
@@ -393,27 +376,60 @@
         }
 
         @media (max-height: 740px) {
-            .employee-strip {
-                padding-top: 12px;
+            .mark-header {
+                padding-top: max(10px, env(safe-area-inset-top));
                 padding-bottom: 10px;
+            }
+
+            .back-button {
+                width: 40px;
+                height: 40px;
+            }
+
+            .employee-strip {
+                padding: 10px 18px 8px;
+            }
+
+            .employee-strip p {
+                margin-top: 3px;
             }
 
             .camera-stage {
-                padding-top: 12px;
-                padding-bottom: 14px;
+                padding-top: 8px;
+                padding-bottom: 8px;
             }
 
             .camera-circle {
-                width: min(66vh, 74vw);
-            }
-
-            .quote {
-                padding-top: 10px;
-                padding-bottom: 10px;
+                width: min(72vw, calc(100vh - 300px), 380px);
+                width: min(72vw, calc(100dvh - 300px), 380px);
             }
 
             .punch-button {
                 min-height: 58px;
+            }
+        }
+
+        @media (max-height: 620px) {
+            .mark-header h1 {
+                font-size: 18px;
+            }
+
+            .employee-strip h2 {
+                font-size: 17px;
+            }
+
+            .status-badge {
+                padding: 6px 9px;
+            }
+
+            .camera-circle {
+                width: min(64vw, calc(100vh - 276px), 320px);
+                width: min(64vw, calc(100dvh - 276px), 320px);
+            }
+
+            .punch-button {
+                min-height: 52px;
+                font-size: 18px;
             }
         }
     </style>
@@ -490,14 +506,6 @@
         </section>
 
         <section class="bottom-actions">
-            <div class="quote">
-                <i class="fa-solid fa-quote-left"></i>
-                <span>
-                    {{ $mode === 'punch_out'
-                        ? 'Clocking out, but your impact stays!'
-                        : 'Together, we achieve more - great to see you!' }}
-                </span>
-            </div>
             <button type="button" class="punch-button" id="punchButton" disabled>
                 <i class="fa-solid {{ $mode === 'punch_out' ? 'fa-arrow-right-from-bracket' : 'fa-fingerprint' }}"></i>
                 {{ $mode === 'punch_out' ? 'PUNCH OUT' : 'PUNCH IN' }}
