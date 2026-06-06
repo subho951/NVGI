@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\EmployeeAttendance;
+use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -14,6 +15,8 @@ class BranchAttendanceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Carbon::setTestNow(Carbon::create(2026, 6, 6, 8, 15, 0, 'Asia/Kolkata'));
 
         Schema::create('branches', function (Blueprint $table) {
             $table->integer('id')->primary();
@@ -69,6 +72,8 @@ class BranchAttendanceTest extends TestCase
             $table->date('attendance_date');
             $table->string('scheduled_in_time', 5)->nullable();
             $table->string('scheduled_out_time', 5)->nullable();
+            $table->boolean('is_late')->default(false)->index();
+            $table->unsignedSmallInteger('late_minutes')->default(0);
             $table->timestamp('punch_in_at')->nullable();
             $table->text('punch_in_image')->nullable();
             $table->string('punch_in_ip', 45)->nullable();
@@ -96,6 +101,8 @@ class BranchAttendanceTest extends TestCase
                     }
                 });
         }
+
+        Carbon::setTestNow();
 
         parent::tearDown();
     }
@@ -133,17 +140,26 @@ class BranchAttendanceTest extends TestCase
             'roster_id' => 100,
             'branch_id' => 1,
             'punch_in_portal_branch_id' => 1,
+            'is_late' => 1,
+            'late_minutes' => 15,
         ]);
         $this->assertDatabaseMissing('employee_attendances', ['roster_id' => 101]);
         $this->assertDatabaseMissing('employee_attendances', ['roster_id' => 102]);
 
         $this->withSession($bibirhatSession)
             ->get($this->routeUrl('branch.portal.attendance.report', [
-                'month' => now()->format('Y-m'),
+                'from_date' => now()->toDateString(),
+                'to_date' => now()->toDateString(),
             ]))
             ->assertOk()
             ->assertSee('Attendance Report')
+            ->assertSee('From Date')
+            ->assertSee('To Date')
             ->assertSee('8:00 AM - 10:00 AM')
+            ->assertSee('IN: 08:15 AM')
+            ->assertSee('Late 15 min')
+            ->assertSee('data-photo=', false)
+            ->assertDontSee('name="branch_id"', false)
             ->assertDontSee('2:00 PM - 4:00 PM')
             ->assertDontSee('6:00 PM - 8:00 PM');
 
@@ -174,6 +190,8 @@ class BranchAttendanceTest extends TestCase
             'roster_id' => 101,
             'branch_id' => 2,
             'punch_in_portal_branch_id' => 2,
+            'is_late' => 0,
+            'late_minutes' => 0,
         ]);
 
         $this->withSession($mukundapurSession)

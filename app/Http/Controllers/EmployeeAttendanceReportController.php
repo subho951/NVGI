@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Services\SiteAuthService;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,19 +30,20 @@ class EmployeeAttendanceReportController extends Controller
 
     public function admin(Request $request)
     {
-        $month = $this->resolveMonth($request->input('month', Carbon::now(self::ATTENDANCE_TIMEZONE)->format('Y-m')));
+        [$fromDate, $toDate] = $this->resolveDateRange($request);
         $branchId = $this->positiveInt($request->input('branch_id'));
         $employeeId = $this->positiveInt($request->input('employee_id'));
         $branchIds = $branchId > 0 ? [$branchId] : [];
-        $rows = $this->reportRows($month, $branchIds, $employeeId);
+        $report = $this->reportMatrix($fromDate, $toDate, $branchIds, $employeeId);
 
         $data = [
             'module' => [
                 'title' => 'Attendance Report',
                 'controller_route' => 'employee/attendance-report',
             ],
-            'selected_month' => $month->format('Y-m'),
-            'selected_month_label' => $month->format('F Y'),
+            'selected_from_date' => $fromDate->toDateString(),
+            'selected_to_date' => $toDate->toDateString(),
+            'selected_period_label' => $this->periodLabel($fromDate, $toDate),
             'selected_branch_id' => $branchId,
             'selected_employee_id' => $employeeId,
             'branch_options' => Branch::select('id', 'name', 'serial_id')
@@ -50,9 +52,10 @@ class EmployeeAttendanceReportController extends Controller
                 ->orderBy('name')
                 ->orderBy('serial_id')
                 ->get(),
-            'employee_options' => $this->employeeOptions($month, $branchIds),
-            'rows' => $rows,
-            'stats' => $this->reportStats($rows),
+            'employee_options' => $this->employeeOptions($fromDate, $toDate, $branchIds),
+            'report_dates' => $report['dates'],
+            'rows' => $report['rows'],
+            'stats' => $report['stats'],
         ];
 
         $data = $this->siteAuthService->admin_after_login_layout(
@@ -68,23 +71,25 @@ class EmployeeAttendanceReportController extends Controller
     {
         $branch = $request->attributes->get('branch_portal');
         $centreBranchIds = $this->centreBranchIds($branch);
-        $month = $this->resolveMonth($request->input('month', Carbon::now(self::ATTENDANCE_TIMEZONE)->format('Y-m')));
+        [$fromDate, $toDate] = $this->resolveDateRange($request);
         $employeeId = $this->positiveInt($request->input('employee_id'));
-        $rows = $this->reportRows($month, $centreBranchIds, $employeeId);
+        $report = $this->reportMatrix($fromDate, $toDate, $centreBranchIds, $employeeId);
 
         return view('front.pages.branch-portal.attendance.report', [
             'title' => 'Attendance Report',
             'branch' => $branch,
-            'selected_month' => $month->format('Y-m'),
-            'selected_month_label' => $month->format('F Y'),
+            'selected_from_date' => $fromDate->toDateString(),
+            'selected_to_date' => $toDate->toDateString(),
+            'selected_period_label' => $this->periodLabel($fromDate, $toDate),
             'selected_employee_id' => $employeeId,
-            'employee_options' => $this->employeeOptions($month, $centreBranchIds),
-            'rows' => $rows,
-            'stats' => $this->reportStats($rows),
+            'employee_options' => $this->employeeOptions($fromDate, $toDate, $centreBranchIds),
+            'report_dates' => $report['dates'],
+            'rows' => $report['rows'],
+            'stats' => $report['stats'],
         ]);
     }
 
-    private function reportRows(Carbon $month, array $branchIds = [], int $employeeId = 0)
+    private function reportMatrix(Carbon $fromDate, Carbon $toDate, array $branchIds = [], int $employeeId = 0): array
     {
         $query = DB::table('employee_schedule_rosters as roster')
             ->leftJoin('employee_attendances as attendance', 'attendance.roster_id', '=', 'roster.id')
@@ -103,12 +108,11 @@ class EmployeeAttendanceReportController extends Controller
                 'attendance.punch_in_image',
                 'attendance.punch_out_at',
                 'attendance.punch_out_image',
+                'attendance.is_late',
+                'attendance.late_minutes',
             ])
             ->whereIn('roster.category', self::ROSTER_CATEGORIES)
-            ->whereBetween('roster.roster_date', [
-                $month->copy()->startOfMonth()->toDateString(),
-                $month->copy()->endOfMonth()->toDateString(),
-            ])
+            ->whereBetween('roster.roster_date', [$fromDate->toDateString(), $toDate->toDateString()])
             ->where('roster.status', '!=', 3);
 
         if (! empty($branchIds)) {
@@ -119,16 +123,20 @@ class EmployeeAttendanceReportController extends Controller
             $query->where('roster.employee_id', '=', $employeeId);
         }
 
-        return $query
+        $entries = $query
+            ->orderBy('roster.employee_name')
             ->orderBy('roster.roster_date')
             ->orderBy('roster.in_time')
-            ->orderBy('roster.employee_name')
             ->orderBy('roster.id')
             ->get()
             ->map(function ($row) {
-                $punchIn = $row->punch_in_at ? Carbon::parse($row->punch_in_at, self::ATTENDANCE_TIMEZONE) : null;
-                $punchOut = $row->punch_out_at ? Carbon::parse($row->punch_out_at, self::ATTENDANCE_TIMEZONE) : null;
-                $status = $this->attendanceStatus($row, $punchIn, $punchOut);
+                $punchIn = $row->punch_in_at
+                    ? Carbon::parse($row->punch_in_at, self::ATTENDANCE_TIMEZONE)
+                    : null;
+                $punchOut = $row->punch_out_at
+                    ? Carbon::parse($row->punch_out_at, self::ATTENDANCE_TIMEZONE)
+                    : null;
+                $attendanceDate = Carbon::parse($row->roster_date, self::ATTENDANCE_TIMEZONE);
                 $workedMinutes = ($punchIn && $punchOut)
                     ? (int) max(0, $punchIn->diffInMinutes($punchOut, false))
                     : null;
@@ -141,28 +149,74 @@ class EmployeeAttendanceReportController extends Controller
                     'category' => (string) $row->category,
                     'branch_id' => (int) $row->branch_id,
                     'branch_name' => (string) $row->branch_name,
-                    'attendance_date' => Carbon::parse($row->roster_date),
-                    'scheduled_time' => $this->displayTimeRange($row->scheduled_in_time, $row->scheduled_out_time),
+                    'attendance_date_key' => $attendanceDate->toDateString(),
+                    'scheduled_time' => $this->displayTimeRange(
+                        $row->scheduled_in_time,
+                        $row->scheduled_out_time
+                    ),
                     'punch_in_time' => $punchIn ? $punchIn->format('h:i A') : '',
                     'punch_out_time' => $punchOut ? $punchOut->format('h:i A') : '',
                     'punch_in_image' => (string) $row->punch_in_image,
                     'punch_out_image' => (string) $row->punch_out_image,
                     'worked_time' => $this->displayDuration($workedMinutes),
-                    'status' => $status,
-                    'status_label' => $this->statusLabel($status),
+                    'is_late' => (bool) $row->is_late,
+                    'late_minutes' => (int) $row->late_minutes,
+                    'status' => $this->attendanceStatus($attendanceDate, $punchIn, $punchOut),
                 ];
             });
+
+        $dates = collect(CarbonPeriod::create($fromDate, $toDate))
+            ->map(function (Carbon $date) {
+                return [
+                    'key' => $date->toDateString(),
+                    'label' => $date->format('d-m-Y'),
+                    'day' => $date->format('D'),
+                ];
+            })
+            ->values();
+
+        $rows = $entries
+            ->groupBy('employee_id')
+            ->map(function ($employeeEntries) {
+                $first = $employeeEntries->first();
+
+                return [
+                    'employee_id' => $first['employee_id'],
+                    'employee_no' => $first['employee_no'],
+                    'employee_name' => $first['employee_name'],
+                    'categories' => $employeeEntries->pluck('category')->filter()->unique()->values()->implode(', '),
+                    'branches' => $employeeEntries->pluck('branch_name')->filter()->unique()->values()->implode(', '),
+                    'late_count' => $employeeEntries->where('is_late', true)->count(),
+                    'days' => $employeeEntries
+                        ->groupBy('attendance_date_key')
+                        ->map(fn ($dayEntries) => $dayEntries->values())
+                        ->all(),
+                ];
+            })
+            ->sortBy(fn ($row) => Str::lower($row['employee_name']).'|'.$row['employee_no'])
+            ->values();
+
+        return [
+            'dates' => $dates,
+            'rows' => $rows,
+            'stats' => [
+                'employees' => $rows->count(),
+                'scheduled' => $entries->count(),
+                'completed' => $entries->where('status', 'completed')->count(),
+                'working' => $entries->where('status', 'working')->count(),
+                'absent' => $entries->where('status', 'absent')->count(),
+                'pending' => $entries->where('status', 'pending')->count(),
+                'late' => $entries->where('is_late', true)->count(),
+            ],
+        ];
     }
 
-    private function employeeOptions(Carbon $month, array $branchIds = [])
+    private function employeeOptions(Carbon $fromDate, Carbon $toDate, array $branchIds = [])
     {
         $query = DB::table('employee_schedule_rosters')
             ->select('employee_id', 'employee_no', 'employee_name')
             ->whereIn('category', self::ROSTER_CATEGORIES)
-            ->whereBetween('roster_date', [
-                $month->copy()->startOfMonth()->toDateString(),
-                $month->copy()->endOfMonth()->toDateString(),
-            ])
+            ->whereBetween('roster_date', [$fromDate->toDateString(), $toDate->toDateString()])
             ->where('status', '!=', 3);
 
         if (! empty($branchIds)) {
@@ -176,18 +230,7 @@ class EmployeeAttendanceReportController extends Controller
             ->get();
     }
 
-    private function reportStats($rows): array
-    {
-        return [
-            'scheduled' => $rows->count(),
-            'completed' => $rows->where('status', 'completed')->count(),
-            'working' => $rows->where('status', 'working')->count(),
-            'absent' => $rows->where('status', 'absent')->count(),
-            'pending' => $rows->where('status', 'pending')->count(),
-        ];
-    }
-
-    private function attendanceStatus($row, ?Carbon $punchIn, ?Carbon $punchOut): string
+    private function attendanceStatus(Carbon $attendanceDate, ?Carbon $punchIn, ?Carbon $punchOut): string
     {
         if ($punchOut) {
             return 'completed';
@@ -197,17 +240,7 @@ class EmployeeAttendanceReportController extends Controller
             return 'working';
         }
 
-        return Carbon::parse($row->roster_date)->lt(Carbon::today(self::ATTENDANCE_TIMEZONE)) ? 'absent' : 'pending';
-    }
-
-    private function statusLabel(string $status): string
-    {
-        return match ($status) {
-            'completed' => 'Completed',
-            'working' => 'Punched In',
-            'absent' => 'Absent',
-            default => 'Not Marked',
-        };
+        return $attendanceDate->lt(Carbon::today(self::ATTENDANCE_TIMEZONE)) ? 'absent' : 'pending';
     }
 
     private function displayTimeRange($inTime, $outTime): string
@@ -215,9 +248,13 @@ class EmployeeAttendanceReportController extends Controller
         $format = function ($time) {
             $time = trim((string) $time);
 
-            return $time === ''
-                ? ''
-                : Carbon::createFromFormat('H:i', substr($time, 0, 5))->format('g:i A');
+            try {
+                return $time === ''
+                    ? ''
+                    : Carbon::createFromFormat('H:i', substr($time, 0, 5))->format('g:i A');
+            } catch (\Throwable $e) {
+                return $time;
+            }
         };
 
         $inTime = $format($inTime);
@@ -235,17 +272,37 @@ class EmployeeAttendanceReportController extends Controller
         return intdiv($minutes, 60).'h '.($minutes % 60).'m';
     }
 
-    private function resolveMonth($month): Carbon
+    private function resolveDateRange(Request $request): array
     {
-        $month = trim((string) $month);
+        $today = Carbon::today(self::ATTENDANCE_TIMEZONE);
+        $fromDate = $this->resolveDate($request->input('from_date'), $today);
+        $toDate = $this->resolveDate($request->input('to_date'), $fromDate);
+
+        if ($fromDate->greaterThan($toDate)) {
+            [$fromDate, $toDate] = [$toDate, $fromDate];
+        }
+
+        return [$fromDate->startOfDay(), $toDate->startOfDay()];
+    }
+
+    private function resolveDate($value, Carbon $fallback): Carbon
+    {
+        $value = trim((string) $value);
 
         try {
-            return preg_match('/^\d{4}-\d{2}$/', $month)
-                ? Carbon::createFromFormat('Y-m-d', $month.'-01')->startOfMonth()
-                : Carbon::now(self::ATTENDANCE_TIMEZONE)->startOfMonth();
+            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)
+                ? Carbon::createFromFormat('Y-m-d', $value, self::ATTENDANCE_TIMEZONE)
+                : $fallback->copy();
         } catch (\Throwable $e) {
-            return Carbon::now(self::ATTENDANCE_TIMEZONE)->startOfMonth();
+            return $fallback->copy();
         }
+    }
+
+    private function periodLabel(Carbon $fromDate, Carbon $toDate): string
+    {
+        return $fromDate->isSameDay($toDate)
+            ? $fromDate->format('d M Y')
+            : $fromDate->format('d M Y').' - '.$toDate->format('d M Y');
     }
 
     private function centreBranchIds($branch): array

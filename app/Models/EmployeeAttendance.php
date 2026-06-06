@@ -20,6 +20,8 @@ class EmployeeAttendance extends Model
         'attendance_date',
         'scheduled_in_time',
         'scheduled_out_time',
+        'is_late',
+        'late_minutes',
         'punch_in_at',
         'punch_in_image',
         'punch_in_ip',
@@ -32,6 +34,8 @@ class EmployeeAttendance extends Model
 
     protected $casts = [
         'attendance_date' => 'date',
+        'is_late' => 'boolean',
+        'late_minutes' => 'integer',
         'punch_in_at' => 'datetime',
         'punch_out_at' => 'datetime',
     ];

@@ -232,7 +232,10 @@ class BranchAttendanceController extends Controller
                 $storedImagePath = $this->storePhoto($photoBytes, $roster, $mode, $punchedAt);
 
                 if ($mode === 'punch_in') {
+                    $lateMinutes = $this->lateMinutes($roster, $punchedAt);
                     $attendance->fill([
+                        'is_late' => $lateMinutes > 0,
+                        'late_minutes' => $lateMinutes,
                         'punch_in_at' => $punchedAt,
                         'punch_in_image' => $storedImagePath,
                         'punch_in_ip' => (string) $request->ip(),
@@ -366,6 +369,30 @@ class BranchAttendanceController extends Controller
         $formattedOut = $formatTime($outTime);
 
         return trim($formattedIn.($formattedIn && $formattedOut ? ' - ' : '').$formattedOut);
+    }
+
+    private function lateMinutes($roster, Carbon $punchedAt): int
+    {
+        $scheduledInTime = substr(trim((string) $roster->in_time), 0, 5);
+        if ($scheduledInTime === '') {
+            return 0;
+        }
+
+        try {
+            $scheduledAt = Carbon::createFromFormat(
+                'Y-m-d H:i',
+                Carbon::parse($roster->roster_date)->toDateString().' '.$scheduledInTime,
+                self::ATTENDANCE_TIMEZONE
+            );
+
+            if (! $punchedAt->greaterThan($scheduledAt)) {
+                return 0;
+            }
+
+            return (int) max(1, ceil($scheduledAt->diffInSeconds($punchedAt) / 60));
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 
     private function decodePhoto(string $photo): string
