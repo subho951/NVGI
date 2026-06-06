@@ -73,7 +73,7 @@
         min-width: 125px;
     }
 
-    .attendance-matrix .late-column {
+    .attendance-matrix .count-column {
         width: 72px;
         min-width: 72px;
         text-align: center;
@@ -125,7 +125,7 @@
         color: #47576b;
     }
 
-    .late-count {
+    .attendance-count {
         display: inline-grid;
         min-width: 28px;
         height: 28px;
@@ -136,7 +136,12 @@
         font-weight: 900;
     }
 
-    .late-count.none {
+    .attendance-count.absent {
+        background: #ffe8e7;
+        color: #c12b25;
+    }
+
+    .attendance-count.none {
         background: #f1f4f7;
         color: #7c8794;
     }
@@ -322,7 +327,8 @@
                         <th class="employee-column sticky-column sticky-employee">Employee</th>
                         <th class="category-column">Department</th>
                         <th class="location-column">Location</th>
-                        <th class="late-column">Late</th>
+                        <th class="count-column">Late</th>
+                        <th class="count-column">Absent</th>
                         @foreach($report_dates as $reportDate)
                             <th class="date-column">
                                 {{ $reportDate['label'] }}
@@ -345,9 +351,20 @@
                             <td class="location-column">
                                 <span class="attendance-location">{{ $row['branches'] ?: '-' }}</span>
                             </td>
-                            <td class="late-column">
-                                <span class="late-count {{ $row['late_count'] > 0 ? '' : 'none' }}">
+                            <td class="count-column">
+                                <span
+                                    class="attendance-count {{ $row['late_count'] > 0 ? '' : 'none' }}"
+                                    data-late-count="{{ $row['late_count'] }}"
+                                >
                                     {{ $row['late_count'] }}
+                                </span>
+                            </td>
+                            <td class="count-column">
+                                <span
+                                    class="attendance-count {{ $row['absent_count'] > 0 ? 'absent' : 'none' }}"
+                                    data-absent-count="{{ $row['absent_count'] }}"
+                                >
+                                    {{ $row['absent_count'] }}
                                 </span>
                             </td>
                             @foreach($report_dates as $reportDate)

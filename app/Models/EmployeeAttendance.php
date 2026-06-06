@@ -22,6 +22,8 @@ class EmployeeAttendance extends Model
         'scheduled_out_time',
         'is_late',
         'late_minutes',
+        'is_absent',
+        'absent_marked_at',
         'punch_in_at',
         'punch_in_image',
         'punch_in_ip',
@@ -36,6 +38,8 @@ class EmployeeAttendance extends Model
         'attendance_date' => 'date',
         'is_late' => 'boolean',
         'late_minutes' => 'integer',
+        'is_absent' => 'boolean',
+        'absent_marked_at' => 'datetime',
         'punch_in_at' => 'datetime',
         'punch_out_at' => 'datetime',
     ];

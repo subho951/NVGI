@@ -236,6 +236,8 @@ class BranchAttendanceController extends Controller
                     $attendance->fill([
                         'is_late' => $lateMinutes > 0,
                         'late_minutes' => $lateMinutes,
+                        'is_absent' => false,
+                        'absent_marked_at' => null,
                         'punch_in_at' => $punchedAt,
                         'punch_in_image' => $storedImagePath,
                         'punch_in_ip' => (string) $request->ip(),

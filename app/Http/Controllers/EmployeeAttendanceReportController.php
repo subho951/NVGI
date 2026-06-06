@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Services\EmployeeAttendanceAbsenceService;
 use App\Services\SiteAuthService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -23,9 +24,12 @@ class EmployeeAttendanceReportController extends Controller
 
     protected SiteAuthService $siteAuthService;
 
-    public function __construct()
+    protected EmployeeAttendanceAbsenceService $absenceService;
+
+    public function __construct(EmployeeAttendanceAbsenceService $absenceService)
     {
         $this->siteAuthService = new SiteAuthService;
+        $this->absenceService = $absenceService;
     }
 
     public function admin(Request $request)
@@ -91,8 +95,9 @@ class EmployeeAttendanceReportController extends Controller
 
     private function reportMatrix(Carbon $fromDate, Carbon $toDate, array $branchIds = [], int $employeeId = 0): array
     {
+        $this->absenceService->sync($fromDate, $toDate, $branchIds);
+
         $query = DB::table('employee_schedule_rosters as roster')
-            ->leftJoin('employee_attendances as attendance', 'attendance.roster_id', '=', 'roster.id')
             ->select([
                 'roster.id as roster_id',
                 'roster.employee_id',
@@ -104,12 +109,6 @@ class EmployeeAttendanceReportController extends Controller
                 'roster.roster_date',
                 'roster.in_time as scheduled_in_time',
                 'roster.out_time as scheduled_out_time',
-                'attendance.punch_in_at',
-                'attendance.punch_in_image',
-                'attendance.punch_out_at',
-                'attendance.punch_out_image',
-                'attendance.is_late',
-                'attendance.late_minutes',
             ])
             ->whereIn('roster.category', self::ROSTER_CATEGORIES)
             ->whereBetween('roster.roster_date', [$fromDate->toDateString(), $toDate->toDateString()])
@@ -123,20 +122,29 @@ class EmployeeAttendanceReportController extends Controller
             $query->where('roster.employee_id', '=', $employeeId);
         }
 
-        $entries = $query
+        $rosters = $query
             ->orderBy('roster.employee_name')
             ->orderBy('roster.roster_date')
             ->orderBy('roster.in_time')
             ->orderBy('roster.id')
+            ->get();
+
+        $attendances = DB::table('employee_attendances')
+            ->whereIn('roster_id', $rosters->pluck('roster_id'))
             ->get()
-            ->map(function ($row) {
-                $punchIn = $row->punch_in_at
-                    ? Carbon::parse($row->punch_in_at, self::ATTENDANCE_TIMEZONE)
+            ->keyBy('roster_id');
+
+        $entries = $rosters
+            ->map(function ($row) use ($attendances) {
+                $attendance = $attendances->get((int) $row->roster_id);
+                $punchIn = $attendance && $attendance->punch_in_at
+                    ? Carbon::parse($attendance->punch_in_at, self::ATTENDANCE_TIMEZONE)
                     : null;
-                $punchOut = $row->punch_out_at
-                    ? Carbon::parse($row->punch_out_at, self::ATTENDANCE_TIMEZONE)
+                $punchOut = $attendance && $attendance->punch_out_at
+                    ? Carbon::parse($attendance->punch_out_at, self::ATTENDANCE_TIMEZONE)
                     : null;
                 $attendanceDate = Carbon::parse($row->roster_date, self::ATTENDANCE_TIMEZONE);
+                $isAbsent = (bool) ($attendance->is_absent ?? false);
                 $workedMinutes = ($punchIn && $punchOut)
                     ? (int) max(0, $punchIn->diffInMinutes($punchOut, false))
                     : null;
@@ -156,12 +164,13 @@ class EmployeeAttendanceReportController extends Controller
                     ),
                     'punch_in_time' => $punchIn ? $punchIn->format('h:i A') : '',
                     'punch_out_time' => $punchOut ? $punchOut->format('h:i A') : '',
-                    'punch_in_image' => (string) $row->punch_in_image,
-                    'punch_out_image' => (string) $row->punch_out_image,
+                    'punch_in_image' => (string) ($attendance->punch_in_image ?? ''),
+                    'punch_out_image' => (string) ($attendance->punch_out_image ?? ''),
                     'worked_time' => $this->displayDuration($workedMinutes),
-                    'is_late' => (bool) $row->is_late,
-                    'late_minutes' => (int) $row->late_minutes,
-                    'status' => $this->attendanceStatus($attendanceDate, $punchIn, $punchOut),
+                    'is_late' => (bool) ($attendance->is_late ?? false),
+                    'late_minutes' => (int) ($attendance->late_minutes ?? 0),
+                    'is_absent' => $isAbsent,
+                    'status' => $this->attendanceStatus($attendanceDate, $punchIn, $punchOut, $isAbsent),
                 ];
             });
 
@@ -187,6 +196,7 @@ class EmployeeAttendanceReportController extends Controller
                     'categories' => $employeeEntries->pluck('category')->filter()->unique()->values()->implode(', '),
                     'branches' => $employeeEntries->pluck('branch_name')->filter()->unique()->values()->implode(', '),
                     'late_count' => $employeeEntries->where('is_late', true)->count(),
+                    'absent_count' => $employeeEntries->where('is_absent', true)->count(),
                     'days' => $employeeEntries
                         ->groupBy('attendance_date_key')
                         ->map(fn ($dayEntries) => $dayEntries->values())
@@ -230,8 +240,12 @@ class EmployeeAttendanceReportController extends Controller
             ->get();
     }
 
-    private function attendanceStatus(Carbon $attendanceDate, ?Carbon $punchIn, ?Carbon $punchOut): string
-    {
+    private function attendanceStatus(
+        Carbon $attendanceDate,
+        ?Carbon $punchIn,
+        ?Carbon $punchOut,
+        bool $isAbsent
+    ): string {
         if ($punchOut) {
             return 'completed';
         }
@@ -240,7 +254,9 @@ class EmployeeAttendanceReportController extends Controller
             return 'working';
         }
 
-        return $attendanceDate->lt(Carbon::today(self::ATTENDANCE_TIMEZONE)) ? 'absent' : 'pending';
+        return $isAbsent || $attendanceDate->lt(Carbon::today(self::ATTENDANCE_TIMEZONE))
+            ? 'absent'
+            : 'pending';
     }
 
     private function displayTimeRange($inTime, $outTime): string
