@@ -325,6 +325,11 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                         </a>
                     </li>
                 <?php } ?>
+                <li>
+                    <a href="<?= url('employee/attendance-report') ?>" class="nav-link <?= (($pageSegment == 'employee' && $pageFunction == 'attendance-report') ? 'active-link' : '') ?>">
+                        <i class="fa-solid fa-arrow-right"></i> <span>Attendance Report</span>
+                    </a>
+                </li>
              </ul>
          </li>
      <?php }?>

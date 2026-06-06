@@ -390,6 +390,7 @@
                 <a href="{{ route('branch.portal.employees') }}">Employees</a>
                 <a href="{{ route('branch.portal.rosters') }}" class="active">Roster</a>
                 <a href="{{ route('branch.portal.attendance.index') }}">Attendance</a>
+                <a href="{{ route('branch.portal.attendance.report') }}">Report</a>
             </nav>
             <form method="POST" action="{{ route('branch.portal.logout') }}">
                 @csrf

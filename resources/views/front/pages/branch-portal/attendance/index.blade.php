@@ -86,7 +86,7 @@
 
         .portal-nav {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 7px;
             margin-top: 12px;
         }
@@ -483,6 +483,7 @@
                 <a href="{{ route('branch.portal.employees') }}">Employees</a>
                 <a href="{{ route('branch.portal.rosters') }}">Roster</a>
                 <a href="{{ route('branch.portal.attendance.index') }}" class="active">Attendance</a>
+                <a href="{{ route('branch.portal.attendance.report') }}">Report</a>
             </nav>
         </header>
 

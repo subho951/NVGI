@@ -541,24 +541,22 @@
         const confirmAttendance = document.getElementById('confirmAttendance');
         const attendanceForm = document.getElementById('attendanceForm');
         const photoInput = document.getElementById('photoInput');
-        const serverNowMilliseconds = Number(@json($server_now_milliseconds));
+        const serverNowSecondsOfDay = Number(@json($server_now_seconds_of_day));
         const pageOpenedMilliseconds = Date.now();
-        const appTimezone = @json($app_timezone);
 
         let cameraStream = null;
         let cameraReady = false;
         let capturedPhoto = '';
 
         function currentServerTimeLabel() {
-            const elapsed = Date.now() - pageOpenedMilliseconds;
-            const currentServerDate = new Date(serverNowMilliseconds + elapsed);
+            const elapsedSeconds = Math.floor((Date.now() - pageOpenedMilliseconds) / 1000);
+            const secondsToday = (serverNowSecondsOfDay + elapsedSeconds) % 86400;
+            const hour24 = Math.floor(secondsToday / 3600);
+            const minute = Math.floor((secondsToday % 3600) / 60);
+            const suffix = hour24 >= 12 ? 'PM' : 'AM';
+            const hour12 = hour24 % 12 || 12;
 
-            return new Intl.DateTimeFormat('en-IN', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: appTimezone
-            }).format(currentServerDate);
+            return hour12 + ':' + String(minute).padStart(2, '0') + ' ' + suffix;
         }
 
         function drawSquareImage(source, sourceWidth, sourceHeight, mirror) {

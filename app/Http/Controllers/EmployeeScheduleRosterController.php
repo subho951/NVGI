@@ -210,6 +210,10 @@ class EmployeeScheduleRosterController extends Controller
             return redirect()->back()->withInput()->with('error_message', 'Please select employee, from time and to time.');
         }
 
+        if (!$this->isValidRosterTimeRange($inTime, $outTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'Class end time must be after class start time.');
+        }
+
         if ($rosterDate->format('Y-m') !== $targetMonth->format('Y-m')) {
             return redirect()->back()->withInput()->with('error_message', 'Roster date must be within selected month.');
         }
@@ -228,6 +232,10 @@ class EmployeeScheduleRosterController extends Controller
             return redirect()->back()->withInput()->with('error_message', 'Please select a valid branch.');
         }
 
+        if ($this->hasOverlappingTsaClass((int) $employee->id, $rosterDate, $inTime, $outTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'This TSA teacher already has another class overlapping the selected time.');
+        }
+
         $result = 'existing';
         $userId = $this->currentUserId();
 
@@ -237,6 +245,7 @@ class EmployeeScheduleRosterController extends Controller
                 'category' => self::TSA_TEACHER,
                 'branch_id' => (int) $branch->id,
                 'roster_date' => $rosterDate->toDateString(),
+                'in_time' => $inTime,
             ];
 
             $values = [
@@ -248,7 +257,6 @@ class EmployeeScheduleRosterController extends Controller
                 'roster_month' => (int) $targetMonth->month,
                 'roster_year' => (int) $targetMonth->year,
                 'day_name' => $rosterDate->format('l'),
-                'in_time' => $inTime,
                 'out_time' => $outTime,
                 'status' => 1,
                 'generated_at' => now(),
@@ -260,7 +268,7 @@ class EmployeeScheduleRosterController extends Controller
         });
 
         $message = $result === 'existing'
-            ? 'This TSA teacher already has an active class in the selected branch on this date. Use reschedule to change time.'
+            ? 'This exact TSA class already exists for the selected branch, date and start time.'
             : 'Additional TSA class saved successfully.';
 
         return redirect()
@@ -282,6 +290,10 @@ class EmployeeScheduleRosterController extends Controller
             return redirect()->back()->withInput()->with('error_message', 'Please provide a valid TSA roster date and time.');
         }
 
+        if (!$this->isValidRosterTimeRange($inTime, $outTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'Class end time must be after class start time.');
+        }
+
         $roster = EmployeeScheduleRoster::where('id', '=', $rosterId)
             ->where('category', '=', self::TSA_TEACHER)
             ->where('status', '!=', 3)
@@ -293,6 +305,16 @@ class EmployeeScheduleRosterController extends Controller
 
         if (!$this->canRescheduleRosterRow($roster) || !$this->isRosterStartOutsideRescheduleWindow($roster->roster_date, $inTime)) {
             return redirect()->back()->with('error_message', 'This TSA roster date is locked because the start time is within 48 hours.');
+        }
+
+        if ($this->hasOverlappingTsaClass(
+            (int) $roster->employee_id,
+            Carbon::parse($roster->roster_date),
+            $inTime,
+            $outTime,
+            (int) $roster->id
+        )) {
+            return redirect()->back()->withInput()->with('error_message', 'This TSA teacher already has another class overlapping the selected time.');
         }
 
         $roster->update([
@@ -1578,6 +1600,32 @@ class EmployeeScheduleRosterController extends Controller
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    private function isValidRosterTimeRange(string $inTime, string $outTime): bool
+    {
+        return strcmp($inTime, $outTime) < 0;
+    }
+
+    private function hasOverlappingTsaClass(
+        int $employeeId,
+        Carbon $rosterDate,
+        string $inTime,
+        string $outTime,
+        int $excludeRosterId = 0
+    ): bool {
+        $query = EmployeeScheduleRoster::where('employee_id', '=', $employeeId)
+            ->where('category', '=', self::TSA_TEACHER)
+            ->whereDate('roster_date', '=', $rosterDate->toDateString())
+            ->where('status', '!=', 3)
+            ->where('in_time', '<', $outTime)
+            ->where('out_time', '>', $inTime);
+
+        if ($excludeRosterId > 0) {
+            $query->where('id', '!=', $excludeRosterId);
+        }
+
+        return $query->exists();
     }
 
     private function displayTimeRange($inTime, $outTime): string

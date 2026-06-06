@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 class BranchAttendanceController extends Controller
 {
+    private const ATTENDANCE_TIMEZONE = 'Asia/Kolkata';
+
     private const ROSTER_CATEGORIES = [
         'VHS TEACHER',
         'TSA TEACHER',
@@ -26,7 +28,7 @@ class BranchAttendanceController extends Controller
     {
         $branch = $request->attributes->get('branch_portal');
         $centreBranchIds = $this->centreBranchIds($branch);
-        $today = Carbon::today();
+        $today = Carbon::today(self::ATTENDANCE_TIMEZONE);
 
         $rosters = EmployeeScheduleRoster::whereIn('branch_id', $centreBranchIds)
             ->whereIn('category', self::ROSTER_CATEGORIES)
@@ -130,6 +132,7 @@ class BranchAttendanceController extends Controller
         }
 
         $mode = $attendance && $attendance->punch_in_at ? 'punch_out' : 'punch_in';
+        $serverNow = Carbon::now(self::ATTENDANCE_TIMEZONE);
 
         return view('front.pages.branch-portal.attendance.mark', [
             'title' => $mode === 'punch_out' ? 'Punch Out' : 'Punch In',
@@ -142,8 +145,9 @@ class BranchAttendanceController extends Controller
             'submit_url' => $mode === 'punch_out'
                 ? route('branch.portal.attendance.punch-out', ['roster' => $rosterRow->id])
                 : route('branch.portal.attendance.punch-in', ['roster' => $rosterRow->id]),
-            'server_now_milliseconds' => now()->valueOf(),
-            'app_timezone' => (string) config('app.timezone', 'Asia/Kolkata'),
+            'server_now_seconds_of_day' => (int) $serverNow->format('H') * 3600
+                + (int) $serverNow->format('i') * 60
+                + (int) $serverNow->format('s'),
         ]);
     }
 
@@ -224,7 +228,7 @@ class BranchAttendanceController extends Controller
                     ];
                 }
 
-                $punchedAt = now();
+                $punchedAt = Carbon::now(self::ATTENDANCE_TIMEZONE);
                 $storedImagePath = $this->storePhoto($photoBytes, $roster, $mode, $punchedAt);
 
                 if ($mode === 'punch_in') {
@@ -283,7 +287,7 @@ class BranchAttendanceController extends Controller
         return EmployeeScheduleRoster::where('id', '=', $rosterId)
             ->whereIn('branch_id', $this->centreBranchIds($branch))
             ->whereIn('category', self::ROSTER_CATEGORIES)
-            ->whereDate('roster_date', '=', Carbon::today()->toDateString())
+            ->whereDate('roster_date', '=', Carbon::today(self::ATTENDANCE_TIMEZONE)->toDateString())
             ->where('status', '!=', 3)
             ->first();
     }

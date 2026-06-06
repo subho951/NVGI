@@ -138,6 +138,16 @@ class BranchAttendanceTest extends TestCase
         $this->assertDatabaseMissing('employee_attendances', ['roster_id' => 102]);
 
         $this->withSession($bibirhatSession)
+            ->get($this->routeUrl('branch.portal.attendance.report', [
+                'month' => now()->format('Y-m'),
+            ]))
+            ->assertOk()
+            ->assertSee('Attendance Report')
+            ->assertSee('8:00 AM - 10:00 AM')
+            ->assertDontSee('2:00 PM - 4:00 PM')
+            ->assertDontSee('6:00 PM - 8:00 PM');
+
+        $this->withSession($bibirhatSession)
             ->withHeader('User-Agent', $mobileUserAgent)
             ->post($this->routeUrl('branch.portal.attendance.punch-in', ['roster' => 101]), ['photo' => $photo])
             ->assertRedirect($this->routeUrl('branch.portal.attendance.index'))
