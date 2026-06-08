@@ -20,6 +20,11 @@
         box-shadow: 0 10px 24px rgba(23, 32, 51, 0.06);
     }
 
+    .support-calendar {
+        --roster-sticky-top: 57px;
+        position: relative;
+    }
+
     .support-topbar {
         display: flex;
         flex-wrap: wrap;
@@ -303,6 +308,9 @@
     }
 
     .calendar-board-head {
+        position: sticky;
+        top: var(--roster-sticky-top);
+        z-index: 20;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -311,6 +319,7 @@
         padding: 11px 12px;
         border-bottom: 1px solid var(--border);
         background: var(--soft);
+        box-shadow: 0 5px 10px rgba(23, 32, 51, 0.08);
     }
 
     .calendar-board-title {
@@ -1214,6 +1223,22 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
 @section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        var topbar = document.querySelector('.topbar');
+        var syncRosterStickyOffset = function () {
+            var stickyTop = topbar ? Math.ceil(topbar.getBoundingClientRect().height) : 0;
+
+            document.querySelectorAll('.support-calendar').forEach(function (calendar) {
+                calendar.style.setProperty('--roster-sticky-top', stickyTop + 'px');
+            });
+        };
+
+        syncRosterStickyOffset();
+        window.addEventListener('resize', syncRosterStickyOffset);
+
+        if (topbar && typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(syncRosterStickyOffset).observe(topbar);
+        }
+
         var fillButton = document.getElementById('fillWorkingDates');
         if (fillButton) {
             fillButton.addEventListener('click', function () {
