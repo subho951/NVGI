@@ -411,6 +411,11 @@
         display: none;
     }
 
+    .calendar-repeat-head-cell {
+        border-top: 2px solid #2563eb;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
     .day-name {
         font-size: 0.56rem;
         font-weight: 850;
@@ -1034,6 +1039,8 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 if ($groupBranchName !== '' && $groupBranchName !== 'All Branches') {
                     $groupPdfQuery['branch_name'] = $groupBranchName;
                 }
+                $employeeCount = count($group['employees']);
+                $repeatHeaderIndex = $employeeCount > 2 ? $employeeCount - 2 : null;
             ?>
             <section class="support-calendar mb-3">
                 <div class="calendar-board-head">
@@ -1062,6 +1069,17 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 <div class="calendar-scroll">
                     <div class="calendar-grid" style="grid-template-columns: 42px 210px {{ $dateColumns }};">
                         @foreach($group['employees'] as $employeeIndex => $employee)
+                            @if($repeatHeaderIndex !== null && $employeeIndex === $repeatHeaderIndex)
+                                <div class="calendar-sl-head calendar-repeat-head-cell">SL</div>
+                                <div class="calendar-person-head calendar-repeat-head-cell">Employee</div>
+                                @foreach($calendarDates as $date)
+                                    <div class="calendar-day-head calendar-repeat-head-cell {{ $date['is_skipped_date'] ? 'is-skipped' : '' }}" title="{{ $date['day_label'] }}, {{ $date['date_label'] }} {{ $date['month_label'] }}">
+                                        <span class="day-name">{{ $date['day_initial'] }}</span>
+                                        <span class="day-date">{{ $date['date_label'] }}</span>
+                                    </div>
+                                @endforeach
+                            @endif
+
                             <div class="calendar-sl-cell">{{ $employeeIndex + 1 }}</div>
                             <div class="calendar-person">
                                 <div class="calendar-person-copy">
