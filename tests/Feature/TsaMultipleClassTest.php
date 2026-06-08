@@ -372,6 +372,70 @@ class TsaMultipleClassTest extends TestCase
         ]);
     }
 
+    public function test_vhs_first_saturday_roster_time_can_be_updated(): void
+    {
+        DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
+            5,
+            'NVGI-0005',
+            'VHS TEACHER',
+            'VHS TEACHER',
+            Carbon::create(2026, 6, 6),
+            '10:00',
+            '15:00'
+        ));
+        $rosterId = (int) EmployeeScheduleRoster::where('employee_id', 5)->value('id');
+
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/vhs/update-time', 'POST', [
+            'roster_id' => $rosterId,
+            'in_time' => '09:30',
+            'out_time' => '14:30',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->vhsUpdateTime($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $rosterId,
+            'category' => 'VHS TEACHER',
+            'roster_date' => '2026-06-06',
+            'in_time' => '09:30',
+            'out_time' => '14:30',
+        ]);
+    }
+
+    public function test_vhs_weekday_roster_time_cannot_be_updated(): void
+    {
+        DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
+            5,
+            'NVGI-0005',
+            'VHS TEACHER',
+            'VHS TEACHER',
+            Carbon::create(2026, 6, 1),
+            '10:00',
+            '15:00'
+        ));
+        $rosterId = (int) EmployeeScheduleRoster::where('employee_id', 5)->value('id');
+
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/vhs/update-time', 'POST', [
+            'roster_id' => $rosterId,
+            'in_time' => '09:30',
+            'out_time' => '14:30',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->vhsUpdateTime($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $rosterId,
+            'category' => 'VHS TEACHER',
+            'roster_date' => '2026-06-01',
+            'in_time' => '10:00',
+            'out_time' => '15:00',
+        ]);
+    }
+
     private function requestFor(string $inTime, string $outTime): Request
     {
         $request = Request::create('/employee/schedule-roster/tsa/add-class', 'POST', [

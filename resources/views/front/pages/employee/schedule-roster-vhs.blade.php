@@ -461,6 +461,33 @@
         line-height: 1.08;
     }
 
+    .shift-action-row {
+        display: flex;
+        justify-content: center;
+        gap: 3px;
+        margin-top: 4px;
+    }
+
+    .shift-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 19px;
+        height: 19px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.76);
+        color: #14532d;
+        font-size: 0.55rem;
+        line-height: 1;
+    }
+
+    .shift-icon-btn:hover {
+        background: #dcfce7;
+        color: #166534;
+    }
+
     .calendar-empty-cell {
         display: flex;
         align-items: center;
@@ -720,6 +747,23 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                                                 <span class="shift-role">VHS Teacher</span>
                                                 <span class="shift-branch">{{ $shift['branch_code'] ?: '-' }}</span>
                                                 <span class="shift-time">{{ $shift['time_display'] ?: '-' }}</span>
+                                                @if(!empty($shift['can_edit_vhs_time']))
+                                                    <div class="shift-action-row">
+                                                        <button type="button"
+                                                                class="shift-icon-btn"
+                                                                title="Edit Saturday Time"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#vhsTimeEditModal"
+                                                                data-roster-id="{{ $shift['roster_id'] }}"
+                                                                data-teacher="{{ $employee['employee_no'] }} - {{ $employee['employee_name'] }}"
+                                                                data-date="{{ $shift['roster_date_label'] }}"
+                                                                data-branch="{{ $shift['branch_name'] ?: '-' }}"
+                                                                data-in-time="{{ $shift['in_time'] }}"
+                                                                data-out-time="{{ $shift['out_time'] }}">
+                                                            <i class="fa-solid fa-pen"></i>
+                                                        </button>
+                                                    </div>
+                                                @endif
                                             </div>
                                         @endforeach
                                     </div>
@@ -739,4 +783,63 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
         </div>
     @endif
 </div>
+
+<div class="modal fade" id="vhsTimeEditModal" tabindex="-1" aria-labelledby="vhsTimeEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ url('employee/schedule-roster/vhs/update-time') }}" class="modal-content">
+            @csrf
+            <input type="hidden" name="roster_id" id="vhs_time_roster_id">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="vhsTimeEditModalLabel">Edit Saturday Time</h5>
+                    <div class="text-muted small fw-bold" id="vhsTimeEditMeta"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label for="vhs_time_in" class="form-label">From Time</label>
+                        <input type="time" name="in_time" id="vhs_time_in" class="form-control" required>
+                    </div>
+                    <div class="col-6">
+                        <label for="vhs_time_out" class="form-label">To Time</label>
+                        <input type="time" name="out_time" id="vhs_time_out" class="form-control" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-roster-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection
+
+@section('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var timeEditModal = document.getElementById('vhsTimeEditModal');
+        if (!timeEditModal) {
+            return;
+        }
+
+        timeEditModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            if (!button) {
+                return;
+            }
+
+            document.getElementById('vhs_time_roster_id').value = button.getAttribute('data-roster-id') || '';
+            document.getElementById('vhs_time_in').value = (button.getAttribute('data-in-time') || '').substring(0, 5);
+            document.getElementById('vhs_time_out').value = (button.getAttribute('data-out-time') || '').substring(0, 5);
+            document.getElementById('vhsTimeEditMeta').textContent = [
+                button.getAttribute('data-teacher') || '',
+                button.getAttribute('data-date') || '',
+                button.getAttribute('data-branch') || ''
+            ].filter(Boolean).join(' | ');
+        });
+    });
+</script>
 @endsection

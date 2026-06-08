@@ -183,6 +183,50 @@ class EmployeeScheduleRosterController extends Controller
             ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'VHS teacher roster deleted successfully.' : 'No active VHS teacher roster found to delete.');
     }
 
+    public function vhsUpdateTime(Request $request)
+    {
+        $rosterId = $this->positiveInt($request->input('roster_id'));
+        $inTime = $this->normalizeSubmittedTime($request->input('in_time', ''));
+        $outTime = $this->normalizeSubmittedTime($request->input('out_time', ''));
+
+        if ($rosterId <= 0 || !$inTime || !$outTime) {
+            return redirect()->back()->withInput()->with('error_message', 'Please select a valid VHS roster date and time.');
+        }
+
+        if (!$this->isValidRosterTimeRange($inTime, $outTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'Class end time must be after class start time.');
+        }
+
+        $roster = EmployeeScheduleRoster::where('id', '=', $rosterId)
+            ->where('category', '=', self::VHS_TEACHER)
+            ->where('status', '!=', 3)
+            ->first();
+
+        if (!$roster) {
+            return redirect()->back()->with('error_message', 'VHS roster date not found.');
+        }
+
+        if (!$this->isEditableVhsSaturday($roster->roster_date)) {
+            return redirect()->back()->with('error_message', 'VHS time can be edited only on 1st, 3rd and 5th Saturday roster dates.');
+        }
+
+        if ($this->rosterRowsHaveAttendance([(int) $roster->id])) {
+            return redirect()->back()->with('error_message', 'This VHS roster date cannot be edited because attendance already exists.');
+        }
+
+        if ($this->rosterTimeUpdateHasConflict($roster, $inTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'Another VHS roster already exists with the selected start time.');
+        }
+
+        $roster->update([
+            'in_time' => $inTime,
+            'out_time' => $outTime,
+            'updated_by' => $this->currentUserId(),
+        ]);
+
+        return redirect()->back()->with('success_message', 'VHS Saturday roster time updated successfully.');
+    }
+
     public function support(Request $request)
     {
         return $this->manualRosterPage(
@@ -1373,6 +1417,7 @@ class EmployeeScheduleRosterController extends Controller
                 'time_display' => $this->displayTimeRange($row->in_time, $row->out_time),
                 'shift_class' => $colorClasses[((int) $row->branch_id) % count($colorClasses)],
                 'can_reschedule' => $this->canRescheduleRosterRow($row),
+                'can_edit_vhs_time' => (string) $row->category === self::VHS_TEACHER && $this->isEditableVhsSaturday($row->roster_date),
                 'reschedule_deadline' => $this->rescheduleDeadlineLabel($row),
                 'roster_date_label' => Carbon::parse($row->roster_date)->format('d-m-Y'),
             ];
@@ -1510,6 +1555,32 @@ class EmployeeScheduleRosterController extends Controller
 
         return DB::table('employee_attendances')
             ->whereIn('roster_id', $rosterIds)
+            ->exists();
+    }
+
+    private function isEditableVhsSaturday($rosterDate): bool
+    {
+        try {
+            $date = $rosterDate instanceof Carbon ? $rosterDate->copy() : Carbon::parse($rosterDate);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (!$date->isSaturday()) {
+            return false;
+        }
+
+        return in_array((int) ceil($date->day / 7), [1, 3, 5], true);
+    }
+
+    private function rosterTimeUpdateHasConflict($row, string $inTime): bool
+    {
+        return EmployeeScheduleRoster::where('id', '!=', (int) $row->id)
+            ->where('employee_id', '=', (int) $row->employee_id)
+            ->where('category', '=', (string) $row->category)
+            ->where('branch_id', '=', (int) $row->branch_id)
+            ->whereDate('roster_date', '=', Carbon::parse($row->roster_date)->toDateString())
+            ->where('in_time', '=', $inTime)
             ->exists();
     }
 
