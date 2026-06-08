@@ -30,6 +30,27 @@
             font-size: 9px;
         }
 
+        .legend {
+            margin-top: 6px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin-right: 12px;
+            color: #444;
+            font-size: 7px;
+            font-weight: bold;
+        }
+
+        .legend-swatch {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 4px;
+            border: 1px solid #999;
+            vertical-align: middle;
+        }
+
         .group-title {
             margin: 8px 0 4px;
             padding: 5px 6px;
@@ -147,6 +168,18 @@
             background: #c7b7ff;
         }
 
+        .shift.yellow {
+            background: #ffed9d;
+        }
+
+        .shift.light-green {
+            background: #b7f3c8;
+        }
+
+        .shift.neutral {
+            background: #dbe4ee;
+        }
+
         .branch {
             display: block;
             margin-top: 1px;
@@ -177,6 +210,7 @@
 <?php
 $calendarDates = $calendarDates ?? [];
 $calendarGroups = $calendarGroups ?? [];
+$branchColorLegend = $branchColorLegend ?? [];
 ?>
     <div class="header">
         <h1 class="title">{{ $title ?? 'Front Desk & Group D Schedule Roster' }}</h1>
@@ -186,6 +220,14 @@ $calendarGroups = $calendarGroups ?? [];
             @if(!empty($selectedEmployeeLabel))
                 | Employee: {{ $selectedEmployeeLabel }}
             @endif
+        </div>
+        <div class="legend">
+            @foreach($branchColorLegend as $legend)
+                <span class="legend-item">
+                    <span class="legend-swatch" style="background: {{ $legend['color'] }};"></span>
+                    {{ $legend['label'] }}
+                </span>
+            @endforeach
         </div>
     </div>
 

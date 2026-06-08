@@ -53,6 +53,31 @@
         font-weight: 700;
     }
 
+    .branch-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        margin-top: 8px;
+    }
+
+    .branch-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+    }
+
+    .branch-legend-swatch {
+        width: 14px;
+        height: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        border-radius: 3px;
+        flex: 0 0 auto;
+    }
+
     .support-panel {
         padding: 10px;
     }
@@ -500,6 +525,9 @@
     .shift-card.pink { background: #f5a0cf; }
     .shift-card.amber { background: #ffed9d; }
     .shift-card.violet { background: #c7b7ff; }
+    .shift-card.yellow { background: #ffed9d; }
+    .shift-card.light-green { background: #b7f3c8; }
+    .shift-card.neutral { background: #dbe4ee; }
 
     .shift-branch {
         display: block;
@@ -611,6 +639,7 @@ $stats = $stats ?? [
 ];
 $calendarDates = $calendarDates ?? [];
 $calendarGroups = $calendarGroups ?? [];
+$branchColorLegend = $branchColorLegend ?? [];
 $entryCalendarDates = $entryCalendarDates ?? [];
 $rosterTitle = $rosterTitle ?? 'Front Desk & Group D Roster';
 $rosterRoute = $rosterRoute ?? 'employee/schedule-roster/front-desk-group-d';
@@ -639,6 +668,14 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
             <div class="support-kicker">Schedule Roster</div>
             <h2 class="support-title">{{ $rosterTitle }}</h2>
             <div class="support-subtitle">{{ $selectedMonthLabel }} | {{ $monthStartDate->format('d-m-Y') }} to {{ $monthEndDate->format('d-m-Y') }}</div>
+            <div class="branch-legend">
+                @foreach($branchColorLegend as $legend)
+                    <span class="branch-legend-item">
+                        <span class="branch-legend-swatch" style="background: {{ $legend['color'] }};"></span>
+                        {{ $legend['label'] }}
+                    </span>
+                @endforeach
+            </div>
         </div>
         <div class="d-flex flex-wrap gap-2">
             @if($rosterRows->isNotEmpty())

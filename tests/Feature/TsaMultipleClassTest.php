@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\BranchPortalController;
 use App\Http\Controllers\EmployeeScheduleRosterController;
 use App\Models\EmployeeScheduleRoster;
 use Carbon\Carbon;
@@ -434,6 +435,67 @@ class TsaMultipleClassTest extends TestCase
             'in_time' => '10:00',
             'out_time' => '15:00',
         ]);
+    }
+
+    public function test_roster_branch_colors_are_fixed_by_branch_name(): void
+    {
+        $expected = [
+            'Bibirhat' => 'violet',
+            'Mukundapur' => 'yellow',
+            'Rajarhat' => 'light-green',
+        ];
+
+        foreach ([
+            app(EmployeeScheduleRosterController::class),
+            app(BranchPortalController::class),
+        ] as $controller) {
+            $method = new \ReflectionMethod($controller, 'branchColorClass');
+            $method->setAccessible(true);
+
+            foreach ($expected as $branchName => $colorClass) {
+                $this->assertSame($colorClass, $method->invoke($controller, $branchName));
+            }
+        }
+    }
+
+    public function test_roster_pdf_templates_render_branch_color_legend(): void
+    {
+        $legend = [
+            ['class' => 'violet', 'label' => 'Bibirhat', 'color' => '#c7b7ff'],
+            ['class' => 'yellow', 'label' => 'Mukundapur', 'color' => '#ffed9d'],
+            ['class' => 'light-green', 'label' => 'Rajarhat', 'color' => '#b7f3c8'],
+        ];
+        $common = [
+            'selectedMonthLabel' => 'June 2026',
+            'monthStartDate' => Carbon::create(2026, 6, 1),
+            'monthEndDate' => Carbon::create(2026, 6, 30),
+            'calendarDates' => [],
+            'branchColorLegend' => $legend,
+        ];
+
+        $vhsHtml = view('front.pages.employee.schedule-roster-vhs-pdf', array_merge($common, [
+            'calendarEmployees' => [],
+            'calendarCells' => [],
+            'selectedBranchLabel' => '',
+            'selectedEmployeeLabel' => '',
+        ]))->render();
+
+        $supportHtml = view('front.pages.employee.schedule-roster-support-pdf', array_merge($common, [
+            'title' => 'Front Desk & Group D Schedule Roster',
+            'calendarGroups' => [],
+            'selectedCategory' => '',
+            'selectedBranchName' => '',
+            'selectedEmployeeLabel' => '',
+        ]))->render();
+
+        foreach ([$vhsHtml, $supportHtml] as $html) {
+            $this->assertStringContainsString('Bibirhat', $html);
+            $this->assertStringContainsString('Mukundapur', $html);
+            $this->assertStringContainsString('Rajarhat', $html);
+            $this->assertStringContainsString('#c7b7ff', $html);
+            $this->assertStringContainsString('#ffed9d', $html);
+            $this->assertStringContainsString('#b7f3c8', $html);
+        }
     }
 
     private function requestFor(string $inTime, string $outTime): Request

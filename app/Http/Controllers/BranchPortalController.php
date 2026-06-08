@@ -15,6 +15,11 @@ use Illuminate\Support\Str;
 class BranchPortalController extends Controller
 {
     private const FULL_MONTH_ROSTER_CATEGORIES = ['TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
+    private const BRANCH_COLOR_MAP = [
+        'bibirhat' => ['class' => 'violet', 'label' => 'Bibirhat', 'color' => '#c7b7ff'],
+        'mukundapur' => ['class' => 'yellow', 'label' => 'Mukundapur', 'color' => '#ffed9d'],
+        'rajarhat' => ['class' => 'light-green', 'label' => 'Rajarhat', 'color' => '#b7f3c8'],
+    ];
 
     public function showLogin(Request $request)
     {
@@ -139,6 +144,7 @@ class BranchPortalController extends Controller
             'employee_options' => $employeeOptions,
             'calendar_dates' => $this->calendarDates($targetMonth, $dateCategories),
             'calendar_groups' => $this->buildRosterCalendarGroups($rows, $targetMonth),
+            'branch_color_legend' => $this->branchColorLegend(),
             'stats' => [
                 'rows' => $rows->count(),
                 'employees' => $rows->pluck('employee_id')->unique()->count(),
@@ -277,8 +283,6 @@ class BranchPortalController extends Controller
             ->all();
 
         $cells = [];
-        $colorClasses = ['blue', 'mint', 'pink', 'amber', 'violet'];
-
         foreach ($rows as $row) {
             $employeeId = (int) $row->employee_id;
             $dateKey = Carbon::parse($row->roster_date)->toDateString();
@@ -296,7 +300,7 @@ class BranchPortalController extends Controller
                 'branch_code' => $this->branchCode($row->branch_name),
                 'unit_name' => (string) $row->unit_name,
                 'time_display' => $this->displayTimeRange($row->in_time, $row->out_time),
-                'shift_class' => $colorClasses[((int) $row->branch_id) % count($colorClasses)],
+                'shift_class' => $this->branchColorClass($row->branch_name),
             ];
         }
 
@@ -393,6 +397,18 @@ class BranchPortalController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function branchColorLegend(): array
+    {
+        return array_values(self::BRANCH_COLOR_MAP);
+    }
+
+    private function branchColorClass($branchName): string
+    {
+        $branchKey = strtolower(trim((string) $branchName));
+
+        return self::BRANCH_COLOR_MAP[$branchKey]['class'] ?? 'neutral';
     }
 
     private function resolveRosterMonth($monthValue): Carbon

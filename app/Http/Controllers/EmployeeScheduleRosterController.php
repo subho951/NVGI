@@ -23,6 +23,11 @@ class EmployeeScheduleRosterController extends Controller
     private const ALL_ROSTER_CATEGORIES = ['VHS TEACHER', 'TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
     private const FULL_MONTH_ROSTER_CATEGORIES = ['TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
     private const SUPPORT_BRANCH_NAMES = ['Bibirhat', 'Mukundapur', 'Rajarhat'];
+    private const BRANCH_COLOR_MAP = [
+        'bibirhat' => ['class' => 'violet', 'label' => 'Bibirhat', 'color' => '#c7b7ff'],
+        'mukundapur' => ['class' => 'yellow', 'label' => 'Mukundapur', 'color' => '#ffed9d'],
+        'rajarhat' => ['class' => 'light-green', 'label' => 'Rajarhat', 'color' => '#b7f3c8'],
+    ];
 
     protected $siteAuthService;
     protected $data;
@@ -84,6 +89,7 @@ class EmployeeScheduleRosterController extends Controller
             'calendarDates' => $calendarData['dates'],
             'calendarEmployees' => $calendarData['employees'],
             'calendarCells' => $calendarData['cells'],
+            'branchColorLegend' => $this->branchColorLegend(),
             'generationResult' => $generationResult,
             'pdfUrl' => url('employee/schedule-roster/vhs/pdf') . '?' . http_build_query($pdfQuery),
         ];
@@ -114,6 +120,7 @@ class EmployeeScheduleRosterController extends Controller
             'calendarDates' => $calendarData['dates'],
             'calendarEmployees' => $calendarData['employees'],
             'calendarCells' => $calendarData['cells'],
+            'branchColorLegend' => $this->branchColorLegend(),
         ];
 
         $html = view('front.pages.employee.schedule-roster-vhs-pdf', $data)->render();
@@ -586,6 +593,7 @@ class EmployeeScheduleRosterController extends Controller
             'stats' => $this->buildRosterStats($rows),
             'calendarDates' => $this->calendarDates($searchMonth, $searchDateCategories),
             'calendarGroups' => $calendarGroups,
+            'branchColorLegend' => $this->branchColorLegend(),
             'pdfUrl' => url($routePath . '/pdf') . '?' . http_build_query($pdfQuery),
         ];
 
@@ -1308,6 +1316,7 @@ class EmployeeScheduleRosterController extends Controller
             'stats' => $this->buildRosterStats($rows),
             'calendarDates' => $this->calendarDates($targetMonth, $dateCategories),
             'calendarGroups' => $this->buildSupportCalendarGroups($rows, $targetMonth, $groupByBranch),
+            'branchColorLegend' => $this->branchColorLegend(),
         ];
     }
 
@@ -1392,8 +1401,6 @@ class EmployeeScheduleRosterController extends Controller
             ->all();
 
         $cells = [];
-        $colorClasses = ['blue', 'mint', 'pink', 'amber', 'violet'];
-
         foreach ($rows as $row) {
             $dateKey = Carbon::parse($row->roster_date)->toDateString();
             $employeeId = (int) $row->employee_id;
@@ -1415,7 +1422,7 @@ class EmployeeScheduleRosterController extends Controller
                 'out_time' => (string) $row->out_time,
                 'time_short' => $this->shortTimeRange($row->in_time, $row->out_time),
                 'time_display' => $this->displayTimeRange($row->in_time, $row->out_time),
-                'shift_class' => $colorClasses[((int) $row->branch_id) % count($colorClasses)],
+                'shift_class' => $this->branchColorClass($row->branch_name),
                 'can_reschedule' => $this->canRescheduleRosterRow($row),
                 'can_edit_vhs_time' => (string) $row->category === self::VHS_TEACHER && $this->isEditableVhsSaturday($row->roster_date),
                 'reschedule_deadline' => $this->rescheduleDeadlineLabel($row),
@@ -1526,6 +1533,18 @@ class EmployeeScheduleRosterController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function branchColorLegend(): array
+    {
+        return array_values(self::BRANCH_COLOR_MAP);
+    }
+
+    private function branchColorClass($branchName): string
+    {
+        $branchKey = strtolower(trim((string) $branchName));
+
+        return self::BRANCH_COLOR_MAP[$branchKey]['class'] ?? 'neutral';
     }
 
     private function manualRosterShiftRows(int $employeeId, string $category, Carbon $rosterDate, string $branchName = '')

@@ -216,6 +216,31 @@
         font-weight: 800;
     }
 
+    .branch-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px 12px;
+    }
+
+    .branch-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--roster-muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+    }
+
+    .branch-legend-swatch {
+        width: 14px;
+        height: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        border-radius: 3px;
+        flex: 0 0 auto;
+    }
+
     .calendar-scroll {
         overflow-x: visible;
         width: 100%;
@@ -440,6 +465,18 @@
         background: #c7b7ff;
     }
 
+    .shift-card.yellow {
+        background: #ffed9d;
+    }
+
+    .shift-card.light-green {
+        background: #b7f3c8;
+    }
+
+    .shift-card.neutral {
+        background: #dbe4ee;
+    }
+
     .shift-role {
         display: none;
         font-size: 0.58rem;
@@ -561,6 +598,7 @@ $calendarEmployees = $calendarEmployees ?? [];
 $calendarCells = $calendarCells ?? [];
 $branchOptions = $branchOptions ?? [];
 $employeeOptions = $employeeOptions ?? [];
+$branchColorLegend = $branchColorLegend ?? [];
 $selectedBranchId = (int) ($selectedBranchId ?? 0);
 $selectedEmployeeId = (int) ($selectedEmployeeId ?? 0);
 $dateColumns = collect($calendarDates)->map(function ($date) {
@@ -700,7 +738,17 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
         <section class="calendar-board">
             <div class="calendar-board-head">
                 <div class="calendar-board-title">{{ $selectedMonthLabel }} Schedule</div>
-                <div class="calendar-board-note">Sundays and 2nd/4th Saturdays shown blank</div>
+                <div>
+                    <div class="branch-legend">
+                        @foreach($branchColorLegend as $legend)
+                            <span class="branch-legend-item">
+                                <span class="branch-legend-swatch" style="background: {{ $legend['color'] }};"></span>
+                                {{ $legend['label'] }}
+                            </span>
+                        @endforeach
+                    </div>
+                    <div class="calendar-board-note text-end mt-1">Sundays and 2nd/4th Saturdays shown blank</div>
+                </div>
             </div>
             <div class="calendar-scroll">
                 <div class="calendar-grid" style="grid-template-columns: 42px 160px {{ $dateColumns }};">

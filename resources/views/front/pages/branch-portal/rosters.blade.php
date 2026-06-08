@@ -104,6 +104,31 @@
             font-weight: 700;
         }
 
+        .branch-legend {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+            margin-top: 12px;
+        }
+
+        .branch-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .branch-legend-swatch {
+            width: 14px;
+            height: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            border-radius: 3px;
+            flex: 0 0 auto;
+        }
+
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -343,6 +368,9 @@
         .shift-card.pink { background: #f5a0cf; }
         .shift-card.amber { background: #ffed9d; }
         .shift-card.violet { background: #c7b7ff; }
+        .shift-card.yellow { background: #ffed9d; }
+        .shift-card.light-green { background: #b7f3c8; }
+        .shift-card.neutral { background: #dbe4ee; }
 
         .shift-branch,
         .shift-time {
@@ -375,6 +403,7 @@
 @php
     $calendarDates = $calendar_dates ?? [];
     $calendarGroups = $calendar_groups ?? [];
+    $branchColorLegend = $branch_color_legend ?? [];
     $dateColumns = collect($calendarDates)->map(function ($date) {
         return !empty($date['is_skipped_date']) ? '16px' : 'minmax(42px, 1fr)';
     })->implode(' ');
@@ -406,6 +435,14 @@
             <div>
                 <h1>{{ $branch->name }} Schedule Roster</h1>
                 <p>Complete branch roster for {{ $selected_month_label }}.</p>
+                <div class="branch-legend">
+                    @foreach($branchColorLegend as $legend)
+                        <span class="branch-legend-item">
+                            <span class="branch-legend-swatch" style="background: {{ $legend['color'] }};"></span>
+                            {{ $legend['label'] }}
+                        </span>
+                    @endforeach
+                </div>
             </div>
             <span class="branch-badge">
                 <i class="fa-solid fa-code-branch"></i> {{ $branch->serial_id }}

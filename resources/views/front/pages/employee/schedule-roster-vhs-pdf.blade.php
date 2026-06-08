@@ -37,6 +37,27 @@
             font-size: 8px;
         }
 
+        .legend {
+            margin-top: 6px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin-right: 12px;
+            color: #444;
+            font-size: 7px;
+            font-weight: bold;
+        }
+
+        .legend-swatch {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 4px;
+            border: 1px solid #999;
+            vertical-align: middle;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -144,6 +165,18 @@
             background: #c7b7ff;
         }
 
+        .shift.yellow {
+            background: #ffed9d;
+        }
+
+        .shift.light-green {
+            background: #b7f3c8;
+        }
+
+        .shift.neutral {
+            background: #dbe4ee;
+        }
+
         .role {
             display: none;
             font-size: 5.8px;
@@ -180,6 +213,7 @@
 $calendarDates = $calendarDates ?? [];
 $calendarEmployees = $calendarEmployees ?? [];
 $calendarCells = $calendarCells ?? [];
+$branchColorLegend = $branchColorLegend ?? [];
 $selectedBranchLabel = $selectedBranchLabel ?? '';
 $selectedEmployeeLabel = $selectedEmployeeLabel ?? '';
 ?>
@@ -188,6 +222,14 @@ $selectedEmployeeLabel = $selectedEmployeeLabel ?? '';
         <div class="subtitle">{{ $selectedMonthLabel }} | {{ $monthStartDate->format('d-m-Y') }} to {{ $monthEndDate->format('d-m-Y') }}</div>
         <div class="subtitle">Branch: {{ $selectedBranchLabel ?: 'All' }} | Employee: {{ $selectedEmployeeLabel ?: 'All' }}</div>
         <div class="note">Sundays and 2nd/4th Saturdays are shown blank. Generated shift rows are locked.</div>
+        <div class="legend">
+            @foreach($branchColorLegend as $legend)
+                <span class="legend-item">
+                    <span class="legend-swatch" style="background: {{ $legend['color'] }};"></span>
+                    {{ $legend['label'] }}
+                </span>
+            @endforeach
+        </div>
     </div>
 
     <table>
