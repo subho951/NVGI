@@ -308,9 +308,6 @@
     }
 
     .calendar-board-head {
-        position: sticky;
-        top: var(--roster-sticky-top);
-        z-index: 20;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -319,7 +316,6 @@
         padding: 11px 12px;
         border-bottom: 1px solid var(--border);
         background: var(--soft);
-        box-shadow: 0 5px 10px rgba(23, 32, 51, 0.08);
     }
 
     .calendar-board-title {
@@ -335,6 +331,19 @@
 
     .calendar-scroll {
         overflow-x: auto;
+        width: 100%;
+    }
+
+    .calendar-table-head {
+        position: sticky;
+        top: var(--roster-sticky-top);
+        z-index: 20;
+        background: #f3f5f8;
+        box-shadow: 0 5px 10px rgba(23, 32, 51, 0.08);
+    }
+
+    .calendar-head-scroll {
+        overflow: hidden;
         width: 100%;
     }
 
@@ -1036,17 +1045,22 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                         <i class="fa-solid fa-file-pdf me-1"></i> PDF
                     </a>
                 </div>
+                <div class="calendar-table-head">
+                    <div class="calendar-head-scroll">
+                        <div class="calendar-grid" style="grid-template-columns: 42px 210px {{ $dateColumns }};">
+                            <div class="calendar-sl-head">SL</div>
+                            <div class="calendar-person-head">Employee</div>
+                            @foreach($calendarDates as $date)
+                                <div class="calendar-day-head {{ $date['is_skipped_date'] ? 'is-skipped' : '' }}" title="{{ $date['day_label'] }}, {{ $date['date_label'] }} {{ $date['month_label'] }}">
+                                    <span class="day-name">{{ $date['day_initial'] }}</span>
+                                    <span class="day-date">{{ $date['date_label'] }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
                 <div class="calendar-scroll">
                     <div class="calendar-grid" style="grid-template-columns: 42px 210px {{ $dateColumns }};">
-                        <div class="calendar-sl-head">SL</div>
-                        <div class="calendar-person-head">Employee</div>
-                        @foreach($calendarDates as $date)
-                            <div class="calendar-day-head {{ $date['is_skipped_date'] ? 'is-skipped' : '' }}" title="{{ $date['day_label'] }}, {{ $date['date_label'] }} {{ $date['month_label'] }}">
-                                <span class="day-name">{{ $date['day_initial'] }}</span>
-                                <span class="day-date">{{ $date['date_label'] }}</span>
-                            </div>
-                        @endforeach
-
                         @foreach($group['employees'] as $employeeIndex => $employee)
                             <div class="calendar-sl-cell">{{ $employeeIndex + 1 }}</div>
                             <div class="calendar-person">
@@ -1231,6 +1245,22 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 calendar.style.setProperty('--roster-sticky-top', stickyTop + 'px');
             });
         };
+
+        document.querySelectorAll('.support-calendar').forEach(function (calendar) {
+            var calendarScroll = calendar.querySelector('.calendar-scroll');
+            var headerScroll = calendar.querySelector('.calendar-head-scroll');
+
+            if (!calendarScroll || !headerScroll) {
+                return;
+            }
+
+            var syncCalendarHeader = function () {
+                headerScroll.scrollLeft = calendarScroll.scrollLeft;
+            };
+
+            syncCalendarHeader();
+            calendarScroll.addEventListener('scroll', syncCalendarHeader, { passive: true });
+        });
 
         syncRosterStickyOffset();
         window.addEventListener('resize', syncRosterStickyOffset);
