@@ -247,12 +247,14 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('employee/schedule-roster/front-desk-group-d/pdf', [EmployeeScheduleRosterController::class, 'supportPdf'])->name('employee.schedule-roster.support.pdf');
                 Route::post('employee/schedule-roster/front-desk-group-d/copy', [EmployeeScheduleRosterController::class, 'supportCopy'])->name('employee.schedule-roster.support.copy');
                 Route::post('employee/schedule-roster/front-desk-group-d/delete', [EmployeeScheduleRosterController::class, 'supportDelete'])->name('employee.schedule-roster.support.delete');
+                Route::post('employee/schedule-roster/front-desk-group-d/shift-date', [EmployeeScheduleRosterController::class, 'supportShiftDate'])->name('employee.schedule-roster.support.shift-date');
                 Route::match(['get', 'post'], 'employee/schedule-roster/tsa', [EmployeeScheduleRosterController::class, 'tsa'])->name('employee.schedule-roster.tsa');
                 Route::get('employee/schedule-roster/tsa/pdf', [EmployeeScheduleRosterController::class, 'tsaPdf'])->name('employee.schedule-roster.tsa.pdf');
                 Route::post('employee/schedule-roster/tsa/copy', [EmployeeScheduleRosterController::class, 'tsaCopy'])->name('employee.schedule-roster.tsa.copy');
                 Route::post('employee/schedule-roster/tsa/add-class', [EmployeeScheduleRosterController::class, 'tsaAddClass'])->name('employee.schedule-roster.tsa.add-class');
                 Route::post('employee/schedule-roster/tsa/reschedule', [EmployeeScheduleRosterController::class, 'tsaReschedule'])->name('employee.schedule-roster.tsa.reschedule');
                 Route::post('employee/schedule-roster/tsa/delete-date', [EmployeeScheduleRosterController::class, 'tsaDeleteDate'])->name('employee.schedule-roster.tsa.delete-date');
+                Route::post('employee/schedule-roster/tsa/shift-date', [EmployeeScheduleRosterController::class, 'tsaShiftDate'])->name('employee.schedule-roster.tsa.shift-date');
                 Route::get('employee/schedule-roster/employee/{employee}/pdf', [EmployeeScheduleRosterController::class, 'employeeRosterPdf'])->name('employee.schedule-roster.employee.pdf');
                 Route::post('employee/schedule-roster/employee/{employee}/email', [EmployeeScheduleRosterController::class, 'emailEmployeeRoster'])->name('employee.schedule-roster.employee.email');
             /* employee */

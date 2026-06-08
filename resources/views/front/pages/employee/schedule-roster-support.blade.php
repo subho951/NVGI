@@ -110,7 +110,7 @@
 
     .btn-dark-roster {
         border: 0;
-        background: var(--brand);
+        background: #111827;
         color: #fff;
         font-weight: 800;
     }
@@ -212,6 +212,33 @@
         color: var(--muted);
         font-size: 0.58rem;
         font-weight: 800;
+    }
+
+    .date-entry-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex: 0 0 auto;
+    }
+
+    .date-reset-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 19px;
+        height: 19px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: #eef2f7;
+        color: #64748b;
+        font-size: 0.56rem;
+        line-height: 1;
+    }
+
+    .date-reset-btn:hover {
+        background: #fee2e2;
+        color: #991b1b;
     }
 
     .off-pill {
@@ -425,8 +452,36 @@
         background: #fff1f1;
     }
 
+    .calendar-cell-tools {
+        display: flex;
+        justify-content: flex-end;
+        min-height: 19px;
+        margin-bottom: 2px;
+    }
+
+    .cell-shift-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 19px;
+        height: 19px;
+        padding: 0;
+        border: 1px solid #dbe4ee;
+        border-radius: 4px;
+        background: #fff;
+        color: #475569;
+        font-size: 0.55rem;
+        line-height: 1;
+    }
+
+    .cell-shift-btn:hover {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
     .blank-cell {
-        min-height: 74px;
+        min-height: 51px;
     }
 
     .shift-card {
@@ -562,6 +617,7 @@ $rosterRoute = $rosterRoute ?? 'employee/schedule-roster/front-desk-group-d';
 $pdfRoute = $pdfRoute ?? ($rosterRoute . '/pdf');
 $copyRoute = $copyRoute ?? ($rosterRoute . '/copy');
 $deleteRoute = $deleteRoute ?? ($rosterRoute . '/delete');
+$shiftDateRoute = $shiftDateRoute ?? '';
 $additionalClassRoute = $additionalClassRoute ?? '';
 $rescheduleRoute = $rescheduleRoute ?? '';
 $dateDeleteRoute = $dateDeleteRoute ?? '';
@@ -699,7 +755,14 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                     <div class="date-entry-cell {{ $date['is_skipped_date'] ? 'is-skipped' : '' }}">
                         <div class="date-entry-head">
                             <span>{{ $date['date_label'] }} {{ $date['month_label'] }}</span>
-                            <span class="date-entry-day">{{ $date['short_day_label'] }}</span>
+                            <span class="date-entry-meta">
+                                <span class="date-entry-day">{{ $date['short_day_label'] }}</span>
+                                @if(!$date['is_skipped_date'])
+                                    <button type="button" class="date-reset-btn reset-date-entry" data-date-key="{{ $dateKey }}" title="Reset Date" aria-label="Reset {{ $date['date_label'] }} {{ $date['month_label'] }}">
+                                        <i class="fa-solid fa-rotate-left"></i>
+                                    </button>
+                                @endif
+                            </span>
                         </div>
                         @if($date['is_skipped_date'])
                             <span class="off-pill">Blank</span>
@@ -707,11 +770,11 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                             <div class="date-time-row">
                                 <div>
                                     <label class="form-label" for="in_{{ $dateKey }}">From</label>
-                                    <input type="time" id="in_{{ $dateKey }}" name="times[{{ $dateKey }}][in_time]" value="{{ $oldInTime }}" class="form-control working-in-time" required>
+                                    <input type="time" id="in_{{ $dateKey }}" name="times[{{ $dateKey }}][in_time]" value="{{ $oldInTime }}" class="form-control working-in-time" data-date-key="{{ $dateKey }}">
                                 </div>
                                 <div>
                                     <label class="form-label" for="out_{{ $dateKey }}">To</label>
-                                    <input type="time" id="out_{{ $dateKey }}" name="times[{{ $dateKey }}][out_time]" value="{{ $oldOutTime }}" class="form-control working-out-time" required>
+                                    <input type="time" id="out_{{ $dateKey }}" name="times[{{ $dateKey }}][out_time]" value="{{ $oldOutTime }}" class="form-control working-out-time" data-date-key="{{ $dateKey }}">
                                 </div>
                             </div>
                         @endif
@@ -970,45 +1033,67 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                                 <div class="calendar-cell {{ $date['is_skipped_date'] ? 'is-skipped' : '' }}">
                                     @if($date['is_skipped_date'])
                                         <div class="blank-cell"></div>
-                                    @elseif(!empty($cellShifts))
-                                        @foreach($cellShifts as $shift)
-                                            <div class="shift-card {{ $shift['shift_class'] }}" title="{{ $shift['branch_name'] ?: '-' }} | {{ $shift['time_display'] ?: '-' }}">
-                                                <span class="shift-branch">{{ $shift['branch_code'] ?: '-' }}</span>
-                                                <span class="shift-time">{{ $shift['time_display'] ?: '-' }}</span>
-                                                @if($allowReschedule || $allowDateDelete)
-                                                    <div class="shift-action-row">
-                                                        @if($allowReschedule && !empty($shift['can_reschedule']) && !empty($rescheduleRoute))
-                                                            <button type="button"
-                                                                    class="shift-icon-btn edit"
-                                                                    title="Reschedule"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#rescheduleRosterModal"
-                                                                    data-roster-id="{{ $shift['roster_id'] }}"
-                                                                    data-employee="{{ $employee['employee_no'] }} - {{ $employee['employee_name'] }}"
-                                                                    data-date="{{ $shift['roster_date_label'] }}"
-                                                                    data-in-time="{{ $shift['in_time'] }}"
-                                                                    data-out-time="{{ $shift['out_time'] }}">
-                                                                <i class="fa-solid fa-pen"></i>
-                                                            </button>
-                                                        @elseif($allowReschedule)
-                                                            <span class="shift-icon-btn locked" title="Locked{{ !empty($shift['reschedule_deadline']) ? ' after ' . $shift['reschedule_deadline'] : '' }}">
-                                                                <i class="fa-solid fa-lock"></i>
-                                                            </span>
-                                                        @endif
-
-                                                        @if($allowDateDelete && !empty($dateDeleteRoute))
-                                                            <form method="POST" action="{{ url($dateDeleteRoute) }}" onsubmit="return confirm('Delete this date roster?');">
-                                                                @csrf
-                                                                <input type="hidden" name="roster_id" value="{{ $shift['roster_id'] }}">
-                                                                <button type="submit" class="shift-icon-btn delete" title="Delete Date">
-                                                                    <i class="fa-solid fa-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                    </div>
-                                                @endif
+                                    @else
+                                        @if(!empty($shiftDateRoute))
+                                            <div class="calendar-cell-tools">
+                                                <button type="button"
+                                                        class="cell-shift-btn"
+                                                        title="Shift Duty/Weekoff"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#shiftRosterDateModal"
+                                                        data-employee-id="{{ $employee['id'] }}"
+                                                        data-employee="{{ $employee['employee_no'] }} - {{ $employee['employee_name'] }}"
+                                                        data-category="{{ $group['category'] }}"
+                                                        data-branch-name="{{ $groupBranchName !== 'All Branches' ? $groupBranchName : '' }}"
+                                                        data-source-date="{{ $date['date'] }}"
+                                                        data-source-label="{{ $date['date_label'] }} {{ $date['month_label'] }}"
+                                                        data-month-start="{{ $monthStartDate->toDateString() }}"
+                                                        data-month-end="{{ $monthEndDate->toDateString() }}">
+                                                    <i class="fa-solid fa-right-left"></i>
+                                                </button>
                                             </div>
-                                        @endforeach
+                                        @endif
+
+                                        @if(!empty($cellShifts))
+                                            @foreach($cellShifts as $shift)
+                                                <div class="shift-card {{ $shift['shift_class'] }}" title="{{ $shift['branch_name'] ?: '-' }} | {{ $shift['time_display'] ?: '-' }}">
+                                                    <span class="shift-branch">{{ $shift['branch_code'] ?: '-' }}</span>
+                                                    <span class="shift-time">{{ $shift['time_display'] ?: '-' }}</span>
+                                                    @if($allowReschedule || $allowDateDelete)
+                                                        <div class="shift-action-row">
+                                                            @if($allowReschedule && !empty($shift['can_reschedule']) && !empty($rescheduleRoute))
+                                                                <button type="button"
+                                                                        class="shift-icon-btn edit"
+                                                                        title="Reschedule"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#rescheduleRosterModal"
+                                                                        data-roster-id="{{ $shift['roster_id'] }}"
+                                                                        data-employee="{{ $employee['employee_no'] }} - {{ $employee['employee_name'] }}"
+                                                                        data-date="{{ $shift['roster_date_label'] }}"
+                                                                        data-in-time="{{ $shift['in_time'] }}"
+                                                                        data-out-time="{{ $shift['out_time'] }}">
+                                                                    <i class="fa-solid fa-pen"></i>
+                                                                </button>
+                                                            @elseif($allowReschedule)
+                                                                <span class="shift-icon-btn locked" title="Locked{{ !empty($shift['reschedule_deadline']) ? ' after ' . $shift['reschedule_deadline'] : '' }}">
+                                                                    <i class="fa-solid fa-lock"></i>
+                                                                </span>
+                                                            @endif
+
+                                                            @if($allowDateDelete && !empty($dateDeleteRoute))
+                                                                <form method="POST" action="{{ url($dateDeleteRoute) }}" onsubmit="return confirm('Delete this date roster?');">
+                                                                    @csrf
+                                                                    <input type="hidden" name="roster_id" value="{{ $shift['roster_id'] }}">
+                                                                    <button type="submit" class="shift-icon-btn delete" title="Delete Date">
+                                                                        <i class="fa-solid fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        @endif
                                     @endif
                                 </div>
                             @endforeach
@@ -1058,6 +1143,35 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
         </div>
     </div>
 @endif
+
+@if(!empty($shiftDateRoute))
+    <div class="modal fade" id="shiftRosterDateModal" tabindex="-1" aria-labelledby="shiftRosterDateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" action="{{ url($shiftDateRoute) }}" class="modal-content">
+                @csrf
+                <input type="hidden" name="employee_id" id="shift_employee_id">
+                <input type="hidden" name="category" id="shift_category">
+                <input type="hidden" name="branch_name" id="shift_branch_name">
+                <input type="hidden" name="source_date" id="shift_source_date">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="shiftRosterDateModalLabel">Shift Duty/Weekoff</h5>
+                        <div class="text-muted small fw-bold" id="shiftRosterMeta"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="shift_target_date" class="form-label">Shift With Date</label>
+                    <input type="date" name="target_date" id="shift_target_date" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-roster">Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
 @endsection
 
 @section('scripts')
@@ -1080,6 +1194,43 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 document.querySelectorAll('.working-out-time').forEach(function (input) {
                     input.value = outTime;
                 });
+            });
+        }
+
+        document.querySelectorAll('.reset-date-entry').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var dateKey = button.getAttribute('data-date-key') || '';
+                if (!dateKey) {
+                    return;
+                }
+
+                document.querySelectorAll('[data-date-key="' + dateKey + '"].form-control').forEach(function (input) {
+                    input.value = '';
+                });
+            });
+        });
+
+        var shiftModal = document.getElementById('shiftRosterDateModal');
+        if (shiftModal) {
+            shiftModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                if (!button) {
+                    return;
+                }
+
+                var sourceDate = button.getAttribute('data-source-date') || '';
+                var sourceLabel = button.getAttribute('data-source-label') || '';
+                var targetInput = document.getElementById('shift_target_date');
+
+                document.getElementById('shift_employee_id').value = button.getAttribute('data-employee-id') || '';
+                document.getElementById('shift_category').value = button.getAttribute('data-category') || '';
+                document.getElementById('shift_branch_name').value = button.getAttribute('data-branch-name') || '';
+                document.getElementById('shift_source_date').value = sourceDate;
+                document.getElementById('shiftRosterMeta').textContent = (button.getAttribute('data-employee') || '') + ' | ' + sourceLabel;
+
+                targetInput.value = '';
+                targetInput.min = button.getAttribute('data-month-start') || '';
+                targetInput.max = button.getAttribute('data-month-end') || '';
             });
         }
 

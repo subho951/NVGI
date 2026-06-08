@@ -21,6 +21,7 @@ class EmployeeScheduleRosterController extends Controller
     private const SUPPORT_CATEGORIES = ['FRONT-DESK', 'GROUP-D'];
     private const TSA_CATEGORIES = ['TSA TEACHER'];
     private const ALL_ROSTER_CATEGORIES = ['VHS TEACHER', 'TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
+    private const FULL_MONTH_ROSTER_CATEGORIES = ['TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
     private const SUPPORT_BRANCH_NAMES = ['Bibirhat', 'Mukundapur', 'Rajarhat'];
 
     protected $siteAuthService;
@@ -168,6 +169,11 @@ class EmployeeScheduleRosterController extends Controller
         return $this->manualRosterDelete($request, self::SUPPORT_CATEGORIES, 'employee/schedule-roster/front-desk-group-d');
     }
 
+    public function supportShiftDate(Request $request)
+    {
+        return $this->manualRosterShiftDate($request, self::SUPPORT_CATEGORIES);
+    }
+
     public function tsa(Request $request)
     {
         return $this->manualRosterPage(
@@ -189,6 +195,11 @@ class EmployeeScheduleRosterController extends Controller
     public function tsaCopy(Request $request)
     {
         return $this->manualRosterCopy($request, self::TSA_CATEGORIES, 'employee/schedule-roster/tsa');
+    }
+
+    public function tsaShiftDate(Request $request)
+    {
+        return $this->manualRosterShiftDate($request, self::TSA_CATEGORIES);
     }
 
     public function tsaAddClass(Request $request)
@@ -218,8 +229,8 @@ class EmployeeScheduleRosterController extends Controller
             return redirect()->back()->withInput()->with('error_message', 'Roster date must be within selected month.');
         }
 
-        if (!$this->isRosterWorkingDate($rosterDate)) {
-            return redirect()->back()->withInput()->with('error_message', 'Additional class cannot be added on Sunday or 2nd/4th Saturday.');
+        if (!$this->isRosterWorkingDate($rosterDate, self::TSA_CATEGORIES)) {
+            return redirect()->back()->withInput()->with('error_message', 'Additional class cannot be added on this roster date.');
         }
 
         $employee = Employee::where('status', '=', 1)->where('id', '=', $employeeId)->first();
@@ -439,6 +450,7 @@ class EmployeeScheduleRosterController extends Controller
         $searchCategory = $this->resolveSupportSearchCategory($request->input('category', ''), $allowedCategories);
         $searchBranchName = $this->resolveSupportBranchFilter($request->input('branch_name', ''));
         $searchEmployeeId = $this->positiveInt($request->input('employee_id'));
+        $searchDateCategories = $this->selectedRosterDateCategories($searchCategory, $allowedCategories);
 
         $rows = $this->getSupportRosterRows($searchMonth, $searchCategory, $searchBranchName, $searchEmployeeId, $allowedCategories);
         $calendarGroups = $this->buildSupportCalendarGroups($rows, $searchMonth, $this->shouldGroupManualRosterByBranch($allowedCategories));
@@ -465,6 +477,7 @@ class EmployeeScheduleRosterController extends Controller
             'pdfRoute' => $routePath . '/pdf',
             'copyRoute' => $routePath . '/copy',
             'deleteRoute' => $routePath . '/delete',
+            'shiftDateRoute' => $routePath . '/shift-date',
             'additionalClassRoute' => $allowReschedule ? $routePath . '/add-class' : '',
             'rescheduleRoute' => $allowReschedule ? $routePath . '/reschedule' : '',
             'dateDeleteRoute' => $allowReschedule ? $routePath . '/delete-date' : '',
@@ -479,9 +492,9 @@ class EmployeeScheduleRosterController extends Controller
             'entryMonthLabel' => $entryMonth->format('F Y'),
             'entryBranchName' => $entryBranchName,
             'entryEmployees' => $this->availableSupportEmployeesForManual($entryCategory, $entryMonth, $allowedCategories),
-            'entryCalendarDates' => $this->calendarDates($entryMonth),
+            'entryCalendarDates' => $this->calendarDates($entryMonth, [$entryCategory]),
             'additionalClassEmployees' => $allowReschedule ? $this->supportEmployeeOptions(self::TSA_TEACHER, self::TSA_CATEGORIES) : [],
-            'additionalClassDates' => $allowReschedule ? $this->calendarDates($searchMonth) : [],
+            'additionalClassDates' => $allowReschedule ? $this->calendarDates($searchMonth, self::TSA_CATEGORIES) : [],
             'monthOptions' => $this->monthOptions($entryMonth, $searchMonth, $copySourceMonth, $copyTargetMonth),
             'selectedMonthValue' => $searchMonth->format('Y-m'),
             'selectedMonthLabel' => $searchMonth->format('F Y'),
@@ -496,7 +509,7 @@ class EmployeeScheduleRosterController extends Controller
             'monthEndDate' => $searchMonth->copy()->endOfMonth(),
             'rows' => $rows,
             'stats' => $this->buildRosterStats($rows),
-            'calendarDates' => $this->calendarDates($searchMonth),
+            'calendarDates' => $this->calendarDates($searchMonth, $searchDateCategories),
             'calendarGroups' => $calendarGroups,
             'pdfUrl' => url($routePath . '/pdf') . '?' . http_build_query($pdfQuery),
         ];
@@ -514,8 +527,9 @@ class EmployeeScheduleRosterController extends Controller
         $branchName = $this->resolveSupportBranchFilter($request->input('branch_name', ''));
         $employeeId = $this->positiveInt($request->input('employee_id'));
         $rows = $this->getSupportRosterRows($targetMonth, $category, $branchName, $employeeId, $allowedCategories);
+        $dateCategories = $this->selectedRosterDateCategories($category, $allowedCategories);
 
-        $data = $this->manualRosterPdfData($rows, $targetMonth, $title, $category, $branchName, $employeeId, '', $this->shouldGroupManualRosterByBranch($allowedCategories));
+        $data = $this->manualRosterPdfData($rows, $targetMonth, $title, $category, $branchName, $employeeId, '', $this->shouldGroupManualRosterByBranch($allowedCategories), $dateCategories);
         $filenameParts = [$filenamePrefix, $targetMonth->format('Y-m')];
         if ($category !== '') {
             $filenameParts[] = strtolower(str_replace([' ', '/'], '-', $category));
@@ -582,6 +596,92 @@ class EmployeeScheduleRosterController extends Controller
             ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'Roster deleted successfully.' : 'No active roster found to delete.');
     }
 
+    private function manualRosterShiftDate(Request $request, array $allowedCategories)
+    {
+        $category = $this->resolveSupportCategory($request->input('category', ''), $allowedCategories);
+        $employeeId = $this->positiveInt($request->input('employee_id'));
+        $branchName = $this->resolveShiftBranchFilter($request->input('branch_name', ''));
+        $sourceDate = $this->parseRosterDateValue($request->input('source_date', ''));
+        $targetDate = $this->parseRosterDateValue($request->input('target_date', ''));
+
+        if ($employeeId <= 0 || !$sourceDate || !$targetDate) {
+            return redirect()->back()->withInput()->with('error_message', 'Please select a valid employee, source date and target date.');
+        }
+
+        if ($sourceDate->isSameDay($targetDate)) {
+            return redirect()->back()->withInput()->with('error_message', 'Source date and target date cannot be same.');
+        }
+
+        if ($sourceDate->format('Y-m') !== $targetDate->format('Y-m')) {
+            return redirect()->back()->withInput()->with('error_message', 'Target date must be within the same month.');
+        }
+
+        if (!$this->isRosterWorkingDate($sourceDate, [$category]) || !$this->isRosterWorkingDate($targetDate, [$category])) {
+            return redirect()->back()->withInput()->with('error_message', 'Please select valid roster dates for ' . $category . '.');
+        }
+
+        $employee = Employee::where('status', '!=', 3)->where('id', '=', $employeeId)->first();
+        if (!$employee || !$this->employeeHasCategory($employee, $category)) {
+            return redirect()->back()->withInput()->with('error_message', 'Please select a valid ' . $category . ' employee.');
+        }
+
+        $result = [
+            'shifted' => false,
+            'message' => '',
+            'rows' => 0,
+        ];
+
+        DB::transaction(function () use ($employeeId, $category, $branchName, $sourceDate, $targetDate, &$result) {
+            $sourceRows = $this->manualRosterShiftRows($employeeId, $category, $sourceDate, $branchName)
+                ->lockForUpdate()
+                ->get();
+            $targetRows = $this->manualRosterShiftRows($employeeId, $category, $targetDate, $branchName)
+                ->lockForUpdate()
+                ->get();
+
+            if ($sourceRows->isEmpty() && $targetRows->isEmpty()) {
+                $result['message'] = 'No duty found on either selected date.';
+
+                return;
+            }
+
+            $rowIds = $sourceRows->merge($targetRows)->pluck('id')->map(function ($id) {
+                return (int) $id;
+            })->values()->all();
+
+            if ($this->rosterRowsHaveAttendance($rowIds)) {
+                $result['message'] = 'This duty cannot be shifted because attendance already exists for one of the selected dates.';
+
+                return;
+            }
+
+            $userId = $this->currentUserId();
+            if ($sourceRows->isNotEmpty() && $targetRows->isNotEmpty()) {
+                $temporaryDate = $this->temporaryRosterSwapDate($sourceRows);
+
+                foreach ($sourceRows as $row) {
+                    $this->applyRosterDate($row, $temporaryDate, $userId);
+                }
+            }
+
+            foreach ($targetRows as $row) {
+                $this->applyRosterDate($row, $sourceDate, $userId);
+            }
+
+            foreach ($sourceRows as $row) {
+                $this->applyRosterDate($row, $targetDate, $userId);
+            }
+
+            $result['shifted'] = true;
+            $result['rows'] = count($rowIds);
+            $result['message'] = 'Duty/weekoff shifted between ' . $sourceDate->format('d-m-Y') . ' and ' . $targetDate->format('d-m-Y') . '.';
+        });
+
+        return redirect()
+            ->back()
+            ->with($result['shifted'] ? 'success_message' : 'error_message', $result['message'] ?: 'Unable to shift duty/weekoff.');
+    }
+
     private function storeSupportRoster(Request $request, ?array $allowedCategories = null, string $routePath = 'employee/schedule-roster/front-desk-group-d')
     {
         $allowedCategories = $allowedCategories ?: self::SUPPORT_CATEGORIES;
@@ -605,17 +705,21 @@ class EmployeeScheduleRosterController extends Controller
         }
 
         $times = $request->input('times', []);
-        $rosterDates = $this->rosterDates($targetMonth);
+        $rosterDates = $this->rosterDates($targetMonth, [$category]);
         $preparedRows = [];
-        $missingDates = [];
+        $partialDates = [];
 
         foreach ($rosterDates as $date) {
             $dateKey = $date->toDateString();
             $inTime = $this->normalizeSubmittedTime($times[$dateKey]['in_time'] ?? '');
             $outTime = $this->normalizeSubmittedTime($times[$dateKey]['out_time'] ?? '');
 
+            if (!$inTime && !$outTime) {
+                continue;
+            }
+
             if (!$inTime || !$outTime) {
-                $missingDates[] = $date->format('d-m-Y');
+                $partialDates[] = $date->format('d-m-Y');
                 continue;
             }
 
@@ -626,8 +730,12 @@ class EmployeeScheduleRosterController extends Controller
             ];
         }
 
-        if (!empty($missingDates)) {
-            return redirect()->back()->withInput()->with('error_message', 'Please fill from and to time for all working dates.');
+        if (!empty($partialDates)) {
+            return redirect()->back()->withInput()->with('error_message', 'Please fill both from and to time, or clear the date, for: ' . implode(', ', $partialDates) . '.');
+        }
+
+        if (empty($preparedRows)) {
+            return redirect()->back()->withInput()->with('error_message', 'Please fill at least one roster date.');
         }
 
         $result = [
@@ -675,7 +783,7 @@ class EmployeeScheduleRosterController extends Controller
 
     private function generateRosterForCategory(string $category, Carbon $targetMonth): array
     {
-        $dates = $this->rosterDates($targetMonth);
+        $dates = $this->rosterDates($targetMonth, [$category]);
         $employees = $this->eligibleEmployees($category);
         $branchMap = $this->branchMapForEmployees($employees);
         $userId = $this->currentUserId();
@@ -745,7 +853,7 @@ class EmployeeScheduleRosterController extends Controller
 
     private function getRosterRows(string $category, Carbon $targetMonth, int $branchId = 0, int $employeeId = 0)
     {
-        $rosterDates = $this->rosterDates($targetMonth)
+        $rosterDates = $this->rosterDates($targetMonth, [$category])
             ->map(function ($date) {
                 return $date->toDateString();
             })
@@ -815,7 +923,7 @@ class EmployeeScheduleRosterController extends Controller
     private function getSupportRosterRows(Carbon $targetMonth, string $category = '', string $branchName = '', int $employeeId = 0, ?array $allowedCategories = null)
     {
         $allowedCategories = $allowedCategories ?: self::SUPPORT_CATEGORIES;
-        $rosterDates = $this->rosterDates($targetMonth)
+        $rosterDates = $this->rosterDates($targetMonth, $this->selectedRosterDateCategories($category, $allowedCategories))
             ->map(function ($date) {
                 return $date->toDateString();
             })
@@ -854,7 +962,7 @@ class EmployeeScheduleRosterController extends Controller
 
     private function getEmployeeRosterRows(Carbon $targetMonth, int $employeeId)
     {
-        $rosterDates = $this->rosterDates($targetMonth)
+        $rosterDates = $this->rosterDates($targetMonth, self::ALL_ROSTER_CATEGORIES)
             ->map(function ($date) {
                 return $date->toDateString();
             })
@@ -1010,7 +1118,7 @@ class EmployeeScheduleRosterController extends Controller
             })
             ->map(function ($groupRows) use ($targetMonth, $groupByBranch) {
                 $firstRow = $groupRows->first();
-                $calendarData = $this->buildCalendarData($groupRows, $targetMonth);
+                $calendarData = $this->buildCalendarData($groupRows, $targetMonth, [(string) $firstRow->category]);
 
                 return [
                     'category' => (string) $firstRow->category,
@@ -1088,8 +1196,10 @@ class EmployeeScheduleRosterController extends Controller
         ];
     }
 
-    private function manualRosterPdfData($rows, Carbon $targetMonth, string $title, string $category = '', string $branchName = '', int $employeeId = 0, string $employeeLabel = '', bool $groupByBranch = true): array
+    private function manualRosterPdfData($rows, Carbon $targetMonth, string $title, string $category = '', string $branchName = '', int $employeeId = 0, string $employeeLabel = '', bool $groupByBranch = true, ?array $dateCategories = null): array
     {
+        $dateCategories = $dateCategories ?: $this->rosterDateCategoriesFromRows($rows);
+
         return [
             'title' => $title,
             'selectedMonthLabel' => $targetMonth->format('F Y'),
@@ -1100,7 +1210,7 @@ class EmployeeScheduleRosterController extends Controller
             'selectedEmployeeId' => $employeeId,
             'selectedEmployeeLabel' => $employeeLabel !== '' ? $employeeLabel : $this->employeeLabelById($employeeId),
             'stats' => $this->buildRosterStats($rows),
-            'calendarDates' => $this->calendarDates($targetMonth),
+            'calendarDates' => $this->calendarDates($targetMonth, $dateCategories),
             'calendarGroups' => $this->buildSupportCalendarGroups($rows, $targetMonth, $groupByBranch),
         ];
     }
@@ -1165,8 +1275,9 @@ class EmployeeScheduleRosterController extends Controller
         }
     }
 
-    private function buildCalendarData($rows, Carbon $targetMonth): array
+    private function buildCalendarData($rows, Carbon $targetMonth, ?array $dateCategories = null): array
     {
+        $dateCategories = $dateCategories ?: $this->rosterDateCategoriesFromRows($rows);
         $employees = $rows
             ->groupBy('employee_id')
             ->map(function ($employeeRows) {
@@ -1216,17 +1327,17 @@ class EmployeeScheduleRosterController extends Controller
         }
 
         return [
-            'dates' => $this->calendarDates($targetMonth),
+            'dates' => $this->calendarDates($targetMonth, $dateCategories),
             'employees' => $employees,
             'cells' => $cells,
         ];
     }
 
-    private function calendarDates(Carbon $targetMonth): array
+    private function calendarDates(Carbon $targetMonth, ?array $dateCategories = null): array
     {
         return $this->monthDates($targetMonth)
-            ->map(function ($date) use ($targetMonth) {
-                $isRosterWorkingDate = $this->isRosterWorkingDate($date);
+            ->map(function ($date) use ($targetMonth, $dateCategories) {
+                $isRosterWorkingDate = $this->isRosterWorkingDate($date, $dateCategories);
 
                 return [
                     'date' => $date->toDateString(),
@@ -1255,20 +1366,21 @@ class EmployeeScheduleRosterController extends Controller
             ->values();
     }
 
-    private function rosterDates(Carbon $targetMonth)
+    private function rosterDates(Carbon $targetMonth, ?array $dateCategories = null)
     {
-        return collect(CarbonPeriod::create($targetMonth->copy()->startOfMonth(), $targetMonth->copy()->endOfMonth()))
-            ->map(function ($date) {
-                return $date->copy();
-            })
-            ->filter(function ($date) {
-                return $this->isRosterWorkingDate($date);
+        return $this->monthDates($targetMonth)
+            ->filter(function ($date) use ($dateCategories) {
+                return $this->isRosterWorkingDate($date, $dateCategories);
             })
             ->values();
     }
 
-    private function isRosterWorkingDate(Carbon $date): bool
+    private function isRosterWorkingDate(Carbon $date, ?array $dateCategories = null): bool
     {
+        if ($this->hasFullMonthRosterCategory($dateCategories)) {
+            return true;
+        }
+
         if ($date->isSunday()) {
             return false;
         }
@@ -1282,10 +1394,128 @@ class EmployeeScheduleRosterController extends Controller
         return true;
     }
 
+    private function selectedRosterDateCategories(string $category, array $allowedCategories): array
+    {
+        return $category !== '' ? [$category] : $allowedCategories;
+    }
+
+    private function rosterDateCategoriesFromRows($rows): array
+    {
+        if (!method_exists($rows, 'pluck')) {
+            return [];
+        }
+
+        return $this->normalizeRosterDateCategories($rows->pluck('category')->all());
+    }
+
+    private function hasFullMonthRosterCategory(?array $dateCategories): bool
+    {
+        foreach ($this->normalizeRosterDateCategories($dateCategories ?? []) as $category) {
+            if (in_array($category, self::FULL_MONTH_ROSTER_CATEGORIES, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeRosterDateCategories(array $dateCategories): array
+    {
+        return collect($dateCategories)
+            ->map(function ($category) {
+                return trim((string) $category);
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function manualRosterShiftRows(int $employeeId, string $category, Carbon $rosterDate, string $branchName = '')
+    {
+        $query = EmployeeScheduleRoster::where('employee_id', '=', $employeeId)
+            ->where('category', '=', $category)
+            ->whereDate('roster_date', '=', $rosterDate->toDateString())
+            ->where('status', '!=', 3);
+
+        if ($branchName !== '') {
+            $query->where('branch_name', '=', $branchName);
+        }
+
+        return $query
+            ->orderBy('branch_id', 'ASC')
+            ->orderBy('in_time', 'ASC')
+            ->orderBy('id', 'ASC');
+    }
+
+    private function rosterRowsHaveAttendance(array $rosterIds): bool
+    {
+        $rosterIds = array_values(array_filter(array_map('intval', $rosterIds)));
+
+        if (empty($rosterIds) || !DB::getSchemaBuilder()->hasTable('employee_attendances')) {
+            return false;
+        }
+
+        return DB::table('employee_attendances')
+            ->whereIn('roster_id', $rosterIds)
+            ->exists();
+    }
+
+    private function temporaryRosterSwapDate($rows): Carbon
+    {
+        $baseDate = Carbon::create(1900, 1, 1)->startOfDay();
+
+        for ($offset = 0; $offset < 3660; $offset++) {
+            $temporaryDate = $baseDate->copy()->addDays($offset);
+            $hasConflict = $rows->contains(function ($row) use ($temporaryDate) {
+                return $this->rosterSwapDateHasConflict($row, $temporaryDate);
+            });
+
+            if (!$hasConflict) {
+                return $temporaryDate;
+            }
+        }
+
+        throw new \RuntimeException('Unable to reserve temporary roster date.');
+    }
+
+    private function rosterSwapDateHasConflict($row, Carbon $rosterDate): bool
+    {
+        $query = EmployeeScheduleRoster::where('id', '!=', (int) $row->id)
+            ->where('employee_id', '=', (int) $row->employee_id)
+            ->where('category', '=', (string) $row->category)
+            ->where('branch_id', '=', (int) $row->branch_id)
+            ->whereDate('roster_date', '=', $rosterDate->toDateString());
+
+        $inTime = trim((string) $row->in_time);
+        if ($inTime === '') {
+            $query->where(function ($timeQuery) {
+                $timeQuery->whereNull('in_time')->orWhere('in_time', '=', '');
+            });
+        } else {
+            $query->where('in_time', '=', $inTime);
+        }
+
+        return $query->exists();
+    }
+
+    private function applyRosterDate($row, Carbon $rosterDate, int $userId): void
+    {
+        $row->fill([
+            'roster_date' => $rosterDate->toDateString(),
+            'roster_month' => (int) $rosterDate->month,
+            'roster_year' => (int) $rosterDate->year,
+            'day_name' => $rosterDate->format('l'),
+            'updated_by' => $userId,
+        ]);
+        $row->save();
+    }
+
     private function copySupportRoster(Carbon $sourceMonth, Carbon $targetMonth, string $category = '', int $employeeId = 0, ?array $allowedCategories = null): array
     {
+        $allowedCategories = $allowedCategories ?: self::SUPPORT_CATEGORIES;
         $sourceRows = $this->getSupportRosterRows($sourceMonth, $category, '', $employeeId, $allowedCategories);
-        $targetDates = $this->rosterDates($targetMonth);
+        $targetDates = $this->rosterDates($targetMonth, $this->selectedRosterDateCategories($category, $allowedCategories));
         $userId = $this->currentUserId();
         $result = [
             'source_rows' => $sourceRows->count(),
@@ -1424,6 +1654,22 @@ class EmployeeScheduleRosterController extends Controller
         }
     }
 
+    private function parseRosterDateValue($dateValue): ?Carbon
+    {
+        $dateValue = trim((string) $dateValue);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateValue)) {
+            return null;
+        }
+
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $dateValue)->startOfDay();
+
+            return $date->toDateString() === $dateValue ? $date : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     private function resolveSupportCategory($category, ?array $allowedCategories = null): string
     {
         $allowedCategories = $allowedCategories ?: self::SUPPORT_CATEGORIES;
@@ -1467,6 +1713,17 @@ class EmployeeScheduleRosterController extends Controller
         $branchName = trim((string) $branchName);
 
         if ($branchName === '' || strtoupper($branchName) === 'ALL') {
+            return '';
+        }
+
+        return $this->resolveSupportBranchName($branchName);
+    }
+
+    private function resolveShiftBranchFilter($branchName): string
+    {
+        $branchName = trim((string) $branchName);
+
+        if ($branchName === '' || strtoupper($branchName) === 'ALL' || strcasecmp($branchName, 'All Branches') === 0) {
             return '';
         }
 

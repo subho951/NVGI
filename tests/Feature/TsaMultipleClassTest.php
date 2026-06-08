@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\EmployeeScheduleRosterController;
 use App\Models\EmployeeScheduleRoster;
+use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,6 +85,15 @@ class TsaMultipleClassTest extends TestCase
             'category' => json_encode(['TSA TEACHER']),
             'status' => 1,
         ]);
+        DB::table('employees')->insert([
+            'id' => 3,
+            'employee_no' => 'NVGI-0003',
+            'first_name' => 'FRONT',
+            'last_name' => 'DESK',
+            'branch' => json_encode([1]),
+            'category' => json_encode(['FRONT-DESK']),
+            'status' => 1,
+        ]);
         DB::table('employee_schedule_rosters')->insert($this->rosterRow('10:00', '11:30'));
     }
 
@@ -110,6 +120,131 @@ class TsaMultipleClassTest extends TestCase
         );
     }
 
+    public function test_tsa_additional_class_can_be_added_on_sunday(): void
+    {
+        $controller = app(EmployeeScheduleRosterController::class);
+        $sunday = Carbon::create(2026, 6, 7);
+
+        $controller->tsaAddClass($this->requestForDate($sunday, '14:00', '16:00'));
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 2,
+            'branch_id' => 1,
+            'roster_date' => '2026-06-07',
+            'in_time' => '14:00',
+            'out_time' => '16:00',
+        ]);
+    }
+
+    public function test_front_desk_roster_can_save_optional_sunday_only(): void
+    {
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/front-desk-group-d', 'POST', [
+            'category' => 'FRONT-DESK',
+            'month' => '2026-06',
+            'employee_id' => 3,
+            'branch_name' => 'Bibirhat',
+            'times' => [
+                '2026-06-07' => [
+                    'in_time' => '08:30',
+                    'out_time' => '20:00',
+                ],
+            ],
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->support($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 3,
+            'category' => 'FRONT-DESK',
+            'roster_date' => '2026-06-07',
+            'in_time' => '08:30',
+            'out_time' => '20:00',
+        ]);
+        $this->assertSame(1, EmployeeScheduleRoster::where('employee_id', 3)->count());
+    }
+
+    public function test_front_desk_weekoff_can_be_shifted_with_duty_date(): void
+    {
+        DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
+            3,
+            'NVGI-0003',
+            'FRONT DESK',
+            'FRONT-DESK',
+            Carbon::create(2026, 6, 13),
+            '08:30',
+            '20:00'
+        ));
+
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/front-desk-group-d/shift-date', 'POST', [
+            'category' => 'FRONT-DESK',
+            'employee_id' => 3,
+            'branch_name' => 'Bibirhat',
+            'source_date' => '2026-06-10',
+            'target_date' => '2026-06-13',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->supportShiftDate($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 3,
+            'category' => 'FRONT-DESK',
+            'roster_date' => '2026-06-10',
+            'in_time' => '08:30',
+            'out_time' => '20:00',
+            'status' => 1,
+        ]);
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 3,
+            'category' => 'FRONT-DESK',
+            'roster_date' => '2026-06-13',
+            'status' => 1,
+        ]);
+    }
+
+    public function test_tsa_weekoff_can_be_shifted_with_duty_date(): void
+    {
+        DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
+            2,
+            'NVGI-0002',
+            'MONISHA DAS',
+            'TSA TEACHER',
+            Carbon::create(2026, 6, 13),
+            '14:00',
+            '16:00'
+        ));
+
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/tsa/shift-date', 'POST', [
+            'category' => 'TSA TEACHER',
+            'employee_id' => 2,
+            'branch_name' => '',
+            'source_date' => '2026-06-10',
+            'target_date' => '2026-06-13',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->tsaShiftDate($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 2,
+            'category' => 'TSA TEACHER',
+            'roster_date' => '2026-06-10',
+            'in_time' => '14:00',
+            'out_time' => '16:00',
+            'status' => 1,
+        ]);
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 2,
+            'category' => 'TSA TEACHER',
+            'roster_date' => '2026-06-13',
+            'status' => 1,
+        ]);
+    }
+
     private function requestFor(string $inTime, string $outTime): Request
     {
         $request = Request::create('/employee/schedule-roster/tsa/add-class', 'POST', [
@@ -117,6 +252,21 @@ class TsaMultipleClassTest extends TestCase
             'employee_id' => 2,
             'branch_name' => 'Bibirhat',
             'roster_date' => now()->toDateString(),
+            'in_time' => $inTime,
+            'out_time' => $outTime,
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        return $request;
+    }
+
+    private function requestForDate(Carbon $rosterDate, string $inTime, string $outTime): Request
+    {
+        $request = Request::create('/employee/schedule-roster/tsa/add-class', 'POST', [
+            'month' => $rosterDate->format('Y-m'),
+            'employee_id' => 2,
+            'branch_name' => 'Bibirhat',
+            'roster_date' => $rosterDate->toDateString(),
             'in_time' => $inTime,
             'out_time' => $outTime,
         ]);
@@ -140,6 +290,39 @@ class TsaMultipleClassTest extends TestCase
             'roster_month' => now()->month,
             'roster_year' => now()->year,
             'day_name' => now()->format('l'),
+            'in_time' => $inTime,
+            'out_time' => $outTime,
+            'status' => 1,
+            'generated_at' => now(),
+            'created_by' => 1,
+            'updated_by' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+
+    private function datedRosterRow(
+        int $employeeId,
+        string $employeeNo,
+        string $employeeName,
+        string $category,
+        Carbon $rosterDate,
+        string $inTime,
+        string $outTime
+    ): array {
+        return [
+            'employee_id' => $employeeId,
+            'employee_no' => $employeeNo,
+            'employee_name' => $employeeName,
+            'category' => $category,
+            'unit_id' => 2,
+            'unit_name' => 'TSA',
+            'branch_id' => 1,
+            'branch_name' => 'Bibirhat',
+            'roster_date' => $rosterDate->toDateString(),
+            'roster_month' => $rosterDate->month,
+            'roster_year' => $rosterDate->year,
+            'day_name' => $rosterDate->format('l'),
             'in_time' => $inTime,
             'out_time' => $outTime,
             'status' => 1,

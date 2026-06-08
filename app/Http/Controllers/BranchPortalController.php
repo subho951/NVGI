@@ -14,6 +14,8 @@ use Illuminate\Support\Str;
 
 class BranchPortalController extends Controller
 {
+    private const FULL_MONTH_ROSTER_CATEGORIES = ['TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
+
     public function showLogin(Request $request)
     {
         if ($request->session()->has('branch_portal.branch_id')) {
@@ -108,6 +110,7 @@ class BranchPortalController extends Controller
         $targetMonth = $this->resolveRosterMonth($request->input('month', Carbon::now()->format('Y-m')));
         $category = $this->resolveRosterCategory($request->input('category', ''));
         $employeeId = (int) $request->input('employee_id', 0);
+        $dateCategories = $this->selectedRosterDateCategories($category);
 
         $employeeOptions = $this->branchEmployees($centreBranchIds, $category)
             ->map(function ($employee) {
@@ -134,7 +137,7 @@ class BranchPortalController extends Controller
             'selected_employee_id' => $employeeId,
             'month_options' => $this->monthOptions($targetMonth),
             'employee_options' => $employeeOptions,
-            'calendar_dates' => $this->calendarDates($targetMonth),
+            'calendar_dates' => $this->calendarDates($targetMonth, $dateCategories),
             'calendar_groups' => $this->buildRosterCalendarGroups($rows, $targetMonth),
             'stats' => [
                 'rows' => $rows->count(),
@@ -204,7 +207,7 @@ class BranchPortalController extends Controller
 
     private function branchRosterRows(Carbon $targetMonth, array $centreBranchIds, string $category = '', int $employeeId = 0)
     {
-        $rosterDates = $this->rosterDates($targetMonth)
+        $rosterDates = $this->rosterDates($targetMonth, $this->selectedRosterDateCategories($category))
             ->map(function ($date) {
                 return $date->toDateString();
             })
@@ -242,7 +245,7 @@ class BranchPortalController extends Controller
         return $rows
             ->groupBy('category')
             ->map(function ($groupRows, $category) use ($targetMonth) {
-                $calendarData = $this->buildCalendarData($groupRows, $targetMonth);
+                $calendarData = $this->buildCalendarData($groupRows, $targetMonth, [(string) $category]);
 
                 return [
                     'category' => (string) $category,
@@ -256,7 +259,7 @@ class BranchPortalController extends Controller
             ->all();
     }
 
-    private function buildCalendarData($rows, Carbon $targetMonth): array
+    private function buildCalendarData($rows, Carbon $targetMonth, ?array $dateCategories = null): array
     {
         $employees = $rows
             ->groupBy('employee_id')
@@ -298,17 +301,17 @@ class BranchPortalController extends Controller
         }
 
         return [
-            'dates' => $this->calendarDates($targetMonth),
+            'dates' => $this->calendarDates($targetMonth, $dateCategories),
             'employees' => $employees,
             'cells' => $cells,
         ];
     }
 
-    private function calendarDates(Carbon $targetMonth): array
+    private function calendarDates(Carbon $targetMonth, ?array $dateCategories = null): array
     {
         return $this->monthDates($targetMonth)
-            ->map(function ($date) use ($targetMonth) {
-                $isRosterWorkingDate = $this->isRosterWorkingDate($date);
+            ->map(function ($date) use ($targetMonth, $dateCategories) {
+                $isRosterWorkingDate = $this->isRosterWorkingDate($date, $dateCategories);
 
                 return [
                     'date' => $date->toDateString(),
@@ -336,17 +339,21 @@ class BranchPortalController extends Controller
             ->values();
     }
 
-    private function rosterDates(Carbon $targetMonth)
+    private function rosterDates(Carbon $targetMonth, ?array $dateCategories = null)
     {
         return $this->monthDates($targetMonth)
-            ->filter(function ($date) {
-                return $this->isRosterWorkingDate($date);
+            ->filter(function ($date) use ($dateCategories) {
+                return $this->isRosterWorkingDate($date, $dateCategories);
             })
             ->values();
     }
 
-    private function isRosterWorkingDate(Carbon $date): bool
+    private function isRosterWorkingDate(Carbon $date, ?array $dateCategories = null): bool
     {
+        if ($this->hasFullMonthRosterCategory($dateCategories)) {
+            return true;
+        }
+
         if ($date->isSunday()) {
             return false;
         }
@@ -358,6 +365,34 @@ class BranchPortalController extends Controller
         }
 
         return true;
+    }
+
+    private function selectedRosterDateCategories(string $category): array
+    {
+        return $category !== '' ? [$category] : $this->rosterCategories();
+    }
+
+    private function hasFullMonthRosterCategory(?array $dateCategories): bool
+    {
+        foreach ($this->normalizeRosterDateCategories($dateCategories ?? []) as $category) {
+            if (in_array($category, self::FULL_MONTH_ROSTER_CATEGORIES, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeRosterDateCategories(array $dateCategories): array
+    {
+        return collect($dateCategories)
+            ->map(function ($category) {
+                return trim((string) $category);
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function resolveRosterMonth($monthValue): Carbon
