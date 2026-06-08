@@ -330,8 +330,9 @@
 
     .calendar-person {
         left: 42px;
-        align-items: flex-start;
-        justify-content: center;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
         padding: 7px 8px;
         text-align: left;
     }
@@ -360,6 +361,35 @@
         font-size: 0.56rem;
         font-weight: 700;
         text-align: left;
+    }
+
+    .calendar-person-actions {
+        flex: 0 0 auto;
+    }
+
+    .calendar-person-actions form {
+        margin: 0;
+        line-height: 1;
+    }
+
+    .teacher-delete-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        background: #fff1f2;
+        color: #b91c1c;
+        font-size: 0.64rem;
+        line-height: 1;
+    }
+
+    .teacher-delete-btn:hover {
+        background: #ffe4e6;
+        color: #991b1b;
     }
 
     .calendar-cell {
@@ -662,6 +692,17 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                             <div class="calendar-person-copy">
                                 <div class="calendar-person-name">{{ $employee['employee_name'] ?: '-' }}</div>
                                 <div class="calendar-person-meta">{{ $employee['employee_no'] ?: '-' }}</div>
+                            </div>
+                            <div class="calendar-person-actions">
+                                <form method="POST" action="{{ url('employee/schedule-roster/vhs/delete') }}" onsubmit="return confirm('Delete this teacher roster?');">
+                                    @csrf
+                                    <input type="hidden" name="delete_month" value="{{ $selectedMonthValue }}">
+                                    <input type="hidden" name="employee_id" value="{{ $employee['id'] }}">
+                                    <input type="hidden" name="branch_id" value="{{ $selectedBranchId }}">
+                                    <button type="submit" class="teacher-delete-btn" title="Delete Teacher Roster">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </div>
 

@@ -243,6 +243,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('employee/attendance-report', [EmployeeAttendanceReportController::class, 'admin'])->name('employee.attendance-report');
                 Route::match(['get', 'post'], 'employee/schedule-roster/vhs', [EmployeeScheduleRosterController::class, 'vhs'])->name('employee.schedule-roster.vhs');
                 Route::get('employee/schedule-roster/vhs/pdf', [EmployeeScheduleRosterController::class, 'vhsPdf'])->name('employee.schedule-roster.vhs.pdf');
+                Route::post('employee/schedule-roster/vhs/delete', [EmployeeScheduleRosterController::class, 'vhsDelete'])->name('employee.schedule-roster.vhs.delete');
                 Route::match(['get', 'post'], 'employee/schedule-roster/front-desk-group-d', [EmployeeScheduleRosterController::class, 'support'])->name('employee.schedule-roster.support');
                 Route::get('employee/schedule-roster/front-desk-group-d/pdf', [EmployeeScheduleRosterController::class, 'supportPdf'])->name('employee.schedule-roster.support.pdf');
                 Route::post('employee/schedule-roster/front-desk-group-d/copy', [EmployeeScheduleRosterController::class, 'supportCopy'])->name('employee.schedule-roster.support.copy');

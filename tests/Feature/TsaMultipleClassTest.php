@@ -71,10 +71,18 @@ class TsaMultipleClassTest extends TestCase
 
         DB::table('units')->insert(['id' => 2, 'name' => 'TSA']);
         DB::table('branches')->insert([
-            'id' => 1,
-            'unit_id' => 2,
-            'name' => 'Bibirhat',
-            'status' => 1,
+            [
+                'id' => 1,
+                'unit_id' => 2,
+                'name' => 'Bibirhat',
+                'status' => 1,
+            ],
+            [
+                'id' => 2,
+                'unit_id' => 2,
+                'name' => 'Mukundapur',
+                'status' => 1,
+            ],
         ]);
         DB::table('employees')->insert([
             'id' => 2,
@@ -101,6 +109,15 @@ class TsaMultipleClassTest extends TestCase
             'last_name' => 'D',
             'branch' => json_encode([1]),
             'category' => json_encode(['GROUP-D']),
+            'status' => 1,
+        ]);
+        DB::table('employees')->insert([
+            'id' => 5,
+            'employee_no' => 'NVGI-0005',
+            'first_name' => 'VHS',
+            'last_name' => 'TEACHER',
+            'branch' => json_encode([1, 2]),
+            'category' => json_encode(['VHS TEACHER']),
             'status' => 1,
         ]);
         DB::table('employee_schedule_rosters')->insert($this->rosterRow('10:00', '11:30'));
@@ -304,6 +321,57 @@ class TsaMultipleClassTest extends TestCase
         ]);
     }
 
+    public function test_vhs_teacher_roster_can_be_deleted_for_selected_branch(): void
+    {
+        DB::table('employee_schedule_rosters')->insert([
+            $this->datedRosterRow(
+                5,
+                'NVGI-0005',
+                'VHS TEACHER',
+                'VHS TEACHER',
+                Carbon::create(2026, 6, 1),
+                '10:00',
+                '15:00',
+                1,
+                'Bibirhat'
+            ),
+            $this->datedRosterRow(
+                5,
+                'NVGI-0005',
+                'VHS TEACHER',
+                'VHS TEACHER',
+                Carbon::create(2026, 6, 1),
+                '10:00',
+                '15:00',
+                2,
+                'Mukundapur'
+            ),
+        ]);
+
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/vhs/delete', 'POST', [
+            'delete_month' => '2026-06',
+            'employee_id' => 5,
+            'branch_id' => 1,
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->vhsDelete($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'category' => 'VHS TEACHER',
+            'branch_id' => 1,
+            'status' => 3,
+        ]);
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'category' => 'VHS TEACHER',
+            'branch_id' => 2,
+            'status' => 1,
+        ]);
+    }
+
     private function requestFor(string $inTime, string $outTime): Request
     {
         $request = Request::create('/employee/schedule-roster/tsa/add-class', 'POST', [
@@ -367,7 +435,9 @@ class TsaMultipleClassTest extends TestCase
         string $category,
         Carbon $rosterDate,
         string $inTime,
-        string $outTime
+        string $outTime,
+        int $branchId = 1,
+        string $branchName = 'Bibirhat'
     ): array {
         return [
             'employee_id' => $employeeId,
@@ -376,8 +446,8 @@ class TsaMultipleClassTest extends TestCase
             'category' => $category,
             'unit_id' => 2,
             'unit_name' => 'TSA',
-            'branch_id' => 1,
-            'branch_name' => 'Bibirhat',
+            'branch_id' => $branchId,
+            'branch_name' => $branchName,
             'roster_date' => $rosterDate->toDateString(),
             'roster_month' => $rosterDate->month,
             'roster_year' => $rosterDate->year,

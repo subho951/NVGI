@@ -141,6 +141,48 @@ class EmployeeScheduleRosterController extends Controller
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
+    public function vhsDelete(Request $request)
+    {
+        $targetMonth = $this->resolveRosterMonthFromValue($request->input('delete_month', Carbon::now()->format('Y-m')));
+        $employeeId = $this->positiveInt($request->input('employee_id'));
+        $branchId = $this->positiveInt($request->input('branch_id'));
+
+        if ($employeeId <= 0) {
+            return redirect()->back()->with('error_message', 'Please select a valid VHS teacher roster to delete.');
+        }
+
+        $employee = Employee::where('id', '=', $employeeId)->where('status', '!=', 3)->first();
+        if (!$employee || !$this->employeeHasCategory($employee, self::VHS_TEACHER)) {
+            return redirect()->back()->with('error_message', 'Please select a valid VHS teacher roster to delete.');
+        }
+
+        $query = EmployeeScheduleRoster::where('category', '=', self::VHS_TEACHER)
+            ->where('employee_id', '=', $employeeId)
+            ->where('roster_month', '=', (int) $targetMonth->month)
+            ->where('roster_year', '=', (int) $targetMonth->year)
+            ->where('status', '!=', 3);
+
+        if ($branchId > 0) {
+            $query->where('branch_id', '=', $branchId);
+        }
+
+        $deleted = $query->update([
+            'status' => 3,
+            'updated_by' => $this->currentUserId(),
+        ]);
+
+        $redirectQuery = [
+            'month' => $targetMonth->format('Y-m'),
+        ];
+        if ($branchId > 0) {
+            $redirectQuery['branch_id'] = $branchId;
+        }
+
+        return redirect()
+            ->to(url('employee/schedule-roster/vhs') . '?' . http_build_query($redirectQuery))
+            ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'VHS teacher roster deleted successfully.' : 'No active VHS teacher roster found to delete.');
+    }
+
     public function support(Request $request)
     {
         return $this->manualRosterPage(
