@@ -519,11 +519,11 @@
                 </div>
                 <div class="stat">
                     <strong>{{ $stats['pending'] }}</strong>
-                    <span>Need In</span>
+                    <span>Punch In</span>
                 </div>
                 <div class="stat">
                     <strong>{{ $stats['punched_in'] }}</strong>
-                    <span>Need Out</span>
+                    <span>Punch Out</span>
                 </div>
                 <div class="stat">
                     <strong>{{ $stats['completed'] }}</strong>
