@@ -169,6 +169,11 @@ class EmployeeScheduleRosterController extends Controller
         return $this->manualRosterDelete($request, self::SUPPORT_CATEGORIES, 'employee/schedule-roster/front-desk-group-d');
     }
 
+    public function supportDeleteDate(Request $request)
+    {
+        return $this->manualRosterDeleteDate($request, self::SUPPORT_CATEGORIES);
+    }
+
     public function supportShiftDate(Request $request)
     {
         return $this->manualRosterShiftDate($request, self::SUPPORT_CATEGORIES);
@@ -339,23 +344,7 @@ class EmployeeScheduleRosterController extends Controller
 
     public function tsaDeleteDate(Request $request)
     {
-        $rosterId = $this->positiveInt($request->input('roster_id'));
-
-        if ($rosterId <= 0) {
-            return redirect()->back()->with('error_message', 'Please select a valid TSA roster date to delete.');
-        }
-
-        $deleted = EmployeeScheduleRoster::where('id', '=', $rosterId)
-            ->where('category', '=', self::TSA_TEACHER)
-            ->where('status', '!=', 3)
-            ->update([
-                'status' => 3,
-                'updated_by' => $this->currentUserId(),
-            ]);
-
-        return redirect()
-            ->back()
-            ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'TSA roster date deleted successfully.' : 'No active TSA roster date found to delete.');
+        return $this->manualRosterDeleteDate($request, self::TSA_CATEGORIES);
     }
 
     public function employeeRosterPdf(Request $request, $employeeId)
@@ -480,9 +469,9 @@ class EmployeeScheduleRosterController extends Controller
             'shiftDateRoute' => $routePath . '/shift-date',
             'additionalClassRoute' => $allowReschedule ? $routePath . '/add-class' : '',
             'rescheduleRoute' => $allowReschedule ? $routePath . '/reschedule' : '',
-            'dateDeleteRoute' => $allowReschedule ? $routePath . '/delete-date' : '',
+            'dateDeleteRoute' => $routePath . '/delete-date',
             'allowReschedule' => $allowReschedule,
-            'allowDateDelete' => $allowReschedule,
+            'allowDateDelete' => true,
             'allowAdditionalClass' => $allowReschedule,
             'allowWholeEmployeeDelete' => !$allowReschedule,
             'supportCategories' => $allowedCategories,
@@ -594,6 +583,27 @@ class EmployeeScheduleRosterController extends Controller
         return redirect()
             ->to(url($routePath) . '?month=' . $targetMonth->format('Y-m') . '&category=' . urlencode($category) . '&branch_name=' . urlencode($branchName))
             ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'Roster deleted successfully.' : 'No active roster found to delete.');
+    }
+
+    private function manualRosterDeleteDate(Request $request, array $allowedCategories)
+    {
+        $rosterId = $this->positiveInt($request->input('roster_id'));
+
+        if ($rosterId <= 0) {
+            return redirect()->back()->with('error_message', 'Please select a valid roster date to delete.');
+        }
+
+        $deleted = EmployeeScheduleRoster::where('id', '=', $rosterId)
+            ->whereIn('category', $allowedCategories)
+            ->where('status', '!=', 3)
+            ->update([
+                'status' => 3,
+                'updated_by' => $this->currentUserId(),
+            ]);
+
+        return redirect()
+            ->back()
+            ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'Roster date deleted successfully.' : 'No active roster date found to delete.');
     }
 
     private function manualRosterShiftDate(Request $request, array $allowedCategories)

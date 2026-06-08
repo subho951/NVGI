@@ -94,6 +94,15 @@ class TsaMultipleClassTest extends TestCase
             'category' => json_encode(['FRONT-DESK']),
             'status' => 1,
         ]);
+        DB::table('employees')->insert([
+            'id' => 4,
+            'employee_no' => 'NVGI-0004',
+            'first_name' => 'GROUP',
+            'last_name' => 'D',
+            'branch' => json_encode([1]),
+            'category' => json_encode(['GROUP-D']),
+            'status' => 1,
+        ]);
         DB::table('employee_schedule_rosters')->insert($this->rosterRow('10:00', '11:30'));
     }
 
@@ -242,6 +251,56 @@ class TsaMultipleClassTest extends TestCase
             'category' => 'TSA TEACHER',
             'roster_date' => '2026-06-13',
             'status' => 1,
+        ]);
+    }
+
+    public function test_group_d_individual_roster_date_can_be_deleted(): void
+    {
+        DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
+            4,
+            'NVGI-0004',
+            'GROUP D',
+            'GROUP-D',
+            Carbon::create(2026, 6, 18),
+            '08:30',
+            '20:00'
+        ));
+        $rosterId = (int) EmployeeScheduleRoster::where('employee_id', 4)->value('id');
+
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/front-desk-group-d/delete-date', 'POST', [
+            'roster_id' => $rosterId,
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->supportDeleteDate($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $rosterId,
+            'employee_id' => 4,
+            'category' => 'GROUP-D',
+            'roster_date' => '2026-06-18',
+            'status' => 3,
+        ]);
+    }
+
+    public function test_tsa_individual_roster_date_can_be_deleted(): void
+    {
+        $rosterId = (int) EmployeeScheduleRoster::where('employee_id', 2)->value('id');
+
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/tsa/delete-date', 'POST', [
+            'roster_id' => $rosterId,
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->tsaDeleteDate($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $rosterId,
+            'employee_id' => 2,
+            'category' => 'TSA TEACHER',
+            'status' => 3,
         ]);
     }
 

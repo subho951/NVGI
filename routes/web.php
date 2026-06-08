@@ -247,6 +247,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('employee/schedule-roster/front-desk-group-d/pdf', [EmployeeScheduleRosterController::class, 'supportPdf'])->name('employee.schedule-roster.support.pdf');
                 Route::post('employee/schedule-roster/front-desk-group-d/copy', [EmployeeScheduleRosterController::class, 'supportCopy'])->name('employee.schedule-roster.support.copy');
                 Route::post('employee/schedule-roster/front-desk-group-d/delete', [EmployeeScheduleRosterController::class, 'supportDelete'])->name('employee.schedule-roster.support.delete');
+                Route::post('employee/schedule-roster/front-desk-group-d/delete-date', [EmployeeScheduleRosterController::class, 'supportDeleteDate'])->name('employee.schedule-roster.support.delete-date');
                 Route::post('employee/schedule-roster/front-desk-group-d/shift-date', [EmployeeScheduleRosterController::class, 'supportShiftDate'])->name('employee.schedule-roster.support.shift-date');
                 Route::match(['get', 'post'], 'employee/schedule-roster/tsa', [EmployeeScheduleRosterController::class, 'tsa'])->name('employee.schedule-roster.tsa');
                 Route::get('employee/schedule-roster/tsa/pdf', [EmployeeScheduleRosterController::class, 'tsaPdf'])->name('employee.schedule-roster.tsa.pdf');
