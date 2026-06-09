@@ -121,6 +121,135 @@
         box-shadow: 0 8px 20px rgba(23, 32, 51, 0.05);
     }
 
+    .roster-create-panel {
+        padding: 14px;
+        border: 1px solid var(--roster-border);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 8px 20px rgba(23, 32, 51, 0.05);
+    }
+
+    .roster-panel-head,
+    .roster-date-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .roster-panel-title {
+        margin: 0;
+        color: var(--roster-ink);
+        font-size: 1rem;
+        font-weight: 850;
+    }
+
+    .roster-month-loader {
+        display: flex;
+        align-items: end;
+        gap: 8px;
+    }
+
+    .roster-create-grid {
+        display: grid;
+        grid-template-columns: 1.7fr 1.3fr 1fr 1fr auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .roster-create-panel .form-label {
+        margin-bottom: 4px;
+        color: var(--roster-muted);
+        font-size: 0.68rem;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .roster-create-panel .form-control,
+    .roster-create-panel .form-select,
+    .roster-create-panel .btn {
+        min-height: 38px;
+        border-radius: 7px;
+        font-size: 0.84rem;
+    }
+
+    .roster-date-tools {
+        margin: 14px 0 8px;
+        color: var(--roster-muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .roster-date-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .roster-date-cell {
+        min-width: 0;
+        padding: 8px;
+        border: 1px solid var(--roster-border);
+        border-radius: 8px;
+        background: #fbfcfe;
+    }
+
+    .roster-date-cell.is-skipped {
+        display: flex;
+        min-height: 82px;
+        align-items: center;
+        justify-content: center;
+        background: #fff1f1;
+        color: #a13b3b;
+    }
+
+    .roster-date-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        margin-bottom: 6px;
+        color: var(--roster-ink);
+        font-size: 0.72rem;
+        font-weight: 850;
+    }
+
+    .roster-date-day {
+        color: var(--roster-muted);
+        font-size: 0.66rem;
+    }
+
+    .roster-date-time {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+    }
+
+    .roster-date-time .form-control {
+        min-width: 0;
+        padding: 5px;
+        font-size: 0.72rem;
+    }
+
+    .roster-date-reset {
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        border-radius: 5px;
+        background: #eef2f7;
+        color: #475569;
+        font-size: 0.62rem;
+    }
+
+    .roster-off-pill {
+        font-size: 0.68rem;
+        font-weight: 850;
+        text-transform: uppercase;
+    }
+
     .roster-search-grid {
         display: grid;
         grid-template-columns: 1fr 1.4fr 1.8fr auto auto;
@@ -562,6 +691,14 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .roster-create-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .roster-date-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
         .roster-toolbar {
             justify-content: flex-start;
         }
@@ -574,6 +711,17 @@
 
         .roster-search-grid {
             grid-template-columns: 1fr;
+        }
+
+        .roster-create-grid,
+        .roster-date-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .roster-panel-head,
+        .roster-month-loader {
+            align-items: stretch;
+            flex-direction: column;
         }
 
         .roster-topbar {
@@ -598,9 +746,13 @@ $calendarEmployees = $calendarEmployees ?? [];
 $calendarCells = $calendarCells ?? [];
 $branchOptions = $branchOptions ?? [];
 $employeeOptions = $employeeOptions ?? [];
+$individualEmployees = $individualEmployees ?? [];
+$individualBranchOptions = $individualBranchOptions ?? [];
+$individualCalendarDates = $individualCalendarDates ?? [];
 $branchColorLegend = $branchColorLegend ?? [];
 $selectedBranchId = (int) ($selectedBranchId ?? 0);
 $selectedEmployeeId = (int) ($selectedEmployeeId ?? 0);
+$individualWorkingDateCount = collect($individualCalendarDates)->where('is_roster_working_date', true)->count();
 $dateColumns = collect($calendarDates)->map(function ($date) {
     return !empty($date['is_skipped_date']) ? '16px' : 'minmax(42px, 1fr)';
 })->implode(' ');
@@ -627,7 +779,7 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                 </select>
             </div>
             <button type="submit" class="btn btn-roster-primary">
-                <i class="fa-solid fa-calendar-plus me-1"></i> Generate
+                <i class="fa-solid fa-calendar-plus me-1"></i> Generate All
             </button>
             @if($rosterRows->isNotEmpty())
                 <a href="{{ $pdfUrl }}" class="btn btn-roster-pdf">
@@ -653,6 +805,134 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     @endif
+
+    <section class="roster-create-panel mb-3">
+        <div class="roster-panel-head mb-3">
+            <div>
+                <h3 class="roster-panel-title">Create Individual Roster</h3>
+                <div class="roster-range">Select one VHS teacher and enter the required working dates.</div>
+            </div>
+            <form method="GET" action="{{ url('employee/schedule-roster/vhs') }}" class="roster-month-loader">
+                <div>
+                    <label for="individual_month" class="form-label">Month & Year</label>
+                    <select name="month" id="individual_month" class="form-select">
+                        @foreach(($monthOptions ?? []) as $monthOption)
+                            <option value="{{ $monthOption['value'] }}" {{ $selectedMonthValue === $monthOption['value'] ? 'selected' : '' }}>
+                                {{ $monthOption['label'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-light border fw-bold">
+                    <i class="fa-solid fa-rotate me-1"></i> Load
+                </button>
+            </form>
+        </div>
+
+        <form method="POST" action="{{ url('employee/schedule-roster/vhs/individual') }}">
+            @csrf
+            <input type="hidden" name="category" value="VHS TEACHER">
+            <input type="hidden" name="month" value="{{ $selectedMonthValue }}">
+
+            <div class="roster-create-grid">
+                <div>
+                    <label for="individual_employee_id" class="form-label">Employee</label>
+                    <select name="employee_id" id="individual_employee_id" class="form-select" required>
+                        <option value="">Select VHS Teacher</option>
+                        @foreach($individualEmployees as $employee)
+                            <option value="{{ $employee['id'] }}" {{ (string) old('employee_id') === (string) $employee['id'] ? 'selected' : '' }}>
+                                {{ $employee['label'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="individual_branch_name" class="form-label">Branch</label>
+                    <select name="branch_name" id="individual_branch_name" class="form-select" required>
+                        @foreach($individualBranchOptions as $branch)
+                            <option value="{{ $branch['name'] }}" {{ old('branch_name') === $branch['name'] ? 'selected' : '' }}>
+                                {{ $branch['label'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="individual_bulk_in_time" class="form-label">From Time</label>
+                    <input type="time" id="individual_bulk_in_time" class="form-control">
+                </div>
+                <div>
+                    <label for="individual_bulk_out_time" class="form-label">To Time</label>
+                    <input type="time" id="individual_bulk_out_time" class="form-control">
+                </div>
+                <div>
+                    <button type="button" class="btn btn-light border fw-bold w-100" id="fillIndividualWorkingDates">
+                        <i class="fa-solid fa-copy me-1"></i> Fill
+                    </button>
+                </div>
+            </div>
+
+            @if(empty($individualEmployees))
+                <div class="alert alert-warning mt-3 mb-0">No VHS teachers are available for individual roster creation in {{ $selectedMonthLabel }}.</div>
+            @endif
+
+            <div class="roster-date-tools">
+                <span>{{ $selectedMonthLabel }}</span>
+                <span>{{ $individualWorkingDateCount }} working dates</span>
+            </div>
+
+            <div class="roster-date-grid">
+                @foreach($individualCalendarDates as $date)
+                    <?php
+                        $dateKey = $date['date'];
+                        $oldInTime = old('times.' . $dateKey . '.in_time');
+                        $oldOutTime = old('times.' . $dateKey . '.out_time');
+                    ?>
+                    <div class="roster-date-cell {{ $date['is_skipped_date'] ? 'is-skipped' : '' }}">
+                        @if($date['is_skipped_date'])
+                            <span class="roster-off-pill">{{ $date['date_label'] }} {{ $date['month_label'] }} | Blank</span>
+                        @else
+                            <div class="roster-date-head">
+                                <span>{{ $date['date_label'] }} {{ $date['month_label'] }} <span class="roster-date-day">{{ $date['short_day_label'] }}</span></span>
+                                <button type="button"
+                                        class="roster-date-reset reset-individual-date"
+                                        data-date-key="{{ $dateKey }}"
+                                        title="Reset Date"
+                                        aria-label="Reset {{ $date['date_label'] }} {{ $date['month_label'] }}">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                </button>
+                            </div>
+                            <div class="roster-date-time">
+                                <div>
+                                    <label for="individual_in_{{ $dateKey }}" class="form-label">From</label>
+                                    <input type="time"
+                                           id="individual_in_{{ $dateKey }}"
+                                           name="times[{{ $dateKey }}][in_time]"
+                                           value="{{ $oldInTime }}"
+                                           class="form-control individual-working-in-time"
+                                           data-date-key="{{ $dateKey }}">
+                                </div>
+                                <div>
+                                    <label for="individual_out_{{ $dateKey }}" class="form-label">To</label>
+                                    <input type="time"
+                                           id="individual_out_{{ $dateKey }}"
+                                           name="times[{{ $dateKey }}][out_time]"
+                                           value="{{ $oldOutTime }}"
+                                           class="form-control individual-working-out-time"
+                                           data-date-key="{{ $dateKey }}">
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-3 text-end">
+                <button type="submit" class="btn btn-roster-primary" {{ empty($individualEmployees) ? 'disabled' : '' }}>
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Save Individual Roster
+                </button>
+            </div>
+        </form>
+    </section>
 
     <section class="roster-search-panel mb-3">
         <form method="GET" action="{{ url('employee/schedule-roster/vhs') }}" class="roster-search-grid">
@@ -887,6 +1167,36 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                 button.getAttribute('data-date') || '',
                 button.getAttribute('data-branch') || ''
             ].filter(Boolean).join(' | ');
+        });
+
+        var fillWorkingDatesButton = document.getElementById('fillIndividualWorkingDates');
+        if (fillWorkingDatesButton) {
+            fillWorkingDatesButton.addEventListener('click', function () {
+                var inTime = document.getElementById('individual_bulk_in_time').value;
+                var outTime = document.getElementById('individual_bulk_out_time').value;
+
+                document.querySelectorAll('.individual-working-in-time').forEach(function (input) {
+                    input.value = inTime;
+                });
+                document.querySelectorAll('.individual-working-out-time').forEach(function (input) {
+                    input.value = outTime;
+                });
+            });
+        }
+
+        document.querySelectorAll('.reset-individual-date').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var dateKey = button.getAttribute('data-date-key');
+                var inTime = document.querySelector('.individual-working-in-time[data-date-key="' + dateKey + '"]');
+                var outTime = document.querySelector('.individual-working-out-time[data-date-key="' + dateKey + '"]');
+
+                if (inTime) {
+                    inTime.value = '';
+                }
+                if (outTime) {
+                    outTime.value = '';
+                }
+            });
         });
     });
 </script>

@@ -242,6 +242,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('employee/change-status/{id}', [EmployeeController::class, 'change_status']);
                 Route::get('employee/attendance-report', [EmployeeAttendanceReportController::class, 'admin'])->name('employee.attendance-report');
                 Route::match(['get', 'post'], 'employee/schedule-roster/vhs', [EmployeeScheduleRosterController::class, 'vhs'])->name('employee.schedule-roster.vhs');
+                Route::post('employee/schedule-roster/vhs/individual', [EmployeeScheduleRosterController::class, 'vhsIndividual'])->name('employee.schedule-roster.vhs.individual');
                 Route::get('employee/schedule-roster/vhs/pdf', [EmployeeScheduleRosterController::class, 'vhsPdf'])->name('employee.schedule-roster.vhs.pdf');
                 Route::post('employee/schedule-roster/vhs/delete', [EmployeeScheduleRosterController::class, 'vhsDelete'])->name('employee.schedule-roster.vhs.delete');
                 Route::post('employee/schedule-roster/vhs/update-time', [EmployeeScheduleRosterController::class, 'vhsUpdateTime'])->name('employee.schedule-roster.vhs.update-time');

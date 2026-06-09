@@ -373,6 +373,50 @@ class TsaMultipleClassTest extends TestCase
         ]);
     }
 
+    public function test_vhs_individual_roster_can_be_created_for_selected_employee(): void
+    {
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/vhs/individual', 'POST', [
+            'category' => 'VHS TEACHER',
+            'month' => '2026-06',
+            'employee_id' => 5,
+            'branch_name' => 'Bibirhat',
+            'times' => [
+                '2026-06-01' => [
+                    'in_time' => '10:00',
+                    'out_time' => '15:00',
+                ],
+                '2026-06-06' => [
+                    'in_time' => '09:30',
+                    'out_time' => '14:30',
+                ],
+            ],
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->vhsIndividual($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'category' => 'VHS TEACHER',
+            'branch_id' => 1,
+            'roster_date' => '2026-06-01',
+            'in_time' => '10:00',
+            'out_time' => '15:00',
+            'status' => 1,
+        ]);
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'category' => 'VHS TEACHER',
+            'branch_id' => 1,
+            'roster_date' => '2026-06-06',
+            'in_time' => '09:30',
+            'out_time' => '14:30',
+            'status' => 1,
+        ]);
+        $this->assertSame(2, EmployeeScheduleRoster::where('employee_id', 5)->count());
+    }
+
     public function test_vhs_first_saturday_roster_time_can_be_updated(): void
     {
         DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(

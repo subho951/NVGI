@@ -18,6 +18,7 @@ class EmployeeScheduleRosterController extends Controller
 {
     private const VHS_TEACHER = 'VHS TEACHER';
     private const TSA_TEACHER = 'TSA TEACHER';
+    private const VHS_CATEGORIES = ['VHS TEACHER'];
     private const SUPPORT_CATEGORIES = ['FRONT-DESK', 'GROUP-D'];
     private const TSA_CATEGORIES = ['TSA TEACHER'];
     private const ALL_ROSTER_CATEGORIES = ['VHS TEACHER', 'TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
@@ -81,6 +82,9 @@ class EmployeeScheduleRosterController extends Controller
             'selectedEmployeeLabel' => $this->employeeLabelById($selectedEmployeeId),
             'branchOptions' => $this->rosterBranchOptionsForCategory(self::VHS_TEACHER),
             'employeeOptions' => $this->rosterEmployeeOptionsForCategory(self::VHS_TEACHER),
+            'individualEmployees' => $this->availableSupportEmployeesForManual(self::VHS_TEACHER, $targetMonth, self::VHS_CATEGORIES),
+            'individualBranchOptions' => $this->supportBranchOptions(),
+            'individualCalendarDates' => $this->calendarDates($targetMonth, self::VHS_CATEGORIES),
             'monthStartDate' => $targetMonth->copy()->startOfMonth(),
             'monthEndDate' => $targetMonth->copy()->endOfMonth(),
             'eligibleTeacherCount' => $this->eligibleEmployees(self::VHS_TEACHER)->count(),
@@ -99,6 +103,15 @@ class EmployeeScheduleRosterController extends Controller
         $data = $this->siteAuthService->admin_after_login_layout($title, $pageName, $data);
 
         return view('front.pages.' . $pageName, $data);
+    }
+
+    public function vhsIndividual(Request $request)
+    {
+        return $this->storeSupportRoster(
+            $request,
+            self::VHS_CATEGORIES,
+            'employee/schedule-roster/vhs'
+        );
     }
 
     public function vhsPdf(Request $request)
