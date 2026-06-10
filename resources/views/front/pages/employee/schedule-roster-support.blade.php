@@ -1125,6 +1125,8 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                                                         data-branch-name="{{ $groupBranchName !== 'All Branches' ? $groupBranchName : '' }}"
                                                         data-source-date="{{ $date['date'] }}"
                                                         data-source-label="{{ $date['date_label'] }} {{ $date['month_label'] }}"
+                                                        data-in-time="{{ $cellShifts[0]['in_time'] ?? '' }}"
+                                                        data-out-time="{{ $cellShifts[0]['out_time'] ?? '' }}"
                                                         data-month-start="{{ $monthStartDate->toDateString() }}"
                                                         data-month-end="{{ $monthEndDate->toDateString() }}">
                                                     <i class="fa-solid fa-right-left"></i>
@@ -1239,8 +1241,22 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <label for="shift_target_date" class="form-label">Shift With Date</label>
-                    <input type="date" name="target_date" id="shift_target_date" class="form-control" required>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="shift_target_date" class="form-label">Shift With Date</label>
+                            <input type="date" name="target_date" id="shift_target_date" class="form-control" required>
+                        </div>
+                        @if($allowReschedule)
+                            <div class="col-6">
+                                <label for="shift_in_time" class="form-label">From Time</label>
+                                <input type="time" name="in_time" id="shift_in_time" class="form-control" required>
+                            </div>
+                            <div class="col-6">
+                                <label for="shift_out_time" class="form-label">To Time</label>
+                                <input type="time" name="out_time" id="shift_out_time" class="form-control" required>
+                            </div>
+                        @endif
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
@@ -1331,6 +1347,8 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 var sourceDate = button.getAttribute('data-source-date') || '';
                 var sourceLabel = button.getAttribute('data-source-label') || '';
                 var targetInput = document.getElementById('shift_target_date');
+                var inTimeInput = document.getElementById('shift_in_time');
+                var outTimeInput = document.getElementById('shift_out_time');
 
                 document.getElementById('shift_employee_id').value = button.getAttribute('data-employee-id') || '';
                 document.getElementById('shift_category').value = button.getAttribute('data-category') || '';
@@ -1341,6 +1359,14 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 targetInput.value = '';
                 targetInput.min = button.getAttribute('data-month-start') || '';
                 targetInput.max = button.getAttribute('data-month-end') || '';
+
+                if (inTimeInput) {
+                    inTimeInput.value = (button.getAttribute('data-in-time') || '').substring(0, 5);
+                }
+
+                if (outTimeInput) {
+                    outTimeInput.value = (button.getAttribute('data-out-time') || '').substring(0, 5);
+                }
             });
         }
 

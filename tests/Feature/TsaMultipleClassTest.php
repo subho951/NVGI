@@ -249,8 +249,10 @@ class TsaMultipleClassTest extends TestCase
             'category' => 'TSA TEACHER',
             'employee_id' => 2,
             'branch_name' => '',
-            'source_date' => '2026-06-10',
+            'source_date' => '2026-06-11',
             'target_date' => '2026-06-13',
+            'in_time' => '15:30',
+            'out_time' => '17:30',
         ]);
         $request->setLaravelSession(app('session')->driver());
 
@@ -259,15 +261,47 @@ class TsaMultipleClassTest extends TestCase
         $this->assertDatabaseHas('employee_schedule_rosters', [
             'employee_id' => 2,
             'category' => 'TSA TEACHER',
-            'roster_date' => '2026-06-10',
-            'in_time' => '14:00',
-            'out_time' => '16:00',
+            'roster_date' => '2026-06-11',
+            'in_time' => '15:30',
+            'out_time' => '17:30',
             'status' => 1,
         ]);
         $this->assertDatabaseMissing('employee_schedule_rosters', [
             'employee_id' => 2,
             'category' => 'TSA TEACHER',
             'roster_date' => '2026-06-13',
+            'status' => 1,
+        ]);
+    }
+
+    public function test_tsa_duty_can_be_shifted_to_weekoff_with_new_time(): void
+    {
+        $controller = app(EmployeeScheduleRosterController::class);
+        $request = Request::create('/employee/schedule-roster/tsa/shift-date', 'POST', [
+            'category' => 'TSA TEACHER',
+            'employee_id' => 2,
+            'branch_name' => '',
+            'source_date' => now()->toDateString(),
+            'target_date' => '2026-06-12',
+            'in_time' => '12:30',
+            'out_time' => '14:30',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        $controller->tsaShiftDate($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 2,
+            'category' => 'TSA TEACHER',
+            'roster_date' => '2026-06-12',
+            'in_time' => '12:30',
+            'out_time' => '14:30',
+            'status' => 1,
+        ]);
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 2,
+            'category' => 'TSA TEACHER',
+            'roster_date' => now()->toDateString(),
             'status' => 1,
         ]);
     }

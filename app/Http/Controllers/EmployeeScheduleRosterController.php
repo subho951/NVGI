@@ -310,7 +310,7 @@ class EmployeeScheduleRosterController extends Controller
 
     public function tsaShiftDate(Request $request)
     {
-        return $this->manualRosterShiftDate($request, self::TSA_CATEGORIES);
+        return $this->manualRosterShiftDate($request, self::TSA_CATEGORIES, true);
     }
 
     public function tsaAddClass(Request $request)
@@ -713,16 +713,26 @@ class EmployeeScheduleRosterController extends Controller
             ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'Roster date deleted successfully.' : 'No active roster date found to delete.');
     }
 
-    private function manualRosterShiftDate(Request $request, array $allowedCategories)
+    private function manualRosterShiftDate(Request $request, array $allowedCategories, bool $updateDutyTime = false)
     {
         $category = $this->resolveSupportCategory($request->input('category', ''), $allowedCategories);
         $employeeId = $this->positiveInt($request->input('employee_id'));
         $branchName = $this->resolveShiftBranchFilter($request->input('branch_name', ''));
         $sourceDate = $this->parseRosterDateValue($request->input('source_date', ''));
         $targetDate = $this->parseRosterDateValue($request->input('target_date', ''));
+        $inTime = $updateDutyTime ? $this->normalizeSubmittedTime($request->input('in_time', '')) : null;
+        $outTime = $updateDutyTime ? $this->normalizeSubmittedTime($request->input('out_time', '')) : null;
 
         if ($employeeId <= 0 || !$sourceDate || !$targetDate) {
             return redirect()->back()->withInput()->with('error_message', 'Please select a valid employee, source date and target date.');
+        }
+
+        if ($updateDutyTime && (!$inTime || !$outTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'Please select from time and to time.');
+        }
+
+        if ($updateDutyTime && !$this->isValidRosterTimeRange($inTime, $outTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'Class end time must be after class start time.');
         }
 
         if ($sourceDate->isSameDay($targetDate)) {
@@ -748,7 +758,7 @@ class EmployeeScheduleRosterController extends Controller
             'rows' => 0,
         ];
 
-        DB::transaction(function () use ($employeeId, $category, $branchName, $sourceDate, $targetDate, &$result) {
+        DB::transaction(function () use ($employeeId, $category, $branchName, $sourceDate, $targetDate, $updateDutyTime, $inTime, $outTime, &$result) {
             $sourceRows = $this->manualRosterShiftRows($employeeId, $category, $sourceDate, $branchName)
                 ->lockForUpdate()
                 ->get();
@@ -772,6 +782,27 @@ class EmployeeScheduleRosterController extends Controller
                 return;
             }
 
+            $dutyRows = $sourceRows->isNotEmpty() ? $sourceRows : $targetRows;
+            $dutyTargetDate = $sourceRows->isNotEmpty() ? $targetDate : $sourceDate;
+
+            if ($updateDutyTime && $dutyRows->count() !== 1) {
+                $result['message'] = 'Please shift a date containing one TSA class at a time when changing duty time.';
+
+                return;
+            }
+
+            if ($updateDutyTime && $this->hasOverlappingTsaClassOutsideRows(
+                $employeeId,
+                $dutyTargetDate,
+                $inTime,
+                $outTime,
+                $rowIds
+            )) {
+                $result['message'] = 'This TSA teacher already has another class overlapping the selected time.';
+
+                return;
+            }
+
             $userId = $this->currentUserId();
             if ($sourceRows->isNotEmpty() && $targetRows->isNotEmpty()) {
                 $temporaryDate = $this->temporaryRosterSwapDate($sourceRows);
@@ -782,16 +813,29 @@ class EmployeeScheduleRosterController extends Controller
             }
 
             foreach ($targetRows as $row) {
-                $this->applyRosterDate($row, $sourceDate, $userId);
+                $this->applyRosterDate(
+                    $row,
+                    $sourceDate,
+                    $userId,
+                    $updateDutyTime && $sourceRows->isEmpty() ? $inTime : null,
+                    $updateDutyTime && $sourceRows->isEmpty() ? $outTime : null
+                );
             }
 
             foreach ($sourceRows as $row) {
-                $this->applyRosterDate($row, $targetDate, $userId);
+                $this->applyRosterDate(
+                    $row,
+                    $targetDate,
+                    $userId,
+                    $updateDutyTime ? $inTime : null,
+                    $updateDutyTime ? $outTime : null
+                );
             }
 
             $result['shifted'] = true;
             $result['rows'] = count($rowIds);
-            $result['message'] = 'Duty/weekoff shifted between ' . $sourceDate->format('d-m-Y') . ' and ' . $targetDate->format('d-m-Y') . '.';
+            $result['message'] = 'Duty/weekoff shifted between ' . $sourceDate->format('d-m-Y') . ' and ' . $targetDate->format('d-m-Y')
+                . ($updateDutyTime ? ' with updated duty time.' : '.');
         });
 
         return redirect()
@@ -1654,15 +1698,22 @@ class EmployeeScheduleRosterController extends Controller
         return $query->exists();
     }
 
-    private function applyRosterDate($row, Carbon $rosterDate, int $userId): void
+    private function applyRosterDate($row, Carbon $rosterDate, int $userId, ?string $inTime = null, ?string $outTime = null): void
     {
-        $row->fill([
+        $values = [
             'roster_date' => $rosterDate->toDateString(),
             'roster_month' => (int) $rosterDate->month,
             'roster_year' => (int) $rosterDate->year,
             'day_name' => $rosterDate->format('l'),
             'updated_by' => $userId,
-        ]);
+        ];
+
+        if ($inTime !== null && $outTime !== null) {
+            $values['in_time'] = $inTime;
+            $values['out_time'] = $outTime;
+        }
+
+        $row->fill($values);
         $row->save();
     }
 
@@ -2035,6 +2086,27 @@ class EmployeeScheduleRosterController extends Controller
 
         if ($excludeRosterId > 0) {
             $query->where('id', '!=', $excludeRosterId);
+        }
+
+        return $query->exists();
+    }
+
+    private function hasOverlappingTsaClassOutsideRows(
+        int $employeeId,
+        Carbon $rosterDate,
+        string $inTime,
+        string $outTime,
+        array $excludeRosterIds = []
+    ): bool {
+        $query = EmployeeScheduleRoster::where('employee_id', '=', $employeeId)
+            ->where('category', '=', self::TSA_TEACHER)
+            ->whereDate('roster_date', '=', $rosterDate->toDateString())
+            ->where('status', '!=', 3)
+            ->where('in_time', '<', $outTime)
+            ->where('out_time', '>', $inTime);
+
+        if (!empty($excludeRosterIds)) {
+            $query->whereNotIn('id', array_values(array_filter(array_map('intval', $excludeRosterIds))));
         }
 
         return $query->exists();
