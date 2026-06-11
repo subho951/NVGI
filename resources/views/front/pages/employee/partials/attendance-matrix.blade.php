@@ -53,24 +53,9 @@
         min-width: 44px;
     }
 
-    .attendance-matrix .code-column {
-        width: 112px;
-        min-width: 112px;
-    }
-
     .attendance-matrix .employee-column {
-        width: 190px;
-        min-width: 190px;
-    }
-
-    .attendance-matrix .category-column {
-        width: 125px;
-        min-width: 125px;
-    }
-
-    .attendance-matrix .location-column {
-        width: 125px;
-        min-width: 125px;
+        width: 260px;
+        min-width: 260px;
     }
 
     .attendance-matrix .count-column {
@@ -96,15 +81,28 @@
     }
 
     .attendance-matrix .sticky-serial { left: 0; }
-    .attendance-matrix .sticky-code { left: 44px; }
     .attendance-matrix .sticky-employee {
-        left: 156px;
+        left: 44px;
         box-shadow: 8px 0 12px rgba(31, 58, 84, .05);
     }
 
     .attendance-employee-name {
         font-weight: 900;
         white-space: normal;
+    }
+
+    .attendance-employee-code {
+        margin-top: 3px;
+        color: #52647a;
+        font-size: 9px;
+        font-weight: 900;
+    }
+
+    .attendance-employee-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 7px;
     }
 
     .attendance-category,
@@ -306,8 +304,8 @@
 
     @media (max-width: 760px) {
         .attendance-matrix .employee-column {
-            width: 155px;
-            min-width: 155px;
+            width: 210px;
+            min-width: 210px;
         }
 
         .attendance-matrix .sticky-employee {
@@ -323,10 +321,7 @@
                 <thead>
                     <tr>
                         <th class="serial-column sticky-column sticky-serial">#</th>
-                        <th class="code-column sticky-column sticky-code">Employee Code</th>
-                        <th class="employee-column sticky-column sticky-employee">Employee</th>
-                        <th class="category-column">Department</th>
-                        <th class="location-column">Location</th>
+                        <th class="employee-column sticky-column sticky-employee">Employee Details</th>
                         <th class="count-column">Late</th>
                         <th class="count-column">Absent</th>
                         @foreach($report_dates as $reportDate)
@@ -341,15 +336,13 @@
                     @foreach($rows as $row)
                         <tr>
                             <td class="serial-column sticky-column sticky-serial">{{ $loop->iteration }}</td>
-                            <td class="code-column sticky-column sticky-code">{{ $row['employee_no'] ?: '-' }}</td>
                             <td class="employee-column sticky-column sticky-employee">
                                 <div class="attendance-employee-name">{{ $row['employee_name'] ?: '-' }}</div>
-                            </td>
-                            <td class="category-column">
-                                <span class="attendance-category">{{ $row['categories'] ?: '-' }}</span>
-                            </td>
-                            <td class="location-column">
-                                <span class="attendance-location">{{ $row['branches'] ?: '-' }}</span>
+                                <div class="attendance-employee-code">{{ $row['employee_no'] ?: '-' }}</div>
+                                <div class="attendance-employee-details">
+                                    <span class="attendance-category">{{ $row['categories'] ?: '-' }}</span>
+                                    <span class="attendance-location">{{ $row['branches'] ?: '-' }}</span>
+                                </div>
                             </td>
                             <td class="count-column">
                                 <span

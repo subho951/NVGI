@@ -674,13 +674,14 @@ $additionalClassRoute = $additionalClassRoute ?? '';
 $rescheduleRoute = $rescheduleRoute ?? '';
 $dateDeleteRoute = $dateDeleteRoute ?? '';
 $allowAdditionalClass = !empty($allowAdditionalClass);
+$allowTimeEdit = !empty($allowTimeEdit);
 $allowReschedule = !empty($allowReschedule);
 $allowDateDelete = !empty($allowDateDelete);
 $allowWholeEmployeeDelete = $allowWholeEmployeeDelete ?? true;
 $additionalClassEmployees = $additionalClassEmployees ?? [];
 $additionalClassDates = collect($additionalClassDates ?? [])->where('is_roster_working_date', true)->values()->all();
-$dateColumns = collect($calendarDates)->map(function ($date) use ($allowReschedule) {
-    return !empty($date['is_skipped_date']) ? '16px' : ($allowReschedule ? 'minmax(54px, 1fr)' : 'minmax(42px, 1fr)');
+$dateColumns = collect($calendarDates)->map(function ($date) use ($allowTimeEdit) {
+    return !empty($date['is_skipped_date']) ? '16px' : ($allowTimeEdit ? 'minmax(54px, 1fr)' : 'minmax(42px, 1fr)');
 })->implode(' ');
 $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date', true)->count();
 ?>
@@ -707,8 +708,8 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 </a>
             @endif
             <span class="btn btn-light border fw-bold">
-                @if($allowReschedule)
-                    <i class="fa-solid fa-clock me-1"></i> Edit before 48h
+                @if($allowTimeEdit)
+                    <i class="fa-solid fa-pen me-1"></i> All Dates Editable
                 @else
                     <i class="fa-solid fa-lock me-1"></i> Locked
                 @endif
@@ -1139,12 +1140,12 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                                                 <div class="shift-card {{ $shift['shift_class'] }}" title="{{ $shift['branch_name'] ?: '-' }} | {{ $shift['time_display'] ?: '-' }}">
                                                     <span class="shift-branch">{{ $shift['branch_code'] ?: '-' }}</span>
                                                     <span class="shift-time">{{ $shift['time_display'] ?: '-' }}</span>
-                                                    @if($allowReschedule || $allowDateDelete)
+                                                    @if($allowTimeEdit || $allowDateDelete)
                                                         <div class="shift-action-row">
-                                                            @if($allowReschedule && !empty($shift['can_reschedule']) && !empty($rescheduleRoute))
+                                                            @if($allowTimeEdit && !empty($rescheduleRoute))
                                                                 <button type="button"
                                                                         class="shift-icon-btn edit"
-                                                                        title="Reschedule"
+                                                                        title="Edit Time"
                                                                         data-bs-toggle="modal"
                                                                         data-bs-target="#rescheduleRosterModal"
                                                                         data-roster-id="{{ $shift['roster_id'] }}"
@@ -1154,10 +1155,6 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                                                                         data-out-time="{{ $shift['out_time'] }}">
                                                                     <i class="fa-solid fa-pen"></i>
                                                                 </button>
-                                                            @elseif($allowReschedule)
-                                                                <span class="shift-icon-btn locked" title="Locked{{ !empty($shift['reschedule_deadline']) ? ' after ' . $shift['reschedule_deadline'] : '' }}">
-                                                                    <i class="fa-solid fa-lock"></i>
-                                                                </span>
                                                             @endif
 
                                                             @if($allowDateDelete && !empty($dateDeleteRoute))
@@ -1190,7 +1187,7 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
     @endif
 </div>
 
-@if($allowReschedule && !empty($rescheduleRoute))
+@if($allowTimeEdit && !empty($rescheduleRoute))
     <div class="modal fade" id="rescheduleRosterModal" tabindex="-1" aria-labelledby="rescheduleRosterModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <form method="POST" action="{{ url($rescheduleRoute) }}" class="modal-content">
@@ -1198,7 +1195,7 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                 <input type="hidden" name="roster_id" id="reschedule_roster_id">
                 <div class="modal-header">
                     <div>
-                        <h5 class="modal-title" id="rescheduleRosterModalLabel">Reschedule Roster Date</h5>
+                        <h5 class="modal-title" id="rescheduleRosterModalLabel">Edit Roster Time</h5>
                         <div class="text-muted small fw-bold" id="rescheduleRosterMeta"></div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

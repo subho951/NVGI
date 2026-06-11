@@ -330,6 +330,12 @@
         line-height: 1.55;
     }
 
+    .exam-mark-group + .exam-mark-group {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #cbd8e5;
+    }
+
     .exam-status-pill {
         border-radius: 999px;
         padding: 6px 11px;

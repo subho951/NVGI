@@ -158,6 +158,13 @@
         align-items: end;
     }
 
+    .roster-copy-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+        gap: 10px;
+        align-items: end;
+    }
+
     .roster-create-panel .form-label {
         margin-bottom: 4px;
         color: var(--roster-muted);
@@ -654,6 +661,15 @@
         color: #166534;
     }
 
+    .shift-icon-btn.delete {
+        color: #991b1b;
+    }
+
+    .shift-action-row form {
+        margin: 0;
+        line-height: 1;
+    }
+
     .calendar-empty-cell {
         display: flex;
         align-items: center;
@@ -695,6 +711,10 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .roster-copy-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .roster-date-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr));
         }
@@ -714,6 +734,7 @@
         }
 
         .roster-create-grid,
+        .roster-copy-grid,
         .roster-date-grid {
             grid-template-columns: 1fr;
         }
@@ -749,9 +770,13 @@ $employeeOptions = $employeeOptions ?? [];
 $individualEmployees = $individualEmployees ?? [];
 $individualBranchOptions = $individualBranchOptions ?? [];
 $individualCalendarDates = $individualCalendarDates ?? [];
+$copyEmployees = $copyEmployees ?? [];
 $branchColorLegend = $branchColorLegend ?? [];
 $selectedBranchId = (int) ($selectedBranchId ?? 0);
 $selectedEmployeeId = (int) ($selectedEmployeeId ?? 0);
+$selectedIndividualBranchName = $selectedIndividualBranchName ?? 'Bibirhat';
+$copySourceMonthValue = $copySourceMonthValue ?? $selectedMonthValue;
+$copyTargetMonthValue = $copyTargetMonthValue ?? \Carbon\Carbon::parse($selectedMonthValue . '-01')->addMonth()->format('Y-m');
 $individualWorkingDateCount = collect($individualCalendarDates)->where('is_roster_working_date', true)->count();
 $dateColumns = collect($calendarDates)->map(function ($date) {
     return !empty($date['is_skipped_date']) ? '16px' : 'minmax(42px, 1fr)';
@@ -778,8 +803,19 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                     @endforeach
                 </select>
             </div>
+            <div>
+                <label for="generation_branch_id" class="form-label">Branch</label>
+                <select name="generation_branch_id" id="generation_branch_id" class="form-select" required>
+                    <option value="">Select Branch</option>
+                    @foreach($branchOptions as $branch)
+                        <option value="{{ $branch['id'] }}" {{ (int) old('generation_branch_id', $selectedBranchId) === (int) $branch['id'] ? 'selected' : '' }}>
+                            {{ $branch['label'] }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
             <button type="submit" class="btn btn-roster-primary">
-                <i class="fa-solid fa-calendar-plus me-1"></i> Generate All
+                <i class="fa-solid fa-calendar-plus me-1"></i> Generate
             </button>
             @if($rosterRows->isNotEmpty())
                 <a href="{{ $pdfUrl }}" class="btn btn-roster-pdf">
@@ -787,7 +823,7 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                 </a>
             @endif
             <span class="roster-chip">
-                <i class="fa-solid fa-lock"></i> Locked
+                <i class="fa-solid fa-pen"></i> All Dates Editable
             </span>
         </form>
     </div>
@@ -823,6 +859,16 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                         @endforeach
                     </select>
                 </div>
+                <div>
+                    <label for="individual_branch_filter" class="form-label">Branch</label>
+                    <select name="individual_branch_name" id="individual_branch_filter" class="form-select">
+                        @foreach($individualBranchOptions as $branch)
+                            <option value="{{ $branch['name'] }}" {{ $selectedIndividualBranchName === $branch['name'] ? 'selected' : '' }}>
+                                {{ $branch['label'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-light border fw-bold">
                     <i class="fa-solid fa-rotate me-1"></i> Load
                 </button>
@@ -833,6 +879,7 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
             @csrf
             <input type="hidden" name="category" value="VHS TEACHER">
             <input type="hidden" name="month" value="{{ $selectedMonthValue }}">
+            <input type="hidden" name="branch_name" value="{{ $selectedIndividualBranchName }}">
 
             <div class="roster-create-grid">
                 <div>
@@ -847,14 +894,8 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                     </select>
                 </div>
                 <div>
-                    <label for="individual_branch_name" class="form-label">Branch</label>
-                    <select name="branch_name" id="individual_branch_name" class="form-select" required>
-                        @foreach($individualBranchOptions as $branch)
-                            <option value="{{ $branch['name'] }}" {{ old('branch_name') === $branch['name'] ? 'selected' : '' }}>
-                                {{ $branch['label'] }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <label class="form-label">Branch</label>
+                    <input type="text" class="form-control" value="{{ $selectedIndividualBranchName }}" readonly>
                 </div>
                 <div>
                     <label for="individual_bulk_in_time" class="form-label">From Time</label>
@@ -983,6 +1024,59 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
         </form>
     </section>
 
+    <section class="roster-create-panel mb-3">
+        <h3 class="roster-panel-title mb-3">Copy Roster</h3>
+        <form method="POST"
+              action="{{ url('employee/schedule-roster/vhs/copy') }}"
+              class="roster-copy-grid"
+              onsubmit="return confirm('Copy VHS roster to selected target month? Existing target rows will be kept.');">
+            @csrf
+            <div>
+                <label for="copy_source_month" class="form-label">From Month</label>
+                <select name="copy_source_month" id="copy_source_month" class="form-select">
+                    @foreach(($monthOptions ?? []) as $monthOption)
+                        <option value="{{ $monthOption['value'] }}" {{ $copySourceMonthValue === $monthOption['value'] ? 'selected' : '' }}>
+                            {{ $monthOption['label'] }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="copy_target_month" class="form-label">To Month</label>
+                <select name="copy_target_month" id="copy_target_month" class="form-select">
+                    @foreach(($monthOptions ?? []) as $monthOption)
+                        <option value="{{ $monthOption['value'] }}" {{ $copyTargetMonthValue === $monthOption['value'] ? 'selected' : '' }}>
+                            {{ $monthOption['label'] }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="copy_branch_id" class="form-label">Branch</label>
+                <select name="copy_branch_id" id="copy_branch_id" class="form-select">
+                    <option value="">All Branches</option>
+                    @foreach($branchOptions as $branch)
+                        <option value="{{ $branch['id'] }}">{{ $branch['label'] }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="copy_employee_id" class="form-label">Employee</label>
+                <select name="copy_employee_id" id="copy_employee_id" class="form-select">
+                    <option value="">All Teachers</option>
+                    @foreach($copyEmployees as $employee)
+                        <option value="{{ $employee['id'] }}">{{ $employee['label'] }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-roster-primary w-100">
+                    <i class="fa-solid fa-clone me-1"></i> Copy
+                </button>
+            </div>
+        </form>
+    </section>
+
     <div class="roster-stat-row mb-3">
         <div class="roster-stat">
             <span class="roster-stat-icon"><i class="fa-solid fa-calendar-check"></i></span>
@@ -1027,7 +1121,7 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                             </span>
                         @endforeach
                     </div>
-                    <div class="calendar-board-note text-end mt-1">Sundays and 2nd/4th Saturdays shown blank</div>
+                    <div class="calendar-board-note text-end mt-1">Sundays are blank; Bibirhat also keeps 2nd/4th Saturdays off</div>
                 </div>
             </div>
             <div class="calendar-scroll">
@@ -1075,11 +1169,11 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                                                 <span class="shift-role">VHS Teacher</span>
                                                 <span class="shift-branch">{{ $shift['branch_code'] ?: '-' }}</span>
                                                 <span class="shift-time">{{ $shift['time_display'] ?: '-' }}</span>
-                                                @if(!empty($shift['can_edit_vhs_time']))
-                                                    <div class="shift-action-row">
+                                                <div class="shift-action-row">
+                                                    @if(!empty($shift['can_edit_vhs_time']))
                                                         <button type="button"
                                                                 class="shift-icon-btn"
-                                                                title="Edit Saturday Time"
+                                                                title="Edit Time"
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#vhsTimeEditModal"
                                                                 data-roster-id="{{ $shift['roster_id'] }}"
@@ -1090,8 +1184,17 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                                                                 data-out-time="{{ $shift['out_time'] }}">
                                                             <i class="fa-solid fa-pen"></i>
                                                         </button>
-                                                    </div>
-                                                @endif
+                                                    @endif
+                                                    <form method="POST"
+                                                          action="{{ url('employee/schedule-roster/vhs/delete-date') }}"
+                                                          onsubmit="return confirm('Delete this VHS roster date?');">
+                                                        @csrf
+                                                        <input type="hidden" name="roster_id" value="{{ $shift['roster_id'] }}">
+                                                        <button type="submit" class="shift-icon-btn delete" title="Delete Date">
+                                                            <i class="fa-solid fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </div>
                                         @endforeach
                                     </div>
@@ -1119,7 +1222,7 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
             <input type="hidden" name="roster_id" id="vhs_time_roster_id">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title" id="vhsTimeEditModalLabel">Edit Saturday Time</h5>
+                    <h5 class="modal-title" id="vhsTimeEditModalLabel">Edit VHS Roster Time</h5>
                     <div class="text-muted small fw-bold" id="vhsTimeEditMeta"></div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

@@ -40,6 +40,8 @@ class TsaMultipleClassTest extends TestCase
             $table->text('last_name')->nullable();
             $table->text('branch')->nullable();
             $table->text('category')->nullable();
+            $table->string('in_time', 5)->nullable();
+            $table->string('out_time', 5)->nullable();
             $table->tinyInteger('status')->default(1);
         });
 
@@ -70,7 +72,10 @@ class TsaMultipleClassTest extends TestCase
             );
         });
 
-        DB::table('units')->insert(['id' => 2, 'name' => 'TSA']);
+        DB::table('units')->insert([
+            ['id' => 1, 'name' => 'VHS'],
+            ['id' => 2, 'name' => 'TSA'],
+        ]);
         DB::table('branches')->insert([
             [
                 'id' => 1,
@@ -82,6 +87,18 @@ class TsaMultipleClassTest extends TestCase
                 'id' => 2,
                 'unit_id' => 2,
                 'name' => 'Mukundapur',
+                'status' => 1,
+            ],
+            [
+                'id' => 3,
+                'unit_id' => 1,
+                'name' => 'Rajarhat',
+                'status' => 1,
+            ],
+            [
+                'id' => 4,
+                'unit_id' => 1,
+                'name' => 'Bibirhat',
                 'status' => 1,
             ],
         ]);
@@ -117,8 +134,10 @@ class TsaMultipleClassTest extends TestCase
             'employee_no' => 'NVGI-0005',
             'first_name' => 'VHS',
             'last_name' => 'TEACHER',
-            'branch' => json_encode([1, 2]),
+            'branch' => json_encode([4]),
             'category' => json_encode(['VHS TEACHER']),
+            'in_time' => '10:00',
+            'out_time' => '15:00',
             'status' => 1,
         ]);
         DB::table('employee_schedule_rosters')->insert($this->rosterRow('10:00', '11:30'));
@@ -232,6 +251,35 @@ class TsaMultipleClassTest extends TestCase
         ]);
     }
 
+    public function test_front_desk_roster_time_can_be_updated_on_any_date(): void
+    {
+        DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
+            3,
+            'NVGI-0003',
+            'FRONT DESK',
+            'FRONT-DESK',
+            Carbon::create(2026, 6, 13),
+            '08:30',
+            '20:00'
+        ));
+
+        $rosterId = (int) EmployeeScheduleRoster::where('employee_id', 3)->value('id');
+        $request = Request::create('/employee/schedule-roster/front-desk-group-d/update-time', 'POST', [
+            'roster_id' => $rosterId,
+            'in_time' => '09:00',
+            'out_time' => '19:30',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        app(EmployeeScheduleRosterController::class)->supportUpdateTime($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $rosterId,
+            'in_time' => '09:00',
+            'out_time' => '19:30',
+        ]);
+    }
+
     public function test_tsa_weekoff_can_be_shifted_with_duty_date(): void
     {
         DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
@@ -249,7 +297,7 @@ class TsaMultipleClassTest extends TestCase
             'category' => 'TSA TEACHER',
             'employee_id' => 2,
             'branch_name' => '',
-            'source_date' => '2026-06-11',
+            'source_date' => '2026-06-12',
             'target_date' => '2026-06-13',
             'in_time' => '15:30',
             'out_time' => '17:30',
@@ -261,7 +309,7 @@ class TsaMultipleClassTest extends TestCase
         $this->assertDatabaseHas('employee_schedule_rosters', [
             'employee_id' => 2,
             'category' => 'TSA TEACHER',
-            'roster_date' => '2026-06-11',
+            'roster_date' => '2026-06-12',
             'in_time' => '15:30',
             'out_time' => '17:30',
             'status' => 1,
@@ -356,6 +404,95 @@ class TsaMultipleClassTest extends TestCase
         ]);
     }
 
+    public function test_tsa_roster_time_can_be_updated_without_48_hour_restriction(): void
+    {
+        $rosterId = (int) EmployeeScheduleRoster::where('employee_id', 2)->value('id');
+        $request = Request::create('/employee/schedule-roster/tsa/reschedule', 'POST', [
+            'roster_id' => $rosterId,
+            'in_time' => '09:00',
+            'out_time' => '10:00',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        app(EmployeeScheduleRosterController::class)->tsaReschedule($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $rosterId,
+            'in_time' => '09:00',
+            'out_time' => '10:00',
+        ]);
+    }
+
+    public function test_vhs_generation_uses_branch_specific_saturday_rules(): void
+    {
+        $controller = app(EmployeeScheduleRosterController::class);
+
+        foreach ([4, 3] as $branchId) {
+            $request = Request::create('/employee/schedule-roster/vhs', 'POST', [
+                'month' => '2026-06',
+                'generation_branch_id' => $branchId,
+            ]);
+            $request->setLaravelSession(app('session')->driver());
+            $controller->vhs($request);
+        }
+
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'branch_id' => 4,
+            'roster_date' => '2026-06-13',
+        ]);
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'branch_id' => 4,
+            'roster_date' => '2026-06-27',
+        ]);
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'branch_id' => 3,
+            'roster_date' => '2026-06-13',
+            'status' => 1,
+        ]);
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'branch_id' => 3,
+            'roster_date' => '2026-06-27',
+            'status' => 1,
+        ]);
+    }
+
+    public function test_vhs_roster_copy_keeps_target_branch_saturday_rules(): void
+    {
+        $controller = app(EmployeeScheduleRosterController::class);
+
+        foreach ([4, 3] as $branchId) {
+            $generateRequest = Request::create('/employee/schedule-roster/vhs', 'POST', [
+                'month' => '2026-06',
+                'generation_branch_id' => $branchId,
+            ]);
+            $generateRequest->setLaravelSession(app('session')->driver());
+            $controller->vhs($generateRequest);
+        }
+
+        $copyRequest = Request::create('/employee/schedule-roster/vhs/copy', 'POST', [
+            'copy_source_month' => '2026-06',
+            'copy_target_month' => '2026-07',
+        ]);
+        $copyRequest->setLaravelSession(app('session')->driver());
+        $controller->vhsCopy($copyRequest);
+
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'branch_id' => 4,
+            'roster_date' => '2026-07-11',
+        ]);
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'employee_id' => 5,
+            'branch_id' => 3,
+            'roster_date' => '2026-07-11',
+            'status' => 1,
+        ]);
+    }
+
     public function test_vhs_teacher_roster_can_be_deleted_for_selected_branch(): void
     {
         DB::table('employee_schedule_rosters')->insert([
@@ -433,7 +570,7 @@ class TsaMultipleClassTest extends TestCase
         $this->assertDatabaseHas('employee_schedule_rosters', [
             'employee_id' => 5,
             'category' => 'VHS TEACHER',
-            'branch_id' => 1,
+            'branch_id' => 4,
             'roster_date' => '2026-06-01',
             'in_time' => '10:00',
             'out_time' => '15:00',
@@ -442,7 +579,7 @@ class TsaMultipleClassTest extends TestCase
         $this->assertDatabaseHas('employee_schedule_rosters', [
             'employee_id' => 5,
             'category' => 'VHS TEACHER',
-            'branch_id' => 1,
+            'branch_id' => 4,
             'roster_date' => '2026-06-06',
             'in_time' => '09:30',
             'out_time' => '14:30',
@@ -483,7 +620,7 @@ class TsaMultipleClassTest extends TestCase
         ]);
     }
 
-    public function test_vhs_weekday_roster_time_cannot_be_updated(): void
+    public function test_vhs_weekday_roster_time_can_be_updated(): void
     {
         DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
             5,
@@ -510,9 +647,59 @@ class TsaMultipleClassTest extends TestCase
             'id' => $rosterId,
             'category' => 'VHS TEACHER',
             'roster_date' => '2026-06-01',
-            'in_time' => '10:00',
-            'out_time' => '15:00',
+            'in_time' => '09:30',
+            'out_time' => '14:30',
         ]);
+    }
+
+    public function test_vhs_individual_roster_date_can_be_deleted(): void
+    {
+        DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(
+            5,
+            'NVGI-0005',
+            'VHS TEACHER',
+            'VHS TEACHER',
+            Carbon::create(2026, 6, 1),
+            '10:00',
+            '15:00',
+            4,
+            'Bibirhat'
+        ));
+        $rosterId = (int) EmployeeScheduleRoster::where('employee_id', 5)->value('id');
+        $request = Request::create('/employee/schedule-roster/vhs/delete-date', 'POST', [
+            'roster_id' => $rosterId,
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        app(EmployeeScheduleRosterController::class)->vhsDeleteDate($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $rosterId,
+            'status' => 3,
+        ]);
+    }
+
+    public function test_branch_portal_vhs_calendar_uses_centre_saturday_rule(): void
+    {
+        $controller = app(BranchPortalController::class);
+        $method = new \ReflectionMethod($controller, 'calendarDates');
+        $method->setAccessible(true);
+
+        $bibirhatDates = collect($method->invoke(
+            $controller,
+            Carbon::create(2026, 6, 1),
+            ['VHS TEACHER'],
+            'Bibirhat'
+        ))->keyBy('date');
+        $rajarhatDates = collect($method->invoke(
+            $controller,
+            Carbon::create(2026, 6, 1),
+            ['VHS TEACHER'],
+            'Rajarhat'
+        ))->keyBy('date');
+
+        $this->assertTrue($bibirhatDates['2026-06-13']['is_skipped_date']);
+        $this->assertFalse($rajarhatDates['2026-06-13']['is_skipped_date']);
     }
 
     public function test_roster_branch_colors_are_fixed_by_branch_name(): void

@@ -129,6 +129,8 @@ class BranchAttendanceTest extends TestCase
             ->assertOk()
             ->assertSee('Today Attendance')
             ->assertSee('8:00 AM - 10:00 AM')
+            ->assertSee('[data-attendance-row][hidden]', false)
+            ->assertSee('data-search="test tsa teacher nvgi-0010', false)
             ->assertDontSee('2:00 PM - 4:00 PM')
             ->assertDontSee('6:00 PM - 8:00 PM');
 
@@ -157,6 +159,10 @@ class BranchAttendanceTest extends TestCase
             ->assertSee('Attendance Report')
             ->assertSee('From Date')
             ->assertSee('To Date')
+            ->assertSee('Employee Details')
+            ->assertDontSee('>Employee Code<', false)
+            ->assertDontSee('>Department<', false)
+            ->assertDontSee('>Location<', false)
             ->assertSee('8:00 AM - 10:00 AM')
             ->assertSee('IN: 08:15 AM')
             ->assertSee('Late 15 min')

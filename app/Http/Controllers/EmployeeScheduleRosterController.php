@@ -24,6 +24,7 @@ class EmployeeScheduleRosterController extends Controller
     private const ALL_ROSTER_CATEGORIES = ['VHS TEACHER', 'TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
     private const FULL_MONTH_ROSTER_CATEGORIES = ['TSA TEACHER', 'FRONT-DESK', 'GROUP-D'];
     private const SUPPORT_BRANCH_NAMES = ['Bibirhat', 'Mukundapur', 'Rajarhat'];
+    private const VHS_BRANCH_NAMES = ['Bibirhat', 'Rajarhat'];
     private const BRANCH_COLOR_MAP = [
         'bibirhat' => ['class' => 'violet', 'label' => 'Bibirhat', 'color' => '#c7b7ff'],
         'mukundapur' => ['class' => 'yellow', 'label' => 'Mukundapur', 'color' => '#ffed9d'],
@@ -49,19 +50,54 @@ class EmployeeScheduleRosterController extends Controller
         $targetMonth = $this->resolveRosterMonth($request);
         $selectedMonthValue = $targetMonth->format('Y-m');
         $generationResult = null;
+        $branchOptions = $this->vhsBranchOptions();
 
         if ($request->isMethod('post')) {
-            $generationResult = $this->generateRosterForCategory(self::VHS_TEACHER, $targetMonth);
+            $generationBranchId = $this->positiveInt($request->input('generation_branch_id'));
+            $generationBranch = collect($branchOptions)->firstWhere('id', $generationBranchId);
+
+            if (!$generationBranch) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error_message', 'Please select Bibirhat or Rajarhat branch for VHS roster generation.');
+            }
+
+            $generationResult = $this->generateRosterForCategory(
+                self::VHS_TEACHER,
+                $targetMonth,
+                $generationBranchId
+            );
 
             return redirect()
-                ->to(url('employee/schedule-roster/vhs') . '?month=' . $selectedMonthValue)
-                ->with('success_message', $this->buildGenerationMessage($generationResult));
+                ->to(url('employee/schedule-roster/vhs') . '?' . http_build_query([
+                    'month' => $selectedMonthValue,
+                    'branch_id' => $generationBranchId,
+                ]))
+                ->with('success_message', $this->buildGenerationMessage(
+                    $generationResult,
+                    (string) $generationBranch['name']
+                ));
         }
 
         $selectedBranchId = $this->positiveInt($request->input('branch_id'));
         $selectedEmployeeId = $this->positiveInt($request->input('employee_id'));
+        $selectedIndividualBranchName = $this->resolveVhsBranchName(
+            $request->input('individual_branch_name', self::VHS_BRANCH_NAMES[0])
+        );
         $rows = $this->getRosterRows(self::VHS_TEACHER, $targetMonth, $selectedBranchId, $selectedEmployeeId);
-        $calendarData = $this->buildCalendarData($rows, $targetMonth);
+        $calendarData = $this->buildCalendarData(
+            $rows,
+            $targetMonth,
+            self::VHS_CATEGORIES,
+            $this->vhsCalendarBranchNames($rows, $selectedBranchId)
+        );
+        $copySourceMonth = $this->resolveRosterMonthFromValue(
+            $request->input('copy_source_month', $selectedMonthValue)
+        );
+        $copyTargetMonth = $this->resolveRosterMonthFromValue(
+            $request->input('copy_target_month', $copySourceMonth->copy()->addMonth()->format('Y-m'))
+        );
         $pdfQuery = array_filter([
             'month' => $selectedMonthValue,
             'branch_id' => $selectedBranchId ?: null,
@@ -73,18 +109,29 @@ class EmployeeScheduleRosterController extends Controller
             'module' => $this->data,
             'action' => 'VHS Teacher',
             'category' => self::VHS_TEACHER,
-            'monthOptions' => $this->monthOptions($targetMonth),
+            'monthOptions' => $this->monthOptions($targetMonth, $copySourceMonth, $copyTargetMonth),
             'selectedMonthValue' => $selectedMonthValue,
             'selectedMonthLabel' => $targetMonth->format('F Y'),
             'selectedBranchId' => $selectedBranchId,
             'selectedEmployeeId' => $selectedEmployeeId,
             'selectedBranchLabel' => $this->branchLabelById($selectedBranchId),
             'selectedEmployeeLabel' => $this->employeeLabelById($selectedEmployeeId),
-            'branchOptions' => $this->rosterBranchOptionsForCategory(self::VHS_TEACHER),
+            'branchOptions' => $branchOptions,
             'employeeOptions' => $this->rosterEmployeeOptionsForCategory(self::VHS_TEACHER),
-            'individualEmployees' => $this->availableSupportEmployeesForManual(self::VHS_TEACHER, $targetMonth, self::VHS_CATEGORIES),
-            'individualBranchOptions' => $this->supportBranchOptions(),
-            'individualCalendarDates' => $this->calendarDates($targetMonth, self::VHS_CATEGORIES),
+            'selectedIndividualBranchName' => $selectedIndividualBranchName,
+            'individualEmployees' => $this->availableVhsEmployeesForManual(
+                $targetMonth,
+                $selectedIndividualBranchName
+            ),
+            'individualBranchOptions' => $this->vhsBranchOptionsByName(),
+            'individualCalendarDates' => $this->calendarDates(
+                $targetMonth,
+                self::VHS_CATEGORIES,
+                [$selectedIndividualBranchName]
+            ),
+            'copySourceMonthValue' => $copySourceMonth->format('Y-m'),
+            'copyTargetMonthValue' => $copyTargetMonth->format('Y-m'),
+            'copyEmployees' => $this->rosterEmployeeOptionsForCategory(self::VHS_TEACHER),
             'monthStartDate' => $targetMonth->copy()->startOfMonth(),
             'monthEndDate' => $targetMonth->copy()->endOfMonth(),
             'eligibleTeacherCount' => $this->eligibleEmployees(self::VHS_TEACHER)->count(),
@@ -107,10 +154,15 @@ class EmployeeScheduleRosterController extends Controller
 
     public function vhsIndividual(Request $request)
     {
+        $request->merge([
+            'branch_name' => $this->resolveVhsBranchName($request->input('branch_name')),
+        ]);
+
         return $this->storeSupportRoster(
             $request,
             self::VHS_CATEGORIES,
-            'employee/schedule-roster/vhs'
+            'employee/schedule-roster/vhs',
+            true
         );
     }
 
@@ -120,7 +172,12 @@ class EmployeeScheduleRosterController extends Controller
         $selectedBranchId = $this->positiveInt($request->input('branch_id'));
         $selectedEmployeeId = $this->positiveInt($request->input('employee_id'));
         $rows = $this->getRosterRows(self::VHS_TEACHER, $targetMonth, $selectedBranchId, $selectedEmployeeId);
-        $calendarData = $this->buildCalendarData($rows, $targetMonth);
+        $calendarData = $this->buildCalendarData(
+            $rows,
+            $targetMonth,
+            self::VHS_CATEGORIES,
+            $this->vhsCalendarBranchNames($rows, $selectedBranchId)
+        );
         $data = [
             'category' => self::VHS_TEACHER,
             'selectedMonthLabel' => $targetMonth->format('F Y'),
@@ -159,6 +216,45 @@ class EmployeeScheduleRosterController extends Controller
         return response($dompdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+    }
+
+    public function vhsCopy(Request $request)
+    {
+        $sourceMonth = $this->resolveRosterMonthFromValue(
+            $request->input('copy_source_month', Carbon::now()->format('Y-m'))
+        );
+        $targetMonth = $this->resolveRosterMonthFromValue(
+            $request->input('copy_target_month', $sourceMonth->copy()->addMonth()->format('Y-m'))
+        );
+        $branchId = $this->positiveInt($request->input('copy_branch_id'));
+        $employeeId = $this->positiveInt($request->input('copy_employee_id'));
+
+        if ($sourceMonth->format('Y-m') === $targetMonth->format('Y-m')) {
+            return redirect()->back()->withInput()->with('error_message', 'Source month and target month cannot be same.');
+        }
+
+        if ($branchId > 0 && !collect($this->vhsBranchOptions())->contains('id', $branchId)) {
+            return redirect()->back()->withInput()->with('error_message', 'Please select a valid VHS branch.');
+        }
+
+        $result = $this->copyVhsRoster($sourceMonth, $targetMonth, $branchId, $employeeId);
+
+        if ($result['source_rows'] <= 0) {
+            return redirect()->back()->withInput()->with('error_message', 'No source VHS roster found for copy.');
+        }
+
+        return redirect()
+            ->to(url('employee/schedule-roster/vhs') . '?' . http_build_query(array_filter([
+                'month' => $targetMonth->format('Y-m'),
+                'branch_id' => $branchId ?: null,
+                'employee_id' => $employeeId ?: null,
+            ])))
+            ->with(
+                'success_message',
+                'VHS roster copied. New rows: ' . $result['created']
+                    . ', restored rows: ' . $result['restored']
+                    . ', existing rows kept: ' . $result['existing'] . '.'
+            );
     }
 
     public function vhsDelete(Request $request)
@@ -203,6 +299,11 @@ class EmployeeScheduleRosterController extends Controller
             ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'VHS teacher roster deleted successfully.' : 'No active VHS teacher roster found to delete.');
     }
 
+    public function vhsDeleteDate(Request $request)
+    {
+        return $this->manualRosterDeleteDate($request, self::VHS_CATEGORIES);
+    }
+
     public function vhsUpdateTime(Request $request)
     {
         $rosterId = $this->positiveInt($request->input('roster_id'));
@@ -226,10 +327,6 @@ class EmployeeScheduleRosterController extends Controller
             return redirect()->back()->with('error_message', 'VHS roster date not found.');
         }
 
-        if (!$this->isEditableVhsSaturday($roster->roster_date)) {
-            return redirect()->back()->with('error_message', 'VHS time can be edited only on 1st, 3rd and 5th Saturday roster dates.');
-        }
-
         if ($this->rosterRowsHaveAttendance([(int) $roster->id])) {
             return redirect()->back()->with('error_message', 'This VHS roster date cannot be edited because attendance already exists.');
         }
@@ -244,7 +341,7 @@ class EmployeeScheduleRosterController extends Controller
             'updated_by' => $this->currentUserId(),
         ]);
 
-        return redirect()->back()->with('success_message', 'VHS Saturday roster time updated successfully.');
+        return redirect()->back()->with('success_message', 'VHS roster time updated successfully.');
     }
 
     public function support(Request $request)
@@ -283,6 +380,11 @@ class EmployeeScheduleRosterController extends Controller
     public function supportShiftDate(Request $request)
     {
         return $this->manualRosterShiftDate($request, self::SUPPORT_CATEGORIES);
+    }
+
+    public function supportUpdateTime(Request $request)
+    {
+        return $this->manualRosterUpdateTime($request, self::SUPPORT_CATEGORIES);
     }
 
     public function tsa(Request $request)
@@ -404,48 +506,7 @@ class EmployeeScheduleRosterController extends Controller
 
     public function tsaReschedule(Request $request)
     {
-        $rosterId = $this->positiveInt($request->input('roster_id'));
-        $inTime = $this->normalizeSubmittedTime($request->input('in_time', ''));
-        $outTime = $this->normalizeSubmittedTime($request->input('out_time', ''));
-
-        if ($rosterId <= 0 || !$inTime || !$outTime) {
-            return redirect()->back()->withInput()->with('error_message', 'Please provide a valid TSA roster date and time.');
-        }
-
-        if (!$this->isValidRosterTimeRange($inTime, $outTime)) {
-            return redirect()->back()->withInput()->with('error_message', 'Class end time must be after class start time.');
-        }
-
-        $roster = EmployeeScheduleRoster::where('id', '=', $rosterId)
-            ->where('category', '=', self::TSA_TEACHER)
-            ->where('status', '!=', 3)
-            ->first();
-
-        if (!$roster) {
-            return redirect()->back()->with('error_message', 'TSA roster date not found.');
-        }
-
-        if (!$this->canRescheduleRosterRow($roster) || !$this->isRosterStartOutsideRescheduleWindow($roster->roster_date, $inTime)) {
-            return redirect()->back()->with('error_message', 'This TSA roster date is locked because the start time is within 48 hours.');
-        }
-
-        if ($this->hasOverlappingTsaClass(
-            (int) $roster->employee_id,
-            Carbon::parse($roster->roster_date),
-            $inTime,
-            $outTime,
-            (int) $roster->id
-        )) {
-            return redirect()->back()->withInput()->with('error_message', 'This TSA teacher already has another class overlapping the selected time.');
-        }
-
-        $roster->update([
-            'in_time' => $inTime,
-            'out_time' => $outTime,
-            'updated_by' => $this->currentUserId(),
-        ]);
-
-        return redirect()->back()->with('success_message', 'TSA roster date rescheduled successfully.');
+        return $this->manualRosterUpdateTime($request, self::TSA_CATEGORIES, true);
     }
 
     public function tsaDeleteDate(Request $request)
@@ -574,8 +635,9 @@ class EmployeeScheduleRosterController extends Controller
             'deleteRoute' => $routePath . '/delete',
             'shiftDateRoute' => $routePath . '/shift-date',
             'additionalClassRoute' => $allowReschedule ? $routePath . '/add-class' : '',
-            'rescheduleRoute' => $allowReschedule ? $routePath . '/reschedule' : '',
+            'rescheduleRoute' => $allowReschedule ? $routePath . '/reschedule' : $routePath . '/update-time',
             'dateDeleteRoute' => $routePath . '/delete-date',
+            'allowTimeEdit' => true,
             'allowReschedule' => $allowReschedule,
             'allowDateDelete' => true,
             'allowAdditionalClass' => $allowReschedule,
@@ -713,6 +775,52 @@ class EmployeeScheduleRosterController extends Controller
             ->with($deleted > 0 ? 'success_message' : 'error_message', $deleted > 0 ? 'Roster date deleted successfully.' : 'No active roster date found to delete.');
     }
 
+    private function manualRosterUpdateTime(Request $request, array $allowedCategories, bool $checkTsaOverlap = false)
+    {
+        $rosterId = $this->positiveInt($request->input('roster_id'));
+        $inTime = $this->normalizeSubmittedTime($request->input('in_time', ''));
+        $outTime = $this->normalizeSubmittedTime($request->input('out_time', ''));
+
+        if ($rosterId <= 0 || !$inTime || !$outTime) {
+            return redirect()->back()->withInput()->with('error_message', 'Please provide a valid roster date and time.');
+        }
+
+        if (!$this->isValidRosterTimeRange($inTime, $outTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'End time must be after start time.');
+        }
+
+        $roster = EmployeeScheduleRoster::where('id', '=', $rosterId)
+            ->whereIn('category', $allowedCategories)
+            ->where('status', '!=', 3)
+            ->first();
+
+        if (!$roster) {
+            return redirect()->back()->with('error_message', 'Roster date not found.');
+        }
+
+        if ($checkTsaOverlap && $this->hasOverlappingTsaClass(
+            (int) $roster->employee_id,
+            Carbon::parse($roster->roster_date),
+            $inTime,
+            $outTime,
+            (int) $roster->id
+        )) {
+            return redirect()->back()->withInput()->with('error_message', 'This TSA teacher already has another class overlapping the selected time.');
+        }
+
+        if (!$checkTsaOverlap && $this->rosterTimeUpdateHasConflict($roster, $inTime)) {
+            return redirect()->back()->withInput()->with('error_message', 'Another roster already exists with the selected start time.');
+        }
+
+        $roster->update([
+            'in_time' => $inTime,
+            'out_time' => $outTime,
+            'updated_by' => $this->currentUserId(),
+        ]);
+
+        return redirect()->back()->with('success_message', 'Roster time updated successfully.');
+    }
+
     private function manualRosterShiftDate(Request $request, array $allowedCategories, bool $updateDutyTime = false)
     {
         $category = $this->resolveSupportCategory($request->input('category', ''), $allowedCategories);
@@ -843,7 +951,12 @@ class EmployeeScheduleRosterController extends Controller
             ->with($result['shifted'] ? 'success_message' : 'error_message', $result['message'] ?: 'Unable to shift duty/weekoff.');
     }
 
-    private function storeSupportRoster(Request $request, ?array $allowedCategories = null, string $routePath = 'employee/schedule-roster/front-desk-group-d')
+    private function storeSupportRoster(
+        Request $request,
+        ?array $allowedCategories = null,
+        string $routePath = 'employee/schedule-roster/front-desk-group-d',
+        bool $branchScoped = false
+    )
     {
         $allowedCategories = $allowedCategories ?: self::SUPPORT_CATEGORIES;
         $category = $this->resolveSupportCategory($request->input('category', $allowedCategories[0] ?? self::SUPPORT_CATEGORIES[0]), $allowedCategories);
@@ -856,17 +969,28 @@ class EmployeeScheduleRosterController extends Controller
             return redirect()->back()->withInput()->with('error_message', 'Please select a valid ' . $category . ' employee.');
         }
 
-        if ($this->supportEmployeeHasActiveRoster($employeeId, $category, $targetMonth)) {
-            return redirect()->back()->withInput()->with('error_message', 'This employee already has a roster for ' . $targetMonth->format('F Y') . '.');
-        }
-
         $branch = $this->supportBranchForEmployee($employee, $branchName);
         if (!$branch) {
             return redirect()->back()->withInput()->with('error_message', 'Please select a valid branch.');
         }
 
+        if ($this->supportEmployeeHasActiveRoster(
+            $employeeId,
+            $category,
+            $targetMonth,
+            $branchScoped ? (int) $branch->id : 0
+        )) {
+            return redirect()->back()->withInput()->with(
+                'error_message',
+                'This employee already has a roster for ' . $targetMonth->format('F Y')
+                    . ($branchScoped ? ' at ' . $branch->name : '') . '.'
+            );
+        }
+
         $times = $request->input('times', []);
-        $rosterDates = $this->rosterDates($targetMonth, [$category]);
+        $rosterDates = $category === self::VHS_TEACHER
+            ? $this->vhsRosterDates($targetMonth, (string) $branch->name)
+            : $this->rosterDates($targetMonth, [$category]);
         $preparedRows = [];
         $partialDates = [];
 
@@ -942,11 +1066,23 @@ class EmployeeScheduleRosterController extends Controller
             ->with('success_message', $category . ' roster saved. New rows: ' . $result['created'] . ', restored rows: ' . $result['restored'] . ', existing rows kept: ' . $result['existing'] . '.');
     }
 
-    private function generateRosterForCategory(string $category, Carbon $targetMonth): array
+    private function generateRosterForCategory(string $category, Carbon $targetMonth, int $selectedBranchId = 0): array
     {
-        $dates = $this->rosterDates($targetMonth, [$category]);
         $employees = $this->eligibleEmployees($category);
-        $branchMap = $this->branchMapForEmployees($employees);
+        $branchMap = $selectedBranchId > 0
+            ? Branch::select('branches.id', 'branches.name', 'branches.unit_id', 'units.name as unit_name')
+                ->leftJoin('units', 'units.id', '=', 'branches.unit_id')
+                ->where('branches.id', '=', $selectedBranchId)
+                ->where('branches.status', '!=', 3)
+                ->get()
+                ->keyBy('id')
+                ->all()
+            : $this->branchMapForEmployees($employees);
+
+        $selectedBranch = $selectedBranchId > 0 ? ($branchMap[$selectedBranchId] ?? null) : null;
+        $dates = $category === self::VHS_TEACHER && $selectedBranch
+            ? $this->vhsRosterDates($targetMonth, (string) $selectedBranch->name)
+            : $this->rosterDates($targetMonth, [$category]);
         $userId = $this->currentUserId();
         $result = [
             'employees' => $employees->count(),
@@ -956,9 +1092,11 @@ class EmployeeScheduleRosterController extends Controller
             'skipped' => 0,
         ];
 
-        DB::transaction(function () use ($employees, $branchMap, $dates, $category, $targetMonth, $userId, &$result) {
+        DB::transaction(function () use ($employees, $branchMap, $dates, $category, $targetMonth, $userId, $selectedBranchId, &$result) {
             foreach ($employees as $employee) {
-                $branchIds = $this->normalizeBranchIds($employee->branch);
+                $branchIds = $selectedBranchId > 0
+                    ? [$selectedBranchId]
+                    : $this->normalizeBranchIds($employee->branch);
 
                 if (empty($branchIds)) {
                     $result['skipped']++;
@@ -1014,21 +1152,9 @@ class EmployeeScheduleRosterController extends Controller
 
     private function getRosterRows(string $category, Carbon $targetMonth, int $branchId = 0, int $employeeId = 0)
     {
-        $rosterDates = $this->rosterDates($targetMonth, [$category])
-            ->map(function ($date) {
-                return $date->toDateString();
-            })
-            ->values()
-            ->all();
-
-        if (empty($rosterDates)) {
-            return collect();
-        }
-
         $query = EmployeeScheduleRoster::where('category', '=', $category)
             ->where('roster_month', '=', (int) $targetMonth->month)
             ->where('roster_year', '=', (int) $targetMonth->year)
-            ->whereIn('roster_date', $rosterDates)
             ->where('status', '!=', 3);
 
         if ($branchId > 0) {
@@ -1064,6 +1190,116 @@ class EmployeeScheduleRosterController extends Controller
             ->sortBy('label')
             ->values()
             ->all();
+    }
+
+    private function vhsBranchOptions(): array
+    {
+        return Branch::select('branches.id', 'branches.name', 'branches.unit_id', 'units.name as unit_name')
+            ->leftJoin('units', 'units.id', '=', 'branches.unit_id')
+            ->whereIn('branches.name', self::VHS_BRANCH_NAMES)
+            ->whereRaw('LOWER(COALESCE(units.name, \'\')) = ?', ['vhs'])
+            ->where('branches.status', '!=', 3)
+            ->get()
+            ->map(function ($branch) {
+                return [
+                    'id' => (int) $branch->id,
+                    'name' => (string) $branch->name,
+                    'unit_name' => (string) ($branch->unit_name ?? ''),
+                    'label' => (string) $branch->name,
+                ];
+            })
+            ->sortBy(function ($branch) {
+                return array_search((string) $branch['name'], self::VHS_BRANCH_NAMES, true);
+            })
+            ->values()
+            ->all();
+    }
+
+    private function vhsBranchOptionsByName(): array
+    {
+        return collect($this->vhsBranchOptions())
+            ->groupBy('name')
+            ->map(function ($branches, $branchName) {
+                return [
+                    'name' => (string) $branchName,
+                    'label' => (string) $branchName,
+                ];
+            })
+            ->sortBy(function ($branch) {
+                return array_search((string) $branch['name'], self::VHS_BRANCH_NAMES, true);
+            })
+            ->values()
+            ->all();
+    }
+
+    private function resolveVhsBranchName($branchName): string
+    {
+        $branchName = trim((string) $branchName);
+
+        foreach (self::VHS_BRANCH_NAMES as $vhsBranchName) {
+            if (strcasecmp($branchName, $vhsBranchName) === 0) {
+                return $vhsBranchName;
+            }
+        }
+
+        return self::VHS_BRANCH_NAMES[0];
+    }
+
+    private function availableVhsEmployeesForManual(Carbon $targetMonth, string $branchName): array
+    {
+        $branchIds = collect($this->vhsBranchOptions())
+            ->where('name', $branchName)
+            ->pluck('id')
+            ->map(function ($branchId) {
+                return (int) $branchId;
+            })
+            ->values()
+            ->all();
+
+        if (empty($branchIds)) {
+            return [];
+        }
+
+        $rosteredEmployeeIds = EmployeeScheduleRoster::where('category', '=', self::VHS_TEACHER)
+            ->whereIn('branch_id', $branchIds)
+            ->where('roster_month', '=', (int) $targetMonth->month)
+            ->where('roster_year', '=', (int) $targetMonth->year)
+            ->where('status', '!=', 3)
+            ->pluck('employee_id')
+            ->map(function ($employeeId) {
+                return (int) $employeeId;
+            })
+            ->unique()
+            ->values()
+            ->all();
+
+        return $this->supportEmployees(self::VHS_TEACHER, self::VHS_CATEGORIES)
+            ->reject(function ($employee) use ($rosteredEmployeeIds) {
+                return in_array((int) $employee->id, $rosteredEmployeeIds, true);
+            })
+            ->map(function ($employee) {
+                return [
+                    'id' => (int) $employee->id,
+                    'employee_no' => (string) $employee->employee_no,
+                    'employee_name' => $this->employeeName($employee),
+                    'label' => trim((string) $employee->employee_no . ' - ' . $this->employeeName($employee)),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function vhsCalendarBranchNames($rows, int $selectedBranchId = 0): array
+    {
+        if ($selectedBranchId > 0) {
+            $branchName = $this->branchNameById($selectedBranchId);
+
+            return $branchName !== '' ? [$branchName] : self::VHS_BRANCH_NAMES;
+        }
+
+        $branchNames = $rows->pluck('branch_name')->filter()->unique()->values()->all();
+
+        return !empty($branchNames) ? $branchNames : self::VHS_BRANCH_NAMES;
     }
 
     private function rosterEmployeeOptionsForCategory(string $category): array
@@ -1400,44 +1636,12 @@ class EmployeeScheduleRosterController extends Controller
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
-    private function canRescheduleRosterRow($row): bool
-    {
-        return $this->isRosterStartOutsideRescheduleWindow($row->roster_date, $row->in_time);
-    }
-
-    private function isRosterStartOutsideRescheduleWindow($rosterDate, $inTime): bool
-    {
-        $inTime = $this->normalizeSubmittedTime($inTime);
-        if (!$inTime) {
-            return false;
-        }
-
-        try {
-            $startAt = Carbon::createFromFormat('Y-m-d H:i', Carbon::parse($rosterDate)->toDateString() . ' ' . $inTime);
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        return Carbon::now()->lt($startAt->copy()->subHours(48));
-    }
-
-    private function rescheduleDeadlineLabel($row): string
-    {
-        $inTime = $this->normalizeSubmittedTime($row->in_time);
-        if (!$inTime) {
-            return '';
-        }
-
-        try {
-            return Carbon::createFromFormat('Y-m-d H:i', Carbon::parse($row->roster_date)->toDateString() . ' ' . $inTime)
-                ->subHours(48)
-                ->format('d-m-Y h:i a');
-        } catch (\Throwable $e) {
-            return '';
-        }
-    }
-
-    private function buildCalendarData($rows, Carbon $targetMonth, ?array $dateCategories = null): array
+    private function buildCalendarData(
+        $rows,
+        Carbon $targetMonth,
+        ?array $dateCategories = null,
+        ?array $vhsBranchNames = null
+    ): array
     {
         $dateCategories = $dateCategories ?: $this->rosterDateCategoriesFromRows($rows);
         $employees = $rows
@@ -1480,25 +1684,29 @@ class EmployeeScheduleRosterController extends Controller
                 'time_short' => $this->shortTimeRange($row->in_time, $row->out_time),
                 'time_display' => $this->displayTimeRange($row->in_time, $row->out_time),
                 'shift_class' => $this->branchColorClass($row->branch_name),
-                'can_reschedule' => $this->canRescheduleRosterRow($row),
-                'can_edit_vhs_time' => (string) $row->category === self::VHS_TEACHER && $this->isEditableVhsSaturday($row->roster_date),
-                'reschedule_deadline' => $this->rescheduleDeadlineLabel($row),
+                'can_edit_vhs_time' => (string) $row->category === self::VHS_TEACHER,
                 'roster_date_label' => Carbon::parse($row->roster_date)->format('d-m-Y'),
             ];
         }
 
         return [
-            'dates' => $this->calendarDates($targetMonth, $dateCategories),
+            'dates' => $this->calendarDates($targetMonth, $dateCategories, $vhsBranchNames),
             'employees' => $employees,
             'cells' => $cells,
         ];
     }
 
-    private function calendarDates(Carbon $targetMonth, ?array $dateCategories = null): array
+    private function calendarDates(
+        Carbon $targetMonth,
+        ?array $dateCategories = null,
+        ?array $vhsBranchNames = null
+    ): array
     {
         return $this->monthDates($targetMonth)
-            ->map(function ($date) use ($targetMonth, $dateCategories) {
-                $isRosterWorkingDate = $this->isRosterWorkingDate($date, $dateCategories);
+            ->map(function ($date) use ($targetMonth, $dateCategories, $vhsBranchNames) {
+                $isRosterWorkingDate = $this->isVhsOnlyDateCategory($dateCategories)
+                    ? $this->isVhsWorkingDateForBranches($date, $vhsBranchNames ?? self::VHS_BRANCH_NAMES)
+                    : $this->isRosterWorkingDate($date, $dateCategories);
 
                 return [
                     'date' => $date->toDateString(),
@@ -1534,6 +1742,42 @@ class EmployeeScheduleRosterController extends Controller
                 return $this->isRosterWorkingDate($date, $dateCategories);
             })
             ->values();
+    }
+
+    private function vhsRosterDates(Carbon $targetMonth, string $branchName)
+    {
+        return $this->monthDates($targetMonth)
+            ->filter(function ($date) use ($branchName) {
+                return $this->isVhsWorkingDateForBranches($date, [$branchName]);
+            })
+            ->values();
+    }
+
+    private function isVhsWorkingDateForBranches(Carbon $date, array $branchNames): bool
+    {
+        if ($date->isSunday()) {
+            return false;
+        }
+
+        if (!$date->isSaturday()) {
+            return true;
+        }
+
+        $saturdayNumber = (int) ceil($date->day / 7);
+        if (!in_array($saturdayNumber, [2, 4], true)) {
+            return true;
+        }
+
+        return collect($branchNames)->contains(function ($branchName) {
+            return strcasecmp((string) $branchName, 'Rajarhat') === 0;
+        });
+    }
+
+    private function isVhsOnlyDateCategory(?array $dateCategories): bool
+    {
+        $dateCategories = $this->normalizeRosterDateCategories($dateCategories ?? []);
+
+        return count($dateCategories) === 1 && $dateCategories[0] === self::VHS_TEACHER;
     }
 
     private function isRosterWorkingDate(Carbon $date, ?array $dateCategories = null): bool
@@ -1634,21 +1878,6 @@ class EmployeeScheduleRosterController extends Controller
             ->exists();
     }
 
-    private function isEditableVhsSaturday($rosterDate): bool
-    {
-        try {
-            $date = $rosterDate instanceof Carbon ? $rosterDate->copy() : Carbon::parse($rosterDate);
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        if (!$date->isSaturday()) {
-            return false;
-        }
-
-        return in_array((int) ceil($date->day / 7), [1, 3, 5], true);
-    }
-
     private function rosterTimeUpdateHasConflict($row, string $inTime): bool
     {
         return EmployeeScheduleRoster::where('id', '!=', (int) $row->id)
@@ -1715,6 +1944,90 @@ class EmployeeScheduleRosterController extends Controller
 
         $row->fill($values);
         $row->save();
+    }
+
+    private function copyVhsRoster(
+        Carbon $sourceMonth,
+        Carbon $targetMonth,
+        int $branchId = 0,
+        int $employeeId = 0
+    ): array {
+        $query = EmployeeScheduleRoster::where('category', '=', self::VHS_TEACHER)
+            ->where('roster_month', '=', (int) $sourceMonth->month)
+            ->where('roster_year', '=', (int) $sourceMonth->year)
+            ->where('status', '!=', 3);
+
+        if ($branchId > 0) {
+            $query->where('branch_id', '=', $branchId);
+        }
+
+        if ($employeeId > 0) {
+            $query->where('employee_id', '=', $employeeId);
+        }
+
+        $sourceRows = $query
+            ->orderBy('employee_id')
+            ->orderBy('branch_id')
+            ->orderBy('roster_date')
+            ->get();
+        $result = [
+            'source_rows' => $sourceRows->count(),
+            'created' => 0,
+            'restored' => 0,
+            'existing' => 0,
+        ];
+
+        if ($sourceRows->isEmpty()) {
+            return $result;
+        }
+
+        $userId = $this->currentUserId();
+
+        DB::transaction(function () use ($sourceRows, $targetMonth, $userId, &$result) {
+            $sourceGroups = $sourceRows->groupBy(function ($row) {
+                return (int) $row->employee_id . '|' . (int) $row->branch_id;
+            });
+
+            foreach ($sourceGroups as $groupRows) {
+                $groupRows = $groupRows->sortBy('roster_date')->values();
+                $firstRow = $groupRows->first();
+                $targetDates = $this->vhsRosterDates($targetMonth, (string) $firstRow->branch_name);
+
+                foreach ($targetDates as $targetDate) {
+                    $sourceRow = $this->sourceRowForTargetDate($groupRows, $targetDate);
+                    if (!$sourceRow) {
+                        continue;
+                    }
+
+                    $keys = [
+                        'employee_id' => (int) $firstRow->employee_id,
+                        'category' => self::VHS_TEACHER,
+                        'branch_id' => (int) $firstRow->branch_id,
+                        'roster_date' => $targetDate->toDateString(),
+                    ];
+                    $values = [
+                        'employee_no' => (string) $firstRow->employee_no,
+                        'employee_name' => (string) $firstRow->employee_name,
+                        'unit_id' => (int) $firstRow->unit_id,
+                        'unit_name' => (string) $firstRow->unit_name,
+                        'branch_name' => (string) $firstRow->branch_name,
+                        'roster_month' => (int) $targetMonth->month,
+                        'roster_year' => (int) $targetMonth->year,
+                        'day_name' => $targetDate->format('l'),
+                        'in_time' => (string) $sourceRow->in_time,
+                        'out_time' => (string) $sourceRow->out_time,
+                        'status' => 1,
+                        'generated_at' => now(),
+                        'created_by' => (int) ($firstRow->created_by ?: $userId),
+                        'updated_by' => $userId,
+                    ];
+
+                    $result[$this->saveRosterRowPreservingActive($keys, $values)]++;
+                }
+            }
+        });
+
+        return $result;
     }
 
     private function copySupportRoster(Carbon $sourceMonth, Carbon $targetMonth, string $category = '', int $employeeId = 0, ?array $allowedCategories = null): array
@@ -1974,6 +2287,15 @@ class EmployeeScheduleRosterController extends Controller
         return trim((string) $branch->name . ($unitName !== '' ? ' - ' . $unitName : ''));
     }
 
+    private function branchNameById(int $branchId): string
+    {
+        if ($branchId <= 0) {
+            return '';
+        }
+
+        return (string) Branch::where('id', '=', $branchId)->value('name');
+    }
+
     private function employeeLabelById(int $employeeId): string
     {
         if ($employeeId <= 0) {
@@ -1994,14 +2316,24 @@ class EmployeeScheduleRosterController extends Controller
         return in_array($category, $this->employeeCategoryValues($employee->category), true);
     }
 
-    private function supportEmployeeHasActiveRoster(int $employeeId, string $category, Carbon $targetMonth): bool
+    private function supportEmployeeHasActiveRoster(
+        int $employeeId,
+        string $category,
+        Carbon $targetMonth,
+        int $branchId = 0
+    ): bool
     {
-        return EmployeeScheduleRoster::where('employee_id', '=', $employeeId)
+        $query = EmployeeScheduleRoster::where('employee_id', '=', $employeeId)
             ->where('category', '=', $category)
             ->where('roster_month', '=', (int) $targetMonth->month)
             ->where('roster_year', '=', (int) $targetMonth->year)
-            ->where('status', '!=', 3)
-            ->exists();
+            ->where('status', '!=', 3);
+
+        if ($branchId > 0) {
+            $query->where('branch_id', '=', $branchId);
+        }
+
+        return $query->exists();
     }
 
     private function employeeCategoryValues($category): array
@@ -2153,9 +2485,13 @@ class EmployeeScheduleRosterController extends Controller
         return $filename !== '' ? $filename : 'roster';
     }
 
-    private function buildGenerationMessage(array $result): string
+    private function buildGenerationMessage(array $result, string $branchName = ''): string
     {
-        return 'VHS Teacher roster generated. New rows: ' . $result['created'] . ', existing locked rows kept: ' . $result['existing'] . ', skipped assignments: ' . $result['skipped'] . '.';
+        return 'VHS Teacher roster generated'
+            . ($branchName !== '' ? ' for ' . $branchName : '')
+            . '. New rows: ' . $result['created']
+            . ', existing locked rows kept: ' . $result['existing']
+            . ', skipped assignments: ' . $result['skipped'] . '.';
     }
 
     private function currentUserId(): int

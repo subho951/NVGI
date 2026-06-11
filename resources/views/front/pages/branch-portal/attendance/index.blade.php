@@ -284,6 +284,10 @@
             box-shadow: 0 8px 20px rgba(22, 37, 55, 0.05);
         }
 
+        [data-attendance-row][hidden] {
+            display: none !important;
+        }
+
         .attendance-card.punched_in {
             border-color: #f0d392;
             background: #fffdf8;

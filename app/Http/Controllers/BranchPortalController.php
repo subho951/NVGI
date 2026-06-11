@@ -142,7 +142,11 @@ class BranchPortalController extends Controller
             'selected_employee_id' => $employeeId,
             'month_options' => $this->monthOptions($targetMonth),
             'employee_options' => $employeeOptions,
-            'calendar_dates' => $this->calendarDates($targetMonth, $dateCategories),
+            'calendar_dates' => $this->calendarDates(
+                $targetMonth,
+                $dateCategories,
+                (string) $branch->name
+            ),
             'calendar_groups' => $this->buildRosterCalendarGroups($rows, $targetMonth),
             'branch_color_legend' => $this->branchColorLegend(),
             'stats' => [
@@ -213,14 +217,7 @@ class BranchPortalController extends Controller
 
     private function branchRosterRows(Carbon $targetMonth, array $centreBranchIds, string $category = '', int $employeeId = 0)
     {
-        $rosterDates = $this->rosterDates($targetMonth, $this->selectedRosterDateCategories($category))
-            ->map(function ($date) {
-                return $date->toDateString();
-            })
-            ->values()
-            ->all();
-
-        if (empty($centreBranchIds) || empty($rosterDates)) {
+        if (empty($centreBranchIds)) {
             return collect();
         }
 
@@ -228,7 +225,6 @@ class BranchPortalController extends Controller
             ->whereIn('category', $this->rosterCategories())
             ->where('roster_month', '=', (int) $targetMonth->month)
             ->where('roster_year', '=', (int) $targetMonth->year)
-            ->whereIn('roster_date', $rosterDates)
             ->where('status', '!=', 3);
 
         if ($category !== '') {
@@ -311,11 +307,17 @@ class BranchPortalController extends Controller
         ];
     }
 
-    private function calendarDates(Carbon $targetMonth, ?array $dateCategories = null): array
+    private function calendarDates(
+        Carbon $targetMonth,
+        ?array $dateCategories = null,
+        string $branchName = ''
+    ): array
     {
         return $this->monthDates($targetMonth)
-            ->map(function ($date) use ($targetMonth, $dateCategories) {
-                $isRosterWorkingDate = $this->isRosterWorkingDate($date, $dateCategories);
+            ->map(function ($date) use ($targetMonth, $dateCategories, $branchName) {
+                $isRosterWorkingDate = $this->isVhsOnlyDateCategory($dateCategories)
+                    ? $this->isVhsWorkingDate($date, $branchName)
+                    : $this->isRosterWorkingDate($date, $dateCategories);
 
                 return [
                     'date' => $date->toDateString(),
@@ -332,6 +334,29 @@ class BranchPortalController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    private function isVhsWorkingDate(Carbon $date, string $branchName): bool
+    {
+        if ($date->isSunday()) {
+            return false;
+        }
+
+        if (!$date->isSaturday()) {
+            return true;
+        }
+
+        $saturdayNumber = (int) ceil($date->day / 7);
+
+        return !in_array($saturdayNumber, [2, 4], true)
+            || strcasecmp($branchName, 'Rajarhat') === 0;
+    }
+
+    private function isVhsOnlyDateCategory(?array $dateCategories): bool
+    {
+        $dateCategories = $this->normalizeRosterDateCategories($dateCategories ?? []);
+
+        return count($dateCategories) === 1 && $dateCategories[0] === 'VHS TEACHER';
     }
 
     private function monthDates(Carbon $targetMonth)

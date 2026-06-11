@@ -90,7 +90,7 @@
                             @if($classRowsCount > 0)
                                 <div class="d-flex flex-column gap-2">
                                     @foreach($markGroups as $markGroup)
-                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <div class="exam-mark-group d-flex flex-wrap align-items-center gap-2">
                                             <span class="exam-tag">{{ !empty($markGroup['unit']) ? $markGroup['unit'] : '-' }}</span>
                                             <span class="text-muted">/</span>
                                             <span class="exam-tag">{{ !empty($markGroup['class']) ? $markGroup['class'] : '-' }}</span>
