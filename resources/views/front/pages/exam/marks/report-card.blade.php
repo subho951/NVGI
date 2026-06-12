@@ -154,8 +154,9 @@
         th,
         td {
             border: 1px solid #d5e0e9;
-            padding: 4px 8px;
+            padding: 3px 6px;
             font-size: 13px;
+            line-height: 1.15;
         }
 
         th {
@@ -177,27 +178,34 @@
         }
 
         .exam-title-row td {
-            height: 34px;
+            height: 28px;
+            padding: 3px 6px;
             background: #f7e2cd;
             color: #993300;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             text-align: center;
         }
 
+        .subject-name {
+            font-size: 11px;
+        }
+
         .total-row td {
+            padding: 3px 6px;
             background: #fff7ef;
             color: #702a0c;
+            font-size: 12px;
             font-weight: 700;
         }
 
         .handwritten-grade {
             min-width: 82px;
-            height: 28px;
+            height: 23px;
         }
 
         .exam-signature-cell {
-            padding: 13px 18px 9px;
+            padding: 8px 14px 6px;
             border-bottom: 2px solid #793c01;
         }
 
@@ -205,7 +213,7 @@
             display: flex;
             justify-content: space-between;
             gap: 40px;
-            padding-top: 34px;
+            padding-top: 25px;
         }
 
         .exam-signature-line {
@@ -418,7 +426,7 @@
                         </tr>
                         @foreach($examRow['subject_rows'] as $subjectRow)
                             <tr>
-                                <td>{{ $subjectRow['subject_name'] }}</td>
+                                <td class="subject-name">{{ $subjectRow['subject_name'] }}</td>
                                 <td class="center">{{ $subjectRow['full_marks_label'] }}</td>
                                 <td class="center">{{ $subjectRow['obtain_marks_label'] }}</td>
                                 <td class="center">{{ $subjectRow['has_value'] ? $subjectRow['percentage_label'] . '%' : '-' }}</td>
