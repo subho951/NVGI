@@ -68,15 +68,15 @@
             align-items: center;
             gap: 18px;
             padding: 22px 24px;
-            border-bottom: 4px solid #1a8d76;
-            background: linear-gradient(135deg, #102d49 0%, #145b69 100%);
+            border-bottom: 4px solid #6E260E;
+            background: linear-gradient(135deg, #6E260E 0%, #7B3F00 100%);
             color: #ffffff;
         }
 
         .site-logo {
             width: 78px;
             height: 78px;
-            border-radius: 12px;
+            border-radius: 4px;
             background: #ffffff;
             object-fit: contain;
             padding: 5px;
@@ -98,20 +98,20 @@
         }
 
         .student-block {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            padding: 15px;
-            border: 1px solid #d9e4ed;
-            border-radius: 10px;
-            background: #f8fbfd;
-        }
+			display: flex;
+			align-items: flex-start;
+			gap: 16px;
+			padding: 15px;
+			border: 1px solid #793c01;
+			/*border-radius: 10px;*/
+			background: #f7e2cd;
+		}
 
         .student-photo {
             width: 92px;
             height: 104px;
-            border: 2px solid #d4e0eb;
-            border-radius: 9px;
+            border: 2px solid #993300;
+            /*border-radius: 9px;*/
             background: #ffffff;
             object-fit: cover;
         }
@@ -126,16 +126,16 @@
         .info-item span {
             display: block;
             margin-bottom: 3px;
-            color: #667b8e;
+            color: #7a3e01;
             font-size: 11px;
             font-weight: 700;
-            letter-spacing: 0.05em;
+            /*letter-spacing: 0.05em;*/
             text-transform: uppercase;
         }
 
         .info-item strong {
-            color: #183047;
-            font-size: 14px;
+            color: #702a0c;
+            font-size: 11px;
         }
 
         .section-title {
@@ -154,12 +154,12 @@
         th,
         td {
             border: 1px solid #d5e0e9;
-            padding: 9px 8px;
+            padding: 4px 8px;
             font-size: 13px;
         }
 
         th {
-            background: #143b5f;
+            background: #6e260e;
             color: #ffffff;
             font-size: 11px;
             letter-spacing: 0.04em;
@@ -168,6 +168,53 @@
         }
 
         td.center {
+            text-align: center;
+        }
+
+        .exam-section {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .exam-title-row td {
+            height: 34px;
+            background: #f7e2cd;
+            color: #993300;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .total-row td {
+            background: #fff7ef;
+            color: #702a0c;
+            font-weight: 700;
+        }
+
+        .handwritten-grade {
+            min-width: 82px;
+            height: 28px;
+        }
+
+        .exam-signature-cell {
+            padding: 13px 18px 9px;
+            border-bottom: 2px solid #793c01;
+        }
+
+        .exam-signatures {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            padding-top: 34px;
+        }
+
+        .exam-signature-line {
+            width: 210px;
+            padding-top: 6px;
+            border-top: 1px solid #702a0c;
+            color: #702a0c;
+            font-size: 11px;
+            font-weight: 700;
             text-align: center;
         }
 
@@ -186,8 +233,8 @@
         }
 
         .status-pending {
-            background: #edf1f5;
-            color: #64748b;
+            background: #f7e2cd;
+            color: #993300;
         }
 
         .status-partial {
@@ -268,6 +315,11 @@
                 border: 0;
                 box-shadow: none;
             }
+
+            .exam-section {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
         }
 
         @media (max-width: 640px) {
@@ -287,95 +339,120 @@
             .summary-grid {
                 grid-template-columns: 1fr;
             }
+
+            .exam-signatures {
+                gap: 20px;
+            }
+
+            .exam-signature-line {
+                width: 45%;
+            }
         }
     </style>
 </head>
 <body>
     <div class="report-toolbar">
-        <button type="button" class="secondary" onclick="window.close()">Close</button>
-        <button type="button" onclick="window.print()">Print Report Card</button>
+        <button type="button" class="secondary" onClick="window.close()">Close</button>
+        <button type="button" onClick="window.print()">Print Report Card</button>
     </div>
 
     <div class="report-sheet">
         <div class="report-head">
             <img src="{{ $logoUrl }}" alt="{{ $siteName !== '' ? $siteName : 'Site logo' }}" class="site-logo">
             <div>
-                <h1>{{ $siteName !== '' ? $siteName : 'Student Report Card' }}</h1>
-                <p>Student Subject Wise Exam Progress Report</p>
+                <!--<h1>{{ $siteName !== '' ? $siteName : 'Student Report Card' }}</h1>-->
+                <h1>PROGRESS REPORT CARD</h1>
+                <p>VEDANT HERITAGE SCHOOL</p>
             </div>
         </div>
 
         <div class="report-body">
             <div class="student-block">
-                <img src="{{ $studentPhoto }}" alt="{{ $studentName !== '' ? $studentName : 'Student' }}" class="student-photo">
+                <table>
+                    <tr>
+                        <td style="width:10%; border:none;"><img src="{{ $studentPhoto }}" alt="{{ $studentName !== '' ? $studentName : 'Student' }}" class="student-photo"></td>
+                        <td style="width:90%; border:none;">
+                            <div class="student-info">
+                                <div class="info-item">
+                                    <span>Student Name : <strong>{{ $studentName !== '' && strcasecmp($studentName, 'No Name') !== 0 ? $studentName : '-' }}</strong></span>
+                                    <span>Student ID : <strong>{{ $student->student_id_serial }}</strong></span>
+                                    <span>Father's Name : <strong>{{ $fatherName !== '' && strcasecmp($fatherName, 'No Name') !== 0 ? $fatherName : '-' }}</strong></span>
+                                    <span>Contact No. : <strong>{{ $fatherMobile !== '' ? $fatherMobile : '-' }}</strong></span>
+                                    <span>Branch : <strong>{{ $context['branch_name'] !== '' ? $context['branch_name'] : '-' }}</strong></span>
+                                    <span>Class : <strong>{{ $context['class_name'] !== '' ? $context['class_name'] : '-' }}</strong></span>
+                                    <span>Session : <strong>{{ $context['session_name'] !== '' ? $context['session_name'] : '-' }}</strong></span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+               <!-- <img src="{{ $studentPhoto }}" alt="{{ $studentName !== '' ? $studentName : 'Student' }}" class="student-photo">
                 <div class="student-info">
                     <div class="info-item">
-                        <span>Student Name</span>
-                        <strong>{{ $studentName !== '' && strcasecmp($studentName, 'No Name') !== 0 ? $studentName : '-' }}</strong>
+                        <span>Student Name : <strong>{{ $studentName !== '' && strcasecmp($studentName, 'No Name') !== 0 ? $studentName : '-' }}</strong></span>
+                        <span>Student ID : <strong>{{ $student->student_id_serial }}</strong></span>
+                        <span>Father's Name : <strong>{{ $fatherName !== '' && strcasecmp($fatherName, 'No Name') !== 0 ? $fatherName : '-' }}</strong></span>
+                        <span>Contact No. : <strong>{{ $fatherMobile !== '' ? $fatherMobile : '-' }}</strong></span>
+                        <span>Branch : <strong>{{ $context['branch_name'] !== '' ? $context['branch_name'] : '-' }}</strong></span>
+                        <span>Class : <strong>{{ $context['class_name'] !== '' ? $context['class_name'] : '-' }}</strong></span>
+                        <span>Session : <strong>{{ $context['session_name'] !== '' ? $context['session_name'] : '-' }}</strong></span>
                     </div>
-                    <div class="info-item">
-                        <span>Student ID</span>
-                        <strong>{{ $student->student_id_serial }}</strong>
-                    </div>
-                    <div class="info-item">
-                        <span>Father Name</span>
-                        <strong>{{ $fatherName !== '' && strcasecmp($fatherName, 'No Name') !== 0 ? $fatherName : '-' }}</strong>
-                    </div>
-                    <div class="info-item">
-                        <span>Father Mobile</span>
-                        <strong>{{ $fatherMobile !== '' ? $fatherMobile : '-' }}</strong>
-                    </div>
-                    <div class="info-item">
-                        <span>Unit / Branch</span>
-                        <strong>{{ $context['unit_name'] !== '' ? $context['unit_name'] : '-' }} / {{ $context['branch_name'] !== '' ? $context['branch_name'] : '-' }}</strong>
-                    </div>
-                    <div class="info-item">
-                        <span>Class / Session</span>
-                        <strong>{{ $context['class_name'] !== '' ? $context['class_name'] : '-' }} / {{ $context['session_name'] !== '' ? $context['session_name'] : '-' }}</strong>
-                    </div>
-                </div>
+                </div>-->
             </div>
 
-            <h2 class="section-title">Exam And Subject Wise Marks</h2>
+            <!--<h2 class="section-title">Exam And Subject Wise Marks</h2>-->
             <table>
                 <thead>
                     <tr>
                         <th style="width: 48px;">Sl.</th>
-                        <th>Exam</th>
                         <th>Subject</th>
                         <th style="width: 110px;">Full Marks</th>
                         <th style="width: 120px;">Obtained Marks</th>
                         <th style="width: 95px;">Marks %</th>
-                        <th style="width: 95px;">Status</th>
+                        <th style="width: 95px;">Grade</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @php $reportSl = 1; @endphp
-                    @forelse($report_row['exam_rows'] as $examRow)
+                @forelse($report_row['exam_rows'] as $examRow)
+                    <tbody class="exam-section">
+                        <tr class="exam-title-row">
+                            <td colspan="6">{{ $examRow['exam']->name }}</td>
+                        </tr>
                         @foreach($examRow['subject_rows'] as $subjectRow)
                             <tr>
-                                <td class="center">{{ $reportSl++ }}</td>
-                                <td>{{ $examRow['exam']->name }}</td>
+                                <td class="center">{{ $loop->iteration }}</td>
                                 <td>{{ $subjectRow['subject_name'] }}</td>
                                 <td class="center">{{ $subjectRow['full_marks_label'] }}</td>
                                 <td class="center">{{ $subjectRow['obtain_marks_label'] }}</td>
                                 <td class="center">{{ $subjectRow['has_value'] ? $subjectRow['percentage_label'] . '%' : '-' }}</td>
-                                <td class="center">
-                                    <span class="status {{ $subjectRow['has_value'] ? 'status-entered' : 'status-pending' }}">
-                                        {{ $subjectRow['has_value'] ? 'Entered' : 'Pending' }}
-                                    </span>
-                                </td>
+                                <td class="center handwritten-grade">&nbsp;</td>
                             </tr>
                         @endforeach
-                    @empty
-                        <tr>
-                            <td colspan="7" class="center">No subject-wise exam setup is available for this student.</td>
+                        <tr class="total-row">
+                            <td colspan="2" class="center">Total</td>
+                            <td class="center">{{ $examRow['configured_full_marks_label'] }}</td>
+                            <td class="center">{{ $examRow['total_obtained_label'] }}</td>
+                            <td class="center">{{ $examRow['overall_percentage_label'] }}%</td>
+                            <td class="center handwritten-grade">&nbsp;</td>
                         </tr>
-                    @endforelse
-                </tbody>
+                        <tr>
+                            <td colspan="6" class="exam-signature-cell">
+                                <div class="exam-signatures">
+                                    <div class="exam-signature-line">Guardian's Signature</div>
+                                    <div class="exam-signature-line">HM Signature</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                @empty
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="center">No subject-wise exam setup is available for this student.</td>
+                        </tr>
+                    </tbody>
+                @endforelse
             </table>
 
-            <div class="summary-grid">
+<!--<div class="summary-grid">
                 <div class="summary-item">
                     <span>Assigned Exams</span>
                     <strong>{{ $report_row['exam_count'] }}</strong>
@@ -408,16 +485,8 @@
                     <span>Overall Percentage</span>
                     <strong>{{ $report_row['entered_count'] > 0 ? $report_row['overall_percentage_label'] . '%' : '-' }}</strong>
                 </div>
-            </div>
+            </div>-->
 
-            <p class="report-note">
-                Assigned subjects without entered marks are shown as pending, so this card can be used as a progress report.
-            </p>
-
-            <div class="report-footer">
-                <span>Generated: {{ $generated_at }}</span>
-                <span class="signature">Authorized Signature</span>
-            </div>
         </div>
     </div>
 </body>
