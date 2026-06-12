@@ -3,7 +3,7 @@
 
     $student = $report_row['student'];
     $siteName = trim((string) Helper::getSettingValue('site_name'));
-    $logoUrl = asset('material/backend/image/vhs-logo.jpeg');
+    $logoUrl = asset('public/material/backend/image/vhs-logo.jpeg');
     $studentPhoto = trim((string) $student->photo) !== ''
         ? config('constants.app_url') . config('constants.uploads_url_path') . $student->photo
         : config('constants.no_image_avatar');
