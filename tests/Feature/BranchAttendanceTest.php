@@ -266,6 +266,48 @@ class BranchAttendanceTest extends TestCase
         );
     }
 
+    public function test_late_minutes_start_from_the_next_full_minute(): void
+    {
+        $photo = $this->attendancePhoto();
+        $mobileUserAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148';
+        $bibirhatSession = [
+            'branch_portal' => [
+                'branch_id' => 1,
+                'unit_id' => 2,
+                'serial_id' => 'BIB',
+                'branch_name' => 'Bibirhat',
+            ],
+        ];
+
+        Carbon::setTestNow(Carbon::create(2026, 6, 6, 8, 30, 59, 'Asia/Kolkata'));
+
+        $this->withSession($bibirhatSession)
+            ->withHeader('User-Agent', $mobileUserAgent)
+            ->post($this->routeUrl('branch.portal.attendance.punch-in', ['roster' => 105]), ['photo' => $photo])
+            ->assertRedirect($this->routeUrl('branch.portal.attendance.index'))
+            ->assertSessionHas('success_message');
+
+        $this->assertDatabaseHas('employee_attendances', [
+            'roster_id' => 105,
+            'is_late' => 0,
+            'late_minutes' => 0,
+        ]);
+
+        Carbon::setTestNow(Carbon::create(2026, 6, 6, 8, 31, 0, 'Asia/Kolkata'));
+
+        $this->withSession($bibirhatSession)
+            ->withHeader('User-Agent', $mobileUserAgent)
+            ->post($this->routeUrl('branch.portal.attendance.punch-in', ['roster' => 106]), ['photo' => $photo])
+            ->assertRedirect($this->routeUrl('branch.portal.attendance.index'))
+            ->assertSessionHas('success_message');
+
+        $this->assertDatabaseHas('employee_attendances', [
+            'roster_id' => 106,
+            'is_late' => 1,
+            'late_minutes' => 1,
+        ]);
+    }
+
     private function seedAttendanceScenario(): void
     {
         $now = now();
@@ -301,6 +343,8 @@ class BranchAttendanceTest extends TestCase
             ['id' => 102, 'employee_id' => 10, 'employee_no' => 'NVGI-0010', 'employee_name' => 'Test TSA Teacher', 'branch_id' => 3, 'branch_name' => 'Rajarhat', 'roster_date' => now(), 'in_time' => '18:00', 'out_time' => '20:00'],
             ['id' => 103, 'employee_id' => 20, 'employee_no' => 'NVGI-0020', 'employee_name' => 'Roster Only Employee', 'branch_id' => 1, 'branch_name' => 'Bibirhat', 'roster_date' => now(), 'in_time' => '09:00', 'out_time' => '10:00'],
             ['id' => 104, 'employee_id' => 20, 'employee_no' => 'NVGI-0020', 'employee_name' => 'Roster Only Employee', 'branch_id' => 1, 'branch_name' => 'Bibirhat', 'roster_date' => now()->subDay(), 'in_time' => '08:00', 'out_time' => '10:00'],
+            ['id' => 105, 'employee_id' => 20, 'employee_no' => 'NVGI-0020', 'employee_name' => 'Roster Boundary Employee', 'branch_id' => 1, 'branch_name' => 'Bibirhat', 'roster_date' => now(), 'in_time' => '08:30', 'out_time' => '10:30'],
+            ['id' => 106, 'employee_id' => 20, 'employee_no' => 'NVGI-0020', 'employee_name' => 'Roster Boundary Employee', 'branch_id' => 1, 'branch_name' => 'Bibirhat', 'roster_date' => now(), 'in_time' => '08:30', 'out_time' => '10:30'],
         ];
 
         foreach ($rosters as $roster) {

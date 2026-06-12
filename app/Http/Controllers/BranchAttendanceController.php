@@ -391,7 +391,8 @@ class BranchAttendanceController extends Controller
                 return 0;
             }
 
-            return (int) max(1, ceil($scheduledAt->diffInSeconds($punchedAt) / 60));
+            // Count completed late minutes so the scheduled minute itself remains on time.
+            return intdiv((int) $scheduledAt->diffInSeconds($punchedAt), 60);
         } catch (\Throwable $e) {
             return 0;
         }
