@@ -404,7 +404,6 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 48px;">Sl.</th>
                         <th>Subject</th>
                         <th style="width: 110px;">Full Marks</th>
                         <th style="width: 120px;">Obtained Marks</th>
@@ -415,11 +414,10 @@
                 @forelse($report_row['exam_rows'] as $examRow)
                     <tbody class="exam-section">
                         <tr class="exam-title-row">
-                            <td colspan="6">{{ $examRow['exam']->name }}</td>
+                            <td colspan="5">{{ $examRow['exam']->name }}</td>
                         </tr>
                         @foreach($examRow['subject_rows'] as $subjectRow)
                             <tr>
-                                <td class="center">{{ $loop->iteration }}</td>
                                 <td>{{ $subjectRow['subject_name'] }}</td>
                                 <td class="center">{{ $subjectRow['full_marks_label'] }}</td>
                                 <td class="center">{{ $subjectRow['obtain_marks_label'] }}</td>
@@ -428,14 +426,14 @@
                             </tr>
                         @endforeach
                         <tr class="total-row">
-                            <td colspan="2" class="center">Total</td>
+                            <td class="center">Total</td>
                             <td class="center">{{ $examRow['configured_full_marks_label'] }}</td>
                             <td class="center">{{ $examRow['total_obtained_label'] }}</td>
                             <td class="center">{{ $examRow['overall_percentage_label'] }}%</td>
                             <td class="center handwritten-grade">&nbsp;</td>
                         </tr>
                         <tr>
-                            <td colspan="6" class="exam-signature-cell">
+                            <td colspan="5" class="exam-signature-cell">
                                 <div class="exam-signatures">
                                     <div class="exam-signature-line">Guardian's Signature</div>
                                     <div class="exam-signature-line">HM Signature</div>
@@ -446,7 +444,7 @@
                 @empty
                     <tbody>
                         <tr>
-                            <td colspan="6" class="center">No subject-wise exam setup is available for this student.</td>
+                            <td colspan="5" class="center">No subject-wise exam setup is available for this student.</td>
                         </tr>
                     </tbody>
                 @endforelse
