@@ -251,6 +251,74 @@ class TsaMultipleClassTest extends TestCase
         ]);
     }
 
+    public function test_group_d_shift_can_use_date_occupied_by_deleted_same_time_roster(): void
+    {
+        DB::table('employee_schedule_rosters')->insert([
+            array_merge($this->datedRosterRow(
+                4,
+                'NVGI-0004',
+                'GROUP D',
+                'GROUP-D',
+                Carbon::create(2026, 6, 27),
+                '08:00',
+                '20:00'
+            ), [
+                'status' => 3,
+            ]),
+            $this->datedRosterRow(
+                4,
+                'NVGI-0004',
+                'GROUP D',
+                'GROUP-D',
+                Carbon::create(2026, 6, 28),
+                '08:00',
+                '13:00'
+            ),
+        ]);
+
+        $deletedRosterId = (int) EmployeeScheduleRoster::where('employee_id', 4)
+            ->where('category', 'GROUP-D')
+            ->where('roster_date', '2026-06-27')
+            ->where('in_time', '08:00')
+            ->where('status', 3)
+            ->value('id');
+        $activeRosterId = (int) EmployeeScheduleRoster::where('employee_id', 4)
+            ->where('category', 'GROUP-D')
+            ->where('roster_date', '2026-06-28')
+            ->where('status', 1)
+            ->value('id');
+
+        $request = Request::create('/employee/schedule-roster/front-desk-group-d/shift-date', 'POST', [
+            'category' => 'GROUP-D',
+            'employee_id' => 4,
+            'branch_name' => 'Bibirhat',
+            'source_date' => '2026-06-28',
+            'target_date' => '2026-06-27',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+
+        app(EmployeeScheduleRosterController::class)->supportShiftDate($request);
+
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $activeRosterId,
+            'employee_id' => 4,
+            'category' => 'GROUP-D',
+            'roster_date' => '2026-06-27',
+            'in_time' => '08:00',
+            'out_time' => '13:00',
+            'status' => 1,
+        ]);
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'id' => $deletedRosterId,
+            'roster_date' => '2026-06-27',
+            'in_time' => '08:00',
+        ]);
+        $this->assertDatabaseHas('employee_schedule_rosters', [
+            'id' => $deletedRosterId,
+            'status' => 3,
+        ]);
+    }
+
     public function test_front_desk_roster_time_can_be_updated_on_any_date(): void
     {
         DB::table('employee_schedule_rosters')->insert($this->datedRosterRow(

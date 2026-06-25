@@ -1927,6 +1927,37 @@ class EmployeeScheduleRosterController extends Controller
         return $query->exists();
     }
 
+    private function releaseDeletedRosterDateTimeConflicts($row, Carbon $rosterDate, string $inTime, int $userId): void
+    {
+        $inTime = trim($inTime);
+
+        if ($inTime === '') {
+            return;
+        }
+
+        $deletedConflicts = EmployeeScheduleRoster::where('id', '!=', (int) $row->id)
+            ->where('employee_id', '=', (int) $row->employee_id)
+            ->where('category', '=', (string) $row->category)
+            ->where('branch_id', '=', (int) $row->branch_id)
+            ->whereDate('roster_date', '=', $rosterDate->toDateString())
+            ->where('in_time', '=', $inTime)
+            ->where('status', '=', 3)
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($deletedConflicts as $deletedConflict) {
+            $temporaryDate = $this->temporaryRosterSwapDate(collect([$deletedConflict]));
+            $deletedConflict->fill([
+                'roster_date' => $temporaryDate->toDateString(),
+                'roster_month' => (int) $temporaryDate->month,
+                'roster_year' => (int) $temporaryDate->year,
+                'day_name' => $temporaryDate->format('l'),
+                'updated_by' => $userId,
+            ]);
+            $deletedConflict->save();
+        }
+    }
+
     private function applyRosterDate($row, Carbon $rosterDate, int $userId, ?string $inTime = null, ?string $outTime = null): void
     {
         $values = [
@@ -1941,6 +1972,9 @@ class EmployeeScheduleRosterController extends Controller
             $values['in_time'] = $inTime;
             $values['out_time'] = $outTime;
         }
+
+        $targetInTime = array_key_exists('in_time', $values) ? (string) $values['in_time'] : (string) $row->in_time;
+        $this->releaseDeletedRosterDateTimeConflicts($row, $rosterDate, $targetInTime, $userId);
 
         $row->fill($values);
         $row->save();
