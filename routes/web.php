@@ -6,6 +6,10 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\LedgerController;
+use App\Http\Controllers\LeaveTypeController;
+use App\Http\Controllers\LeaveAllotmentController;
+use App\Http\Controllers\EmployeeLeaveBalanceController;
+use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BranchPortalController;
 use App\Http\Controllers\BranchAttendanceController;
@@ -265,6 +269,24 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('employee/schedule-roster/employee/{employee}/pdf', [EmployeeScheduleRosterController::class, 'employeeRosterPdf'])->name('employee.schedule-roster.employee.pdf');
                 Route::post('employee/schedule-roster/employee/{employee}/email', [EmployeeScheduleRosterController::class, 'emailEmployeeRoster'])->name('employee.schedule-roster.employee.email');
             /* employee */
+            /* payroll & leave */
+                Route::match(['get', 'post'], 'payroll-leave/leave-type/list', [LeaveTypeController::class, 'list']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-type/add', [LeaveTypeController::class, 'add']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-type/edit/{id}', [LeaveTypeController::class, 'edit']);
+                Route::get('payroll-leave/leave-type/change-status/{id}', [LeaveTypeController::class, 'change_status']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-allotment/list', [LeaveAllotmentController::class, 'list']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-allotment/add', [LeaveAllotmentController::class, 'add']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-allotment/edit/{id}', [LeaveAllotmentController::class, 'edit']);
+                Route::get('payroll-leave/leave-allotment/change-status/{id}', [LeaveAllotmentController::class, 'change_status']);
+                Route::get('payroll-leave/leave-allotment/assign/{id}', [LeaveAllotmentController::class, 'assign']);
+                Route::get('payroll-leave/employee-leave-balance/list', [EmployeeLeaveBalanceController::class, 'list']);
+                Route::get('payroll-leave/employee-leave-balance/history/{employee}/{leaveType?}', [EmployeeLeaveBalanceController::class, 'history']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-application/list', [LeaveApplicationController::class, 'list']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-application/add', [LeaveApplicationController::class, 'add']);
+                Route::match(['get', 'post'], 'payroll-leave/leave-application/edit/{id}', [LeaveApplicationController::class, 'edit']);
+                Route::post('payroll-leave/leave-application/approve/{id}', [LeaveApplicationController::class, 'approve']);
+                Route::post('payroll-leave/leave-application/reject/{id}', [LeaveApplicationController::class, 'reject']);
+            /* payroll & leave */
             /* CRM */
                 /* sales person */
                     Route::match(['get', 'post'], 'sales-person/list', [SalesPersonController::class, 'list']);

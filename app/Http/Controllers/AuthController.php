@@ -17,6 +17,7 @@ use App\Models\GeneralSetting;
 use App\Models\UserActivity;
 use App\Models\Unit;
 use App\Models\Branch;
+use App\Models\Employee;
 use App\Models\User;
 
 use App\Helpers\Helper;
@@ -265,11 +266,111 @@ class AuthController extends Controller
             $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
             $data['branches']               = Branch::select('id', 'name', 'unit_id')->where('status', '=', 1)->orderBy('id', 'ASC')->get();
             $data['users']                  = User::select('id', 'first_name', 'last_name', 'middle_name')->where('role_id', '!=', 4)->where('status', '=', 1)->orderBy('id', 'ASC')->get();
+            $data['employee_counts']        = $this->dashboardEmployeeCounts();
             $title                          = 'Dashboard';
             $page_name                      = 'dashboard';
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             
             return view('front.pages.' . $page_name, $data);
+        }
+
+        private function dashboardEmployeeCounts()
+        {
+            $activeEmployees = Employee::select('id', 'category')
+                                    ->where('status', '=', 1)
+                                    ->get();
+
+            $counts = [
+                'active_employee'     => $activeEmployees->count(),
+                'only_vhs_employee'   => 0,
+                'only_tsa_employee'   => 0,
+                'vhs_tsa_employee'    => 0,
+                'front_desk_employee' => 0,
+                'group_d_employee'    => 0,
+            ];
+
+            foreach ($activeEmployees as $employee) {
+                $categories = $this->dashboardEmployeeCategories($employee->category);
+                $hasVhs = in_array('VHS TEACHER', $categories, true);
+                $hasTsa = in_array('TSA TEACHER', $categories, true);
+                $hasFrontDesk = in_array('FRONT-DESK', $categories, true);
+                $hasGroupD = in_array('GROUP-D', $categories, true);
+
+                if ($hasVhs && count($categories) === 1) {
+                    $counts['only_vhs_employee']++;
+                }
+
+                if ($hasTsa && count($categories) === 1) {
+                    $counts['only_tsa_employee']++;
+                }
+
+                if ($hasVhs && $hasTsa) {
+                    $counts['vhs_tsa_employee']++;
+                }
+
+                if ($hasFrontDesk) {
+                    $counts['front_desk_employee']++;
+                }
+
+                if ($hasGroupD) {
+                    $counts['group_d_employee']++;
+                }
+            }
+
+            return [
+                [
+                    'label' => 'Active Employee',
+                    'count' => $counts['active_employee'],
+                    'class' => 'bg2',
+                ],
+                [
+                    'label' => 'Only VHS Employee',
+                    'count' => $counts['only_vhs_employee'],
+                    'class' => 'bg1',
+                ],
+                [
+                    'label' => 'Only TSA Employee',
+                    'count' => $counts['only_tsa_employee'],
+                    'class' => 'bg3',
+                ],
+                [
+                    'label' => 'VHS & TSA Employee',
+                    'count' => $counts['vhs_tsa_employee'],
+                    'class' => 'bg5',
+                ],
+                [
+                    'label' => 'Front-desk Employee',
+                    'count' => $counts['front_desk_employee'],
+                    'class' => 'bg6',
+                ],
+                [
+                    'label' => 'Group-D Employee',
+                    'count' => $counts['group_d_employee'],
+                    'class' => 'bg7',
+                ],
+            ];
+        }
+
+        private function dashboardEmployeeCategories($category)
+        {
+            $decodedCategories = json_decode((string)$category, true);
+            $categories = is_array($decodedCategories) ? $decodedCategories : [$category];
+            $validCategories = [
+                'VHS TEACHER',
+                'TSA TEACHER',
+                'FRONT-DESK',
+                'GROUP-D',
+            ];
+
+            $categories = array_map(function ($categoryValue) {
+                return trim((string)$categoryValue);
+            }, $categories);
+
+            $categories = array_filter($categories, function ($categoryValue) use ($validCategories) {
+                return $categoryValue !== '' && in_array($categoryValue, $validCategories, true);
+            });
+
+            return array_values(array_unique($categories));
         }
     /* dashboard */
     /* email logs */

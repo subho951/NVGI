@@ -281,7 +281,7 @@
 
     .employee-table th:nth-child(2),
     .employee-table td:nth-child(2) {
-        width: 13%;
+        width: 12%;
     }
 
     .employee-table th:nth-child(3),
@@ -291,37 +291,42 @@
 
     .employee-table th:nth-child(4),
     .employee-table td:nth-child(4) {
-        width: 13%;
+        width: 11%;
     }
 
     .employee-table th:nth-child(5),
     .employee-table td:nth-child(5) {
-        width: 13%;
+        width: 10%;
     }
 
     .employee-table th:nth-child(6),
     .employee-table td:nth-child(6) {
-        width: 10%;
+        width: 9%;
     }
 
     .employee-table th:nth-child(7),
     .employee-table td:nth-child(7) {
-        width: 10%;
+        width: 9%;
     }
 
     .employee-table th:nth-child(8),
     .employee-table td:nth-child(8) {
-        width: 17%;
+        width: 13%;
     }
 
-    .employee-table th:nth-child(14),
-    .employee-table td:nth-child(14) {
-        width: 7%;
+    .employee-table th:nth-child(9),
+    .employee-table td:nth-child(9) {
+        width: 10%;
     }
 
     .employee-table th:nth-child(15),
     .employee-table td:nth-child(15) {
-        width: 10%;
+        width: 6%;
+    }
+
+    .employee-table th:nth-child(16),
+    .employee-table td:nth-child(16) {
+        width: 9%;
     }
 
     .employee-export-only {
@@ -407,6 +412,61 @@
         color: #234766;
         font-size: 0.66rem;
         font-weight: 600;
+    }
+
+    .employee-leave-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .employee-leave-chip {
+        display: inline-flex;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        padding: 5px 7px;
+        border: 1px solid #d8e4ef;
+        border-radius: 7px;
+        background: #f6f9fc;
+        color: #173145;
+        font-size: 0.68rem;
+        font-weight: 800;
+    }
+
+    .employee-leave-chip span:last-child {
+        color: #1d7f7d;
+    }
+
+    .employee-leave-history {
+        align-items: center;
+        justify-content: center;
+        display: inline-flex;
+        gap: 5px;
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #245b68;
+        border-radius: 7px;
+        background: #245b68;
+        color: #fff !important;
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .employee-leave-history:hover {
+        background: #1a4651;
+        border-color: #1a4651;
+        color: #fff !important;
+    }
+
+    .employee-leave-history.disabled {
+        background: #eef4fa;
+        border-color: #d8e4ef;
+        color: #7d8fa0 !important;
+        cursor: not-allowed;
+        pointer-events: none;
     }
 
     .employee-action {
@@ -615,6 +675,11 @@ use App\Helpers\Helper;
 $controllerRoute = $module['controller_route'];
 $employeeRows = collect($rows ?? []);
 $hasEmployeeRows = $employeeRows->isNotEmpty();
+$formatCount = function ($value) {
+    $formatted = number_format((float) $value, 2, '.', '');
+
+    return rtrim(rtrim($formatted, '0'), '.');
+};
 $rosterMonthValue = trim((string) request('roster_month', date('Y-m')));
 if (!preg_match('/^\d{4}-\d{2}$/', $rosterMonthValue)) {
     $rosterMonthValue = date('Y-m');
@@ -775,6 +840,7 @@ $employeeStats = [
                                 <th>Personal</th>
                                 <th>Work</th>
                                 <th>Bank Details</th>
+                                <th>Leave</th>
                                 <th class="employee-export-only">Bank Name</th>
                                 <th class="employee-export-only">Bank Branch</th>
                                 <th class="employee-export-only">Account No.</th>
@@ -794,6 +860,11 @@ $employeeStats = [
                                 $dobText = !empty($row->dob) ? date('d-m-Y', strtotime($row->dob)) : '--';
                                 $dojText = !empty($row->doj) ? date('d-m-Y', strtotime($row->doj)) : '--';
                                 $ageText = $row->age !== null ? $row->age : '--';
+                                $leaveBalances = collect($row->leave_balances ?? []);
+                                $leaveHistoryUrl = url('payroll-leave/employee-leave-balance/history/' . Helper::encoded($row->id));
+                                $leaveExportText = $leaveBalances->map(function ($leaveBalance) use ($formatCount) {
+                                    return ($leaveBalance->leave_type_name ?: '--') . ' Balance: ' . $formatCount($leaveBalance->balance_leave);
+                                })->implode(' | ');
                             ?>
                                 <tr>
                                     <td><?= $sl++ ?></td>
@@ -874,6 +945,26 @@ $employeeStats = [
                                         <?php } else { ?>
                                             <span class="employee-empty">--</span>
                                         <?php } ?>
+                                    </td>
+                                    <td data-export-text="<?= e($leaveExportText) ?>">
+                                        <div class="employee-leave-stack">
+                                            <?php if ($leaveBalances->isNotEmpty()) { ?>
+                                                <?php foreach ($leaveBalances as $leaveBalance) { ?>
+                                                    <span class="employee-leave-chip">
+                                                        <span><?= e($leaveBalance->leave_type_name ?: '--') ?></span>
+                                                        <span><?= e($formatCount($leaveBalance->balance_leave)) ?></span>
+                                                    </span>
+                                                <?php } ?>
+                                                <a href="<?= e($leaveHistoryUrl) ?>" target="_blank" rel="noopener" class="employee-leave-history">
+                                                    <i class="fa-solid fa-book-open"></i> Leave History
+                                                </a>
+                                            <?php } else { ?>
+                                                <span class="employee-empty">No leave balance</span>
+                                                <span class="employee-leave-history disabled">
+                                                    <i class="fa-solid fa-book-open"></i> Leave History
+                                                </span>
+                                            <?php } ?>
+                                        </div>
                                     </td>
                                     <td class="employee-export-only"><?= (!empty($row->bank_name) ? e($row->bank_name) : '') ?></td>
                                     <td class="employee-export-only"><?= (!empty($row->bank_branch) ? e($row->bank_branch) : '') ?></td>

@@ -66,7 +66,11 @@ $pageSegment  = $pageName[0];
 
       const isStudentListPage = @json(request()->is('student/list'));
       const isEmployeeListPage = @json(request()->is('employee/list'));
-      const cleanExportBody = function(data) {
+      const cleanExportBody = function(data, row, column, node) {
+        if (node && node.dataset && typeof node.dataset.exportText === 'string') {
+          return node.dataset.exportText;
+        }
+
         if (typeof data !== 'string') {
           return data;
         }
@@ -166,6 +170,8 @@ $pageSegment  = $pageName[0];
                   baseWidths = [16, 54, 76, 46, 38, 38, 38, 38, 70, 94, 58, 96, 14];
                 } else if (isEmployeeListPage && columnCount === 9) {
                   baseWidths = [24, 104, 68, 104, 104, 82, 82, 136, 58];
+                } else if (isEmployeeListPage && columnCount === 10) {
+                  baseWidths = [22, 96, 58, 88, 82, 70, 70, 108, 84, 46];
                 }
 
                 if (baseWidths) {

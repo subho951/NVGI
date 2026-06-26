@@ -283,7 +283,7 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
         </li>
     <?php } ?>
 
-    <?php if((in_array(26, $moduleIds)) || (in_array(28, $moduleIds)) || (in_array(29, $moduleIds)) || (in_array(30, $moduleIds))){?>
+    <?php if((in_array(26, $moduleIds)) || (in_array(28, $moduleIds)) || (in_array(29, $moduleIds)) || (in_array(30, $moduleIds)) || (in_array(31, $moduleIds))){?>
         <!-- Employees -->
         <li class="nav-item">
             <a class="nav-link d-flex justify-content-between align-items-center <?= (($pageSegment == 'employee') ? 'active-link' : '') ?>"
@@ -325,14 +325,16 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                         </a>
                     </li>
                 <?php } ?>
-                <li>
-                    <a href="<?= url('employee/attendance-report') ?>" class="nav-link <?= (($pageSegment == 'employee' && $pageFunction == 'attendance-report') ? 'active-link' : '') ?>">
-                        <i class="fa-solid fa-arrow-right"></i> <span>Attendance Report</span>
-                    </a>
-                </li>
+                <?php if(in_array(31, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('employee/attendance-report') ?>" class="nav-link <?= (($pageSegment == 'employee' && $pageFunction == 'attendance-report') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Attendance Report</span>
+                        </a>
+                    </li>
+                <?php } ?>
              </ul>
          </li>
-     <?php }?>
+     <?php }?>    
 
     <?php if((in_array(24, $moduleIds)) || (in_array(25, $moduleIds))){?>
         <!-- Exams -->
@@ -359,6 +361,52 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                     <li>
                         <a href="<?= url('exam/marks') ?>" class="nav-link <?= (($pageSegment == 'exam' && $pageFunction == 'marks') ? 'active-link' : '') ?>">
                             <i class="fa-solid fa-arrow-right"></i> <span>Exam Marks</span>
+                        </a>
+                    </li>
+                <?php } ?>
+            </ul>
+        </li>
+    <?php } ?>
+
+    <?php if((in_array(32, $moduleIds)) || (in_array(33, $moduleIds)) || (in_array(34, $moduleIds)) || (in_array(35, $moduleIds))){?>
+        <!-- Payroll & Leave -->
+        <li class="nav-item">
+            <a class="nav-link d-flex justify-content-between align-items-center <?= (($pageSegment == 'payroll-leave') ? 'active-link' : '') ?>"
+                data-bs-toggle="collapse"
+                href="#payrollLeaveMenu"
+                role="button"
+                aria-expanded="<?= (($pageSegment == 'payroll-leave') ? 'true' : 'false') ?>"
+                aria-controls="payrollLeaveMenu">
+                <span><i class="fa-solid fa-calendar-check"></i> Payroll & Leave</span>
+                <i class="fa-solid fa-angle-down menu-arrow"></i>
+            </a>
+
+            <ul class="collapse list-unstyled ps-3 <?= (($pageSegment == 'payroll-leave') ? 'show' : '') ?>" id="payrollLeaveMenu">
+                <?php if(in_array(32, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('payroll-leave/leave-type/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'leave-type') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Leave Type</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(33, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('payroll-leave/leave-allotment/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'leave-allotment') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Leave Allotment</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(34, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('payroll-leave/employee-leave-balance/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'employee-leave-balance') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Employee Leave Balance</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(35, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('payroll-leave/leave-application/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'leave-application') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Leave Application</span>
                         </a>
                     </li>
                 <?php } ?>

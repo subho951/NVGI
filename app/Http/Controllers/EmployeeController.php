@@ -9,6 +9,7 @@ use App\Services\SiteAuthService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 
@@ -36,6 +37,7 @@ class EmployeeController extends Controller
         $page_name = 'employee.list';
 
         $branchMap = $this->getBranchMap();
+        $leaveBalanceMap = $this->getEmployeeLeaveBalanceMap();
         $data['branches'] = Branch::select('id', 'name')
                                 ->where('status', '!=', 3)
                                 ->orderBy('name', 'ASC')
@@ -43,9 +45,10 @@ class EmployeeController extends Controller
         $data['rows'] = Employee::where('status', '!=', 3)
                             ->orderBy('id', 'DESC')
                             ->get()
-                            ->map(function ($row) use ($branchMap) {
+                            ->map(function ($row) use ($branchMap, $leaveBalanceMap) {
                                 $row->employee_name = $this->buildEmployeeName($row);
                                 $row->category_names = $this->employeeCategoryLabels($row->category);
+                                $row->leave_balances = $leaveBalanceMap->get($row->id, collect())->values();
                                 $row->in_time_display = $this->formatTimeForDisplay($row->in_time);
                                 $row->out_time_display = $this->formatTimeForDisplay($row->out_time);
 
@@ -463,6 +466,35 @@ class EmployeeController extends Controller
                 ->get()
                 ->pluck('name', 'id')
                 ->toArray();
+    }
+
+    private function getEmployeeLeaveBalanceMap()
+    {
+        return DB::table('employee_leave_allotments as ela')
+            ->leftJoin('leave_types as lt', 'lt.id', '=', 'ela.leave_type_id')
+            ->select([
+                'ela.employee_id',
+                'ela.leave_type_id',
+                DB::raw('MAX(lt.name) as leave_type_name'),
+                DB::raw('SUM(ela.balance_leave) as balance_leave'),
+            ])
+            ->where('ela.status', '!=', 3)
+            ->groupBy('ela.employee_id', 'ela.leave_type_id')
+            ->orderBy('leave_type_name')
+            ->get()
+            ->groupBy('employee_id')
+            ->map(function ($leaveRows) {
+                return $leaveRows
+                    ->sortBy('leave_type_name')
+                    ->map(function ($leaveRow) {
+                        return (object) [
+                            'leave_type_id' => $leaveRow->leave_type_id,
+                            'leave_type_name' => $leaveRow->leave_type_name,
+                            'balance_leave' => (float) $leaveRow->balance_leave,
+                        ];
+                    })
+                    ->values();
+            });
     }
 
     private function buildEmployeeName($row)

@@ -6,6 +6,30 @@ use App\Models\Student;
 use App\Helpers\Helper;
 ?>
 <h4 class=" text-center">Dashboard Overview</h4>
+<?php
+$employeeCounts = $employee_counts ?? [];
+?>
+<?php if (!empty($employeeCounts)) { ?>
+<div class="card shadow bg-light mb-4">
+    <div class="card-header">
+        <h4 class="text-center mb-0">Employee Summary</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <?php foreach ($employeeCounts as $employeeCount) { ?>
+                <div class="col-md-4 col-lg-2 mb-3">
+                    <div class="card shadow dashboard-card <?= $employeeCount['class'] ?>">
+                        <div class="card-body text-center text-white">
+                            <h5><?= $employeeCount['label'] ?></h5>
+                            <h2><?= $employeeCount['count'] ?></h2>
+                        </div>
+                    </div>
+                </div>
+            <?php } ?>
+        </div>
+    </div>
+</div>
+<?php } ?>
 <!--<h6 class="mb-4 text-danger">Developer's Note : ID should be : NVGI/{Unit Name}{1st letter of branch}/1,2,3...</h6>-->
 <div class="card shadow bg-light mb-4">
     <div class="card-body">
