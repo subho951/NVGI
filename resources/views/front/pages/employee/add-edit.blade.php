@@ -383,6 +383,46 @@
         display: none !important;
     }
 
+    .category-salary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+
+    .category-salary-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 52px;
+        padding: 10px 12px;
+        border: 1px solid #dbe6f1;
+        border-radius: 12px;
+        background: #f8fbfe;
+    }
+
+    .category-salary-name {
+        flex: 1 1 auto;
+        color: #173f63;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .category-salary-row .form-control {
+        flex: 0 0 130px;
+        min-height: 40px;
+    }
+
+    .category-salary-empty {
+        padding: 11px 12px;
+        border: 1px dashed #cbd9e6;
+        border-radius: 12px;
+        color: #66788b;
+        font-size: 0.84rem;
+        font-weight: 600;
+    }
+
     @media (max-width: 991px) {
         .employee-hero {
             padding: 22px;
@@ -451,6 +491,26 @@ if (is_array($categoryInput)) {
 $selectedCategories = array_values(array_unique(array_filter(array_map('strval', $selectedCategories), function ($value) use ($availableCategories) {
     return trim($value) !== '' && in_array($value, $availableCategories, true);
 })));
+$categorySalaryInput = old('category_salaries', (($isEdit) ? ($row->category_salaries ?? []) : []));
+
+if (!is_array($categorySalaryInput)) {
+    $decodedCategorySalaries = json_decode((string)$categorySalaryInput, true);
+    $categorySalaryInput = is_array($decodedCategorySalaries) ? $decodedCategorySalaries : [];
+}
+
+$categorySalaryValues = [];
+foreach ($availableCategories as $availableCategory) {
+    if (array_key_exists($availableCategory, $categorySalaryInput) && !is_array($categorySalaryInput[$availableCategory])) {
+        $categorySalaryValues[$availableCategory] = trim((string)$categorySalaryInput[$availableCategory]);
+    }
+}
+
+foreach ($selectedCategories as $selectedCategory) {
+    if (!array_key_exists($selectedCategory, $categorySalaryValues) && $salary !== '' && $salary !== null) {
+        $categorySalaryValues[$selectedCategory] = (string)$salary;
+    }
+}
+
 $hasVhsTeacherCategory = in_array('VHS TEACHER', $selectedCategories, true);
 $in_time = old('in_time', (($isEdit) ? substr((string)$row->in_time, 0, 5) : ''));
 $out_time = old('out_time', (($isEdit) ? substr((string)$row->out_time, 0, 5) : ''));
@@ -665,6 +725,10 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                         Choose one or more branches to define the employee's work access and reporting scope.
                                     </div>
                                 </div>
+                                <div class="col-12">
+                                    <label class="form-label">Category Wise Salary <span class="text-danger">*</span></label>
+                                    <div class="category-salary-grid" id="category_salary_fields"></div>
+                                </div>
                                 <div class="col-12 employee-conditional-time" id="vhs_time_fields" <?= $hasVhsTeacherCategory ? '' : 'hidden' ?>>
                                     <div class="row g-3">
                                         <div class="col-md-6">
@@ -827,6 +891,9 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/gh/bbbootstrap/libraries@main/choices.min.js"></script>
 <script>
+    var categorySalaryValues = <?= json_encode((object)$categorySalaryValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    var categorySalaryLastDefault = '';
+
     function isNumber(evt) {
         evt = (evt) ? evt : window.event;
         var charCode = (evt.which) ? evt.which : evt.keyCode;
@@ -930,6 +997,77 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
         }).filter(function(value) {
             return value !== '';
         });
+    }
+
+    function renderCategorySalaryFields() {
+        var container = document.getElementById('category_salary_fields');
+        var salaryInput = document.getElementById('salary');
+
+        if (!container) {
+            return;
+        }
+
+        var selectedCategories = getSelectedOptionValues('category');
+        var defaultSalary = salaryInput ? salaryInput.value : '';
+        container.innerHTML = '';
+
+        if (!selectedCategories.length) {
+            var emptyNote = document.createElement('div');
+            emptyNote.className = 'category-salary-empty';
+            emptyNote.textContent = 'Select category to enter category wise salary.';
+            container.appendChild(emptyNote);
+            return;
+        }
+
+        selectedCategories.forEach(function(category) {
+            if (typeof categorySalaryValues[category] === 'undefined' || categorySalaryValues[category] === '') {
+                categorySalaryValues[category] = defaultSalary;
+            }
+
+            var row = document.createElement('div');
+            row.className = 'category-salary-row';
+
+            var label = document.createElement('span');
+            label.className = 'category-salary-name';
+            label.textContent = category;
+
+            var input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.01';
+            input.min = '0';
+            input.className = 'form-control';
+            input.name = 'category_salaries[' + category + ']';
+            input.value = categorySalaryValues[category];
+            input.placeholder = 'Salary';
+            input.required = true;
+            input.setAttribute('data-category-salary-input', category);
+
+            input.addEventListener('input', function() {
+                categorySalaryValues[category] = input.value;
+            });
+
+            row.appendChild(label);
+            row.appendChild(input);
+            container.appendChild(row);
+        });
+    }
+
+    function applySalaryDefaultToEmptyCategorySalaries() {
+        var salaryInput = document.getElementById('salary');
+        var defaultSalary = salaryInput ? salaryInput.value : '';
+        var previousDefault = categorySalaryLastDefault;
+        var salaryFields = document.querySelectorAll('[data-category-salary-input]');
+
+        salaryFields.forEach(function(input) {
+            var category = input.getAttribute('data-category-salary-input');
+
+            if (!input.value || (previousDefault !== '' && input.value === previousDefault)) {
+                input.value = defaultSalary;
+                categorySalaryValues[category] = defaultSalary;
+            }
+        });
+
+        categorySalaryLastDefault = defaultSalary;
     }
 
     function buildCategoryPreview() {
@@ -1042,7 +1180,9 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
         var categorySelect = document.getElementById('category');
         var branchSelect = document.getElementById('branch');
         var imageInput = document.getElementById('image');
+        var salaryInput = document.getElementById('salary');
         var previewFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'gender', 'category', 'employee_no'];
+        categorySalaryLastDefault = salaryInput ? salaryInput.value : '';
 
         previewFields.forEach(function(fieldId) {
             var element = document.getElementById(fieldId);
@@ -1062,6 +1202,18 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
 
         if (branchSelect) {
             branchSelect.addEventListener('change', syncEmployeePreview);
+        }
+
+        if (categorySelect) {
+            categorySelect.addEventListener('change', function() {
+                renderCategorySalaryFields();
+                syncEmployeePreview();
+            });
+        }
+
+        if (salaryInput) {
+            salaryInput.addEventListener('input', applySalaryDefaultToEmptyCategorySalaries);
+            salaryInput.addEventListener('change', applySalaryDefaultToEmptyCategorySalaries);
         }
 
         if (imageInput) {
@@ -1093,6 +1245,7 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
             });
         }
 
+        renderCategorySalaryFields();
         syncEmployeePreview();
     });
 </script>

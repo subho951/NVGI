@@ -914,7 +914,13 @@ $employeeStats = [
                                     <td>
                                         <div class="employee-cell-stack">
                                             <span class="employee-cell-line"><span class="employee-cell-label">DOJ</span><?= e($dojText) ?></span>
-                                            <span class="employee-cell-line"><span class="employee-cell-label">Salary</span><?= number_format((float)$row->salary, 2) ?></span>
+                                            <?php if (!empty($row->category_salary_map)) { ?>
+                                                <?php foreach ($row->category_salary_map as $salaryCategory => $salaryAmount) { ?>
+                                                    <span class="employee-cell-line"><span class="employee-cell-label"><?= e($salaryCategory) ?></span><?= number_format((float)$salaryAmount, 2) ?></span>
+                                                <?php } ?>
+                                            <?php } else { ?>
+                                                <span class="employee-cell-line"><span class="employee-cell-label">Salary</span><?= number_format((float)$row->salary, 2) ?></span>
+                                            <?php } ?>
                                             <?php if (!empty($row->in_time_display)) { ?>
                                                 <span class="employee-cell-line"><span class="employee-cell-label">In</span><?= e($row->in_time_display) ?></span>
                                             <?php } ?>

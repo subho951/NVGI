@@ -23,6 +23,7 @@ class Employee extends Model
         'doj',
         'image',
         'salary',
+        'category_salaries',
         'branch',
         'gender',
         'category',
@@ -39,4 +40,9 @@ class Employee extends Model
         'created_by',
         'updated_by',
     ];
+
+    public function employeeSalaries()
+    {
+        return $this->hasMany(EmployeeSalary::class, 'employee_id');
+    }
 }

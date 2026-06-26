@@ -10,6 +10,9 @@ use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LeaveAllotmentController;
 use App\Http\Controllers\EmployeeLeaveBalanceController;
 use App\Http\Controllers\LeaveApplicationController;
+use App\Http\Controllers\SalaryHeadController;
+use App\Http\Controllers\EmployeeWiseSalaryController;
+use App\Http\Controllers\SalaryGenerationController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BranchPortalController;
 use App\Http\Controllers\BranchAttendanceController;
@@ -286,6 +289,17 @@ use App\Http\Controllers\Common\TableController;
                 Route::match(['get', 'post'], 'payroll-leave/leave-application/edit/{id}', [LeaveApplicationController::class, 'edit']);
                 Route::post('payroll-leave/leave-application/approve/{id}', [LeaveApplicationController::class, 'approve']);
                 Route::post('payroll-leave/leave-application/reject/{id}', [LeaveApplicationController::class, 'reject']);
+                Route::match(['get', 'post'], 'payroll-leave/salary-head/list', [SalaryHeadController::class, 'list']);
+                Route::match(['get', 'post'], 'payroll-leave/salary-head/add', [SalaryHeadController::class, 'add']);
+                Route::match(['get', 'post'], 'payroll-leave/salary-head/edit/{id}', [SalaryHeadController::class, 'edit']);
+                Route::get('payroll-leave/salary-head/change-status/{id}', [SalaryHeadController::class, 'change_status']);
+                Route::get('payroll-leave/employee-wise-salary/list', [EmployeeWiseSalaryController::class, 'list']);
+                Route::post('payroll-leave/employee-wise-salary/calculate-all', [EmployeeWiseSalaryController::class, 'calculateAll']);
+                Route::post('payroll-leave/employee-wise-salary/calculate/{employee}', [EmployeeWiseSalaryController::class, 'calculate']);
+                Route::get('payroll-leave/salary-generation/list', [SalaryGenerationController::class, 'list']);
+                Route::get('payroll-leave/salary-generation/generated-list', [SalaryGenerationController::class, 'generatedList']);
+                Route::get('payroll-leave/salary-generation/download-excel', [SalaryGenerationController::class, 'downloadExcel']);
+                Route::post('payroll-leave/salary-generation/generate', [SalaryGenerationController::class, 'generate']);
             /* payroll & leave */
             /* CRM */
                 /* sales person */

@@ -48,6 +48,7 @@ class EmployeeController extends Controller
                             ->map(function ($row) use ($branchMap, $leaveBalanceMap) {
                                 $row->employee_name = $this->buildEmployeeName($row);
                                 $row->category_names = $this->employeeCategoryLabels($row->category);
+                                $row->category_salary_map = $this->employeeCategorySalaryMap($row->category_salaries, (float)$row->salary, $row->category_names);
                                 $row->leave_balances = $leaveBalanceMap->get($row->id, collect())->values();
                                 $row->in_time_display = $this->formatTimeForDisplay($row->in_time);
                                 $row->out_time_display = $this->formatTimeForDisplay($row->out_time);
@@ -98,6 +99,7 @@ class EmployeeController extends Controller
             $employeeNo = $this->formatEmployeeNo($nextSlNo);
             $branchIds = $this->normalizeBranchIds($request->input('branch', []));
             $categoryValues = $this->normalizeCategoryValues($request->input('category', []));
+            $categorySalaries = $this->normalizeCategorySalaries($request->input('category_salaries', []), $categoryValues, $request->salary);
             $hasVhsTeacherCategory = in_array('VHS TEACHER', $categoryValues, true);
             $age = $this->calculateAge($request->dob);
             $imagePath = null;
@@ -122,6 +124,7 @@ class EmployeeController extends Controller
                     'doj'           => $request->doj,
                     'image'         => $imagePath,
                     'salary'        => (float)$request->salary,
+                    'category_salaries' => $this->serializeCategorySalaries($categorySalaries),
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
                     'category'      => $this->serializeCategoryValues($categoryValues),
@@ -181,6 +184,7 @@ class EmployeeController extends Controller
             $userId = $this->currentUserId();
             $branchIds = $this->normalizeBranchIds($request->input('branch', []));
             $categoryValues = $this->normalizeCategoryValues($request->input('category', []));
+            $categorySalaries = $this->normalizeCategorySalaries($request->input('category_salaries', []), $categoryValues, $request->salary);
             $hasVhsTeacherCategory = in_array('VHS TEACHER', $categoryValues, true);
             $age = $this->calculateAge($request->dob);
             $oldImage = $data['row']->image;
@@ -204,6 +208,7 @@ class EmployeeController extends Controller
                     'doj'           => $request->doj,
                     'image'         => $newImagePath,
                     'salary'        => (float)$request->salary,
+                    'category_salaries' => $this->serializeCategorySalaries($categorySalaries),
                     'branch'        => json_encode($branchIds),
                     'gender'        => $this->normalizeNullableString($request->gender),
                     'category'      => $this->serializeCategoryValues($categoryValues),
@@ -314,6 +319,8 @@ class EmployeeController extends Controller
             'dob'           => 'required|date|before_or_equal:today',
             'doj'           => 'required|date|before_or_equal:today',
             'salary'        => 'required|numeric|min:0',
+            'category_salaries' => 'nullable|array',
+            'category_salaries.*' => 'nullable|numeric|min:0',
             'gender'        => 'nullable|in:Male,Female,Others',
             'category'      => 'nullable|array',
             'category.*'    => ['string', Rule::in($this->employeeCategoryOptions())],
@@ -366,6 +373,65 @@ class EmployeeController extends Controller
     private function employeeCategoryLabels($categories)
     {
         return $this->normalizeCategoryValues($categories);
+    }
+
+    private function normalizeCategorySalaries($salaryValues, array $categories, $defaultSalary = 0.0)
+    {
+        if (!is_array($salaryValues)) {
+            $decodedSalaryValues = json_decode((string)$salaryValues, true);
+            $salaryValues = is_array($decodedSalaryValues) ? $decodedSalaryValues : [];
+        }
+
+        $defaultSalary = round((float)$defaultSalary, 2);
+        $categorySalaries = [];
+
+        foreach ($categories as $category) {
+            $value = $salaryValues[$category] ?? $defaultSalary;
+
+            if (is_array($value)) {
+                $value = $defaultSalary;
+            }
+
+            $value = trim((string)$value);
+            $categorySalaries[$category] = round((float)($value === '' ? $defaultSalary : $value), 2);
+        }
+
+        return $categorySalaries;
+    }
+
+    private function serializeCategorySalaries(array $categorySalaries)
+    {
+        return !empty($categorySalaries) ? json_encode($categorySalaries) : null;
+    }
+
+    private function employeeCategorySalaryMap($categorySalaries, float $fallbackSalary, $categories = [])
+    {
+        if (!is_array($categories)) {
+            $categories = $this->normalizeCategoryValues($categories);
+        }
+
+        if (!is_array($categorySalaries)) {
+            $decodedSalaryValues = json_decode((string)$categorySalaries, true);
+            $categorySalaries = is_array($decodedSalaryValues) ? $decodedSalaryValues : [];
+        }
+
+        if (empty($categories) && !empty($categorySalaries)) {
+            $categories = array_keys($categorySalaries);
+        }
+
+        $salaryMap = [];
+
+        foreach ($categories as $category) {
+            $category = trim((string)$category);
+
+            if ($category === '') {
+                continue;
+            }
+
+            $salaryMap[$category] = round((float)($categorySalaries[$category] ?? $fallbackSalary), 2);
+        }
+
+        return $salaryMap;
     }
 
     private function normalizeTimeValue($value)

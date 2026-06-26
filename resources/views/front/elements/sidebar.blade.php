@@ -368,7 +368,7 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
         </li>
     <?php } ?>
 
-    <?php if((in_array(32, $moduleIds)) || (in_array(33, $moduleIds)) || (in_array(34, $moduleIds)) || (in_array(35, $moduleIds))){?>
+    <?php if((in_array(32, $moduleIds)) || (in_array(33, $moduleIds)) || (in_array(34, $moduleIds)) || (in_array(35, $moduleIds)) || (in_array(36, $moduleIds)) || (in_array(37, $moduleIds)) || (in_array(38, $moduleIds))){?>
         <!-- Payroll & Leave -->
         <li class="nav-item">
             <a class="nav-link d-flex justify-content-between align-items-center <?= (($pageSegment == 'payroll-leave') ? 'active-link' : '') ?>"
@@ -407,6 +407,27 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                     <li>
                         <a href="<?= url('payroll-leave/leave-application/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'leave-application') ? 'active-link' : '') ?>">
                             <i class="fa-solid fa-arrow-right"></i> <span>Leave Application</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(36, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('payroll-leave/salary-head/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'salary-head') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Salary Head</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(37, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('payroll-leave/employee-wise-salary/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'employee-wise-salary') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Employee wise salary</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(38, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('payroll-leave/salary-generation/list') ?>" class="nav-link <?= (($pageSegment == 'payroll-leave' && $pageFunction == 'salary-generation') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Salary Generation</span>
                         </a>
                     </li>
                 <?php } ?>
