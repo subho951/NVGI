@@ -117,7 +117,7 @@ class EmployeeScheduleRosterController extends Controller
             'selectedBranchLabel' => $this->branchLabelById($selectedBranchId),
             'selectedEmployeeLabel' => $this->employeeLabelById($selectedEmployeeId),
             'branchOptions' => $branchOptions,
-            'employeeOptions' => $this->rosterEmployeeOptionsForCategory(self::VHS_TEACHER),
+            'employeeOptions' => $this->rosterEmployeeOptionsForCategory(self::VHS_TEACHER, $selectedBranchId),
             'selectedIndividualBranchName' => $selectedIndividualBranchName,
             'individualEmployees' => $this->availableVhsEmployeesForManual(
                 $targetMonth,
@@ -1080,6 +1080,18 @@ class EmployeeScheduleRosterController extends Controller
             : $this->branchMapForEmployees($employees);
 
         $selectedBranch = $selectedBranchId > 0 ? ($branchMap[$selectedBranchId] ?? null) : null;
+        $branchSkippedCount = 0;
+
+        if ($selectedBranchId > 0) {
+            $allEmployeeCount = $employees->count();
+            $employees = $employees
+                ->filter(function ($employee) use ($selectedBranchId) {
+                    return $this->employeeAssignedToBranch($employee, $selectedBranchId);
+                })
+                ->values();
+            $branchSkippedCount = max(0, $allEmployeeCount - $employees->count());
+        }
+
         $dates = $category === self::VHS_TEACHER && $selectedBranch
             ? $this->vhsRosterDates($targetMonth, (string) $selectedBranch->name)
             : $this->rosterDates($targetMonth, [$category]);
@@ -1089,7 +1101,7 @@ class EmployeeScheduleRosterController extends Controller
             'dates' => $dates->count(),
             'created' => 0,
             'existing' => 0,
-            'skipped' => 0,
+            'skipped' => $branchSkippedCount,
         ];
 
         DB::transaction(function () use ($employees, $branchMap, $dates, $category, $targetMonth, $userId, $selectedBranchId, &$result) {
@@ -1274,6 +1286,9 @@ class EmployeeScheduleRosterController extends Controller
             ->all();
 
         return $this->supportEmployees(self::VHS_TEACHER, self::VHS_CATEGORIES)
+            ->filter(function ($employee) use ($branchIds) {
+                return $this->employeeAssignedToAnyBranch($employee, $branchIds);
+            })
             ->reject(function ($employee) use ($rosteredEmployeeIds) {
                 return in_array((int) $employee->id, $rosteredEmployeeIds, true);
             })
@@ -1302,9 +1317,12 @@ class EmployeeScheduleRosterController extends Controller
         return !empty($branchNames) ? $branchNames : self::VHS_BRANCH_NAMES;
     }
 
-    private function rosterEmployeeOptionsForCategory(string $category): array
+    private function rosterEmployeeOptionsForCategory(string $category, int $branchId = 0): array
     {
         return $this->eligibleEmployees($category)
+            ->filter(function ($employee) use ($branchId) {
+                return $branchId <= 0 || $this->employeeAssignedToBranch($employee, $branchId);
+            })
             ->map(function ($employee) {
                 return [
                     'id' => (int) $employee->id,
@@ -2348,6 +2366,22 @@ class EmployeeScheduleRosterController extends Controller
     private function employeeHasCategory($employee, string $category): bool
     {
         return in_array($category, $this->employeeCategoryValues($employee->category), true);
+    }
+
+    private function employeeAssignedToBranch($employee, int $branchId): bool
+    {
+        return $branchId > 0 && in_array($branchId, $this->normalizeBranchIds($employee->branch), true);
+    }
+
+    private function employeeAssignedToAnyBranch($employee, array $branchIds): bool
+    {
+        $branchIds = array_values(array_filter(array_map('intval', $branchIds)));
+
+        if (empty($branchIds)) {
+            return false;
+        }
+
+        return !empty(array_intersect($this->normalizeBranchIds($employee->branch), $branchIds));
     }
 
     private function supportEmployeeHasActiveRoster(

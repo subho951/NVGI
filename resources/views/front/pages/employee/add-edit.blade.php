@@ -732,12 +732,12 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
                                 <div class="col-12 employee-conditional-time" id="vhs_time_fields" <?= $hasVhsTeacherCategory ? '' : 'hidden' ?>>
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label for="in_time" class="form-label">In Time</label>
-                                            <input type="time" class="form-control" name="in_time" id="in_time" value="<?= e($in_time) ?>" <?= $hasVhsTeacherCategory ? '' : 'disabled' ?>>
+                                            <label for="in_time" class="form-label">In Time <span class="text-danger">*</span></label>
+                                            <input type="time" class="form-control" name="in_time" id="in_time" value="<?= e($in_time) ?>" <?= $hasVhsTeacherCategory ? 'required' : 'disabled' ?>>
                                         </div>
                                         <div class="col-md-6">
-                                            <label for="out_time" class="form-label">Out Time</label>
-                                            <input type="time" class="form-control" name="out_time" id="out_time" value="<?= e($out_time) ?>" <?= $hasVhsTeacherCategory ? '' : 'disabled' ?>>
+                                            <label for="out_time" class="form-label">Out Time <span class="text-danger">*</span></label>
+                                            <input type="time" class="form-control" name="out_time" id="out_time" value="<?= e($out_time) ?>" <?= $hasVhsTeacherCategory ? 'required' : 'disabled' ?>>
                                         </div>
                                     </div>
                                 </div>
@@ -1104,6 +1104,7 @@ $submitLabel = $isEdit ? 'Update Employee' : 'Save Employee';
             }
 
             input.disabled = !hasVhsTeacher;
+            input.required = hasVhsTeacher;
 
             if (!hasVhsTeacher) {
                 input.value = '';

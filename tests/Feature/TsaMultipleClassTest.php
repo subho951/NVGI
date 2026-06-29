@@ -140,6 +140,17 @@ class TsaMultipleClassTest extends TestCase
             'out_time' => '15:00',
             'status' => 1,
         ]);
+        DB::table('employees')->insert([
+            'id' => 6,
+            'employee_no' => 'NVGI-0006',
+            'first_name' => 'RAJARHAT',
+            'last_name' => 'VHS',
+            'branch' => json_encode([3]),
+            'category' => json_encode(['VHS TEACHER']),
+            'in_time' => '10:00',
+            'out_time' => '15:00',
+            'status' => 1,
+        ]);
         DB::table('employee_schedule_rosters')->insert($this->rosterRow('10:00', '11:30'));
     }
 
@@ -506,6 +517,16 @@ class TsaMultipleClassTest extends TestCase
 
         $this->assertDatabaseMissing('employee_schedule_rosters', [
             'employee_id' => 5,
+            'branch_id' => 3,
+            'category' => 'VHS TEACHER',
+        ]);
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 6,
+            'branch_id' => 4,
+            'category' => 'VHS TEACHER',
+        ]);
+        $this->assertDatabaseMissing('employee_schedule_rosters', [
+            'employee_id' => 5,
             'branch_id' => 4,
             'roster_date' => '2026-06-13',
         ]);
@@ -515,13 +536,13 @@ class TsaMultipleClassTest extends TestCase
             'roster_date' => '2026-06-27',
         ]);
         $this->assertDatabaseHas('employee_schedule_rosters', [
-            'employee_id' => 5,
+            'employee_id' => 6,
             'branch_id' => 3,
             'roster_date' => '2026-06-13',
             'status' => 1,
         ]);
         $this->assertDatabaseHas('employee_schedule_rosters', [
-            'employee_id' => 5,
+            'employee_id' => 6,
             'branch_id' => 3,
             'roster_date' => '2026-06-27',
             'status' => 1,
@@ -554,7 +575,7 @@ class TsaMultipleClassTest extends TestCase
             'roster_date' => '2026-07-11',
         ]);
         $this->assertDatabaseHas('employee_schedule_rosters', [
-            'employee_id' => 5,
+            'employee_id' => 6,
             'branch_id' => 3,
             'roster_date' => '2026-07-11',
             'status' => 1,

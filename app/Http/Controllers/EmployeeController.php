@@ -302,6 +302,11 @@ class EmployeeController extends Controller
     {
         $emailRule = Rule::unique('employees', 'email')->whereNull('deleted_at');
         $phoneRule = Rule::unique('employees', 'phone')->whereNull('deleted_at');
+        $hasVhsTeacherCategory = in_array(
+            'VHS TEACHER',
+            $this->normalizeCategoryValues(request()->input('category', [])),
+            true
+        );
 
         if ($employeeId) {
             $emailRule->ignore($employeeId);
@@ -324,8 +329,8 @@ class EmployeeController extends Controller
             'gender'        => 'nullable|in:Male,Female,Others',
             'category'      => 'nullable|array',
             'category.*'    => ['string', Rule::in($this->employeeCategoryOptions())],
-            'in_time'       => 'nullable|date_format:H:i',
-            'out_time'      => 'nullable|date_format:H:i',
+            'in_time'       => [$hasVhsTeacherCategory ? 'required' : 'nullable', 'date_format:H:i'],
+            'out_time'      => [$hasVhsTeacherCategory ? 'required' : 'nullable', 'date_format:H:i'],
             'branch'        => 'required|array|min:1',
             'branch.*'      => [
                 'integer',
