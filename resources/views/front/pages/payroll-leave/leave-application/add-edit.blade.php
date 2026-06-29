@@ -199,7 +199,7 @@ $formatCount = function ($value) {
 
                     <div class="col-12">
                         <button type="submit" class="btn btn-leave-primary px-4">
-                            <i class="fa-solid fa-floppy-disk me-1"></i> Save
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Sent For Approval
                         </button>
                     </div>
                 </div>
