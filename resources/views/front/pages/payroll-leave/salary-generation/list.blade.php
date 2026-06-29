@@ -367,7 +367,9 @@ $emptyColspan = 9 + $leaveCodes->count() + ($isTsaCategory ? 1 : 0);
                                                 <span class="font-monospace salary-generation-total text-danger">{{ $formatMoney($row->deduction_total) }}</span>
                                             </div>
                                         </td>
-                                        <td class="font-monospace salary-generation-total">{{ $formatRoundedMoney($row->net_salary) }}</td>
+                                        <td class="font-monospace salary-generation-total">
+                                            <span style="background-color: #000;color: #FFF;padding: 5px 10px;font-size: 17px;">{{ $formatRoundedMoney($row->net_salary) }}</span>
+                                        </td>
                                         @if($isTsaCategory)
                                             <td>
                                                 <div>Assigned: <strong>{{ $formatCount($row->absence['assigned_hours']) }}</strong></div>
