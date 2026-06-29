@@ -38,7 +38,7 @@ $employeeCounts = $employee_counts ?? [];
             if ($branches) {
                 foreach ($branches as $branch) {
                     $getUnit = Unit::select('name')->where('id', '=', $branch->unit_id)->first();
-                    $student_count = Student::where('branch_id', '=', $branch->id)->where('status', '!=', 3)->count();
+                    $student_count = Student::where('branch_id', '=', $branch->id)->where('status', '=', 1)->count();
                     if($student_count > 0){
             ?>
                         <div class="col-md-3 mb-3">
@@ -55,7 +55,7 @@ $employeeCounts = $employee_counts ?? [];
             <?php
             if ($units) {
                 foreach ($units as $unit) {
-                    $student_count = Student::where('unit_id', '=', $unit->id)->where('status', '!=', 3)->count();
+                    $student_count = Student::where('unit_id', '=', $unit->id)->where('status', '=', 1)->count();
                     if($student_count > 0){
             ?>
                         <div class="col-md-6 mb-3">
@@ -80,7 +80,7 @@ $employeeCounts = $employee_counts ?? [];
             <?php
             if ($users) {
                 foreach ($users as $user) {
-                    $student_count = Student::where('created_by', '=', $user->id)->where('status', '!=', 3)->count();
+                    $student_count = Student::where('created_by', '=', $user->id)->where('status', '=', 1)->count();
             ?>
                     <div class="col-md-3 mb-3">
                         <div class="card shadow dashboard-card bg7">
