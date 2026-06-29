@@ -13,6 +13,7 @@ use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\SalaryHeadController;
 use App\Http\Controllers\EmployeeWiseSalaryController;
 use App\Http\Controllers\SalaryGenerationController;
+use App\Http\Controllers\SalaryStatementController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BranchPortalController;
 use App\Http\Controllers\BranchAttendanceController;
@@ -300,6 +301,13 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('payroll-leave/salary-generation/generated-list', [SalaryGenerationController::class, 'generatedList']);
                 Route::get('payroll-leave/salary-generation/download-excel', [SalaryGenerationController::class, 'downloadExcel']);
                 Route::post('payroll-leave/salary-generation/generate', [SalaryGenerationController::class, 'generate']);
+                Route::get('payroll-leave/salary-statement/list', [SalaryStatementController::class, 'list']);
+                Route::post('payroll-leave/salary-statement/generate', [SalaryStatementController::class, 'generate']);
+                Route::get('payroll-leave/salary-statement/generated-list', [SalaryStatementController::class, 'generatedList']);
+                Route::get('payroll-leave/salary-statement/employees', [SalaryStatementController::class, 'employees']);
+                Route::get('payroll-leave/salary-statement/download-excel', [SalaryStatementController::class, 'downloadExcel']);
+                Route::get('payroll-leave/salary-statement/download-pdf', [SalaryStatementController::class, 'downloadPdf']);
+                Route::get('payroll-leave/salary-statement/pay-slip/{statement}', [SalaryStatementController::class, 'paySlip']);
             /* payroll & leave */
             /* CRM */
                 /* sales person */
