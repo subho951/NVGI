@@ -136,7 +136,7 @@ $formatDate = function ($value) {
 <body>
     <div class="shell">
         <h1>New Vendant Group Of Institution</h1>
-        <h2>Salary Pay Slip</h2>
+        <h1>Salary Pay Slip</h1>
         <div class="period">{{ $monthName }} {{ $salaryGeneration->salary_year }} 
             <!-- | {{ $salaryGeneration->branch_name }} | {{ $salaryGeneration->employee_category }} -->
         </div>
