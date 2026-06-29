@@ -1,5 +1,7 @@
 <?php
 $monthName = $monthOptions[(int) $salaryGeneration->salary_month] ?? $salaryGeneration->salary_month;
+$employeeCategory = strtoupper(trim((string) $salaryGeneration->employee_category));
+$isTsaTeacher = $employeeCategory === 'TSA TEACHER';
 $headDetails = json_decode((string) $salaryGeneration->salary_head_details, true);
 $headDetails = collect(is_array($headDetails) ? $headDetails : [])
     ->filter(function ($head) {
@@ -202,10 +204,13 @@ $formatDate = function ($value) {
                 <td><span class="label">Absent Amount</span><span class="value">{{ $formatMoney($salaryGeneration->absent_amount) }}</span></td>
             </tr>
             <tr>
-                <td><span class="label">CL Balance</span><span class="value">{{ $formatDecimal($leaveDetails['CL']['balance'] ?? $salaryGeneration->cl_balance) }}</span></td>
-                <td><span class="label">ML Balance</span><span class="value">{{ $formatDecimal($leaveDetails['ML']['balance'] ?? $salaryGeneration->ml_balance) }}</span></td>
-                <td><span class="label">Assigned Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->assigned_hours) }}</span></td>
-                <td><span class="label">Attendance Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->attendance_hours) }}</span></td>
+                @if($isTsaTeacher)
+                    <td colspan="2"><span class="label">Assigned Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->assigned_hours) }}</span></td>
+                    <td colspan="2"><span class="label">Attendance Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->attendance_hours) }}</span></td>
+                @else
+                    <td colspan="2"><span class="label">CL Balance</span><span class="value">{{ $formatDecimal($leaveDetails['CL']['balance'] ?? $salaryGeneration->cl_balance) }}</span></td>
+                    <td colspan="2"><span class="label">ML Balance</span><span class="value">{{ $formatDecimal($leaveDetails['ML']['balance'] ?? $salaryGeneration->ml_balance) }}</span></td>
+                @endif
             </tr>
         </table>
 
