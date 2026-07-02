@@ -9,10 +9,12 @@ use App\Helpers\Helper;
         </button>
         <div class="topbar-brand">
             <h5 class="topbar-brand-title">
-                <!-- <i class="fa-solid fa-shield-halved"></i> -->
-                <?= Helper::getSettingValue('site_name') ?>
+                <!-- <i class="fa-solid fa-shield-halved"></i> 
+                <?= Helper::getSettingValue('site_name') ?>-->
+		<img src="https://newvedantgroup.com/nvgi/public/uploads/nvion.png" style="width:240px;" alt="nvion">
+
             </h5>
-            <p class="topbar-brand-subtitle">Administration Console</p>
+            <!--<p class="topbar-brand-subtitle">Administration Console</p>-->
         </div>
     </div>
 

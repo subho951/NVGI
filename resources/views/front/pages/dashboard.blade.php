@@ -18,7 +18,8 @@ $employeeCounts = $employee_counts ?? [];
         <div class="row">
             <?php foreach ($employeeCounts as $employeeCount) { ?>
                 <div class="col-md-4 col-lg-2 mb-3">
-                    <div class="card shadow dashboard-card <?= $employeeCount['class'] ?>">
+                    <!-- <div class="card shadow dashboard-card <?= $employeeCount['class'] ?>"> -->
+                    <div class="card shadow dashboard-card bg1">
                         <div class="card-body text-center text-white">
                             <h5><?= $employeeCount['label'] ?></h5>
                             <h2><?= $employeeCount['count'] ?></h2>
