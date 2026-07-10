@@ -292,22 +292,24 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         width: 32px;
     }
     .fees-col-student {
-        width: 160px;
+        width: 120px;
+        min-width: 120px;
     }
     .fees-col-total {
         width: 115px;
     }
     .fees-col-month,
     .month-cell {
-        width: 100px;
-        min-width: 100px;
+        width: 106px;
+        min-width: 106px;
     }
     .fees-table tbody tr:hover td {
         background: #f8fbff;
     }
     .student-meta {
         text-align: left;
-        width: 160px;
+        width: 120px;
+        min-width: 120px;
     }
     .student-id {
         font-size: 11px;
@@ -404,22 +406,22 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         pointer-events: none;
     }
     .fee-payment-form .payment-mode-select {
-        font-size: 10px;
+        font-size: 9px;
         border-radius: 6px;
         height: 26px;
-        padding: 2px 5px;
+        padding: 2px 4px;
     }
     .fee-payment-form .bank-account-select {
-        font-size: 10px;
+        font-size: 9px;
         border-radius: 6px;
         height: 26px;
-        padding: 2px 5px;
+        padding: 2px 4px;
     }
     .fee-payment-form .payment-reference-input {
-        font-size: 10px;
+        font-size: 9px;
         border-radius: 6px;
         height: 26px;
-        padding: 2px 5px;
+        padding: 2px 4px;
     }
     .fee-payment-form .payment-actions {
         display: flex;
@@ -430,10 +432,10 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         min-width: 0;
     }
     .fee-payment-form .payment-amount-input {
-        font-size: 10px;
+        font-size: 9px;
         border-radius: 6px;
         height: 26px;
-        padding: 2px 5px;
+        padding: 2px 4px;
     }
     .fee-payment-form .payment-submit-btn {
         border-radius: 6px;
@@ -573,8 +575,13 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         }
         .month-cell,
         .fees-col-month {
-            min-width: 100px;
-            width: 100px;
+            min-width: 106px;
+            width: 106px;
+        }
+        .fees-col-student,
+        .student-meta {
+            min-width: 120px;
+            width: 120px;
         }
     }
 </style>
