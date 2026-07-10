@@ -237,6 +237,7 @@ use App\Http\Controllers\Common\TableController;
                 Route::get('student/generate-id-card/branches', [StudentController::class, 'generateIdCardBranches'])->name('student.id-card.branches');
                 Route::get('student/generate-id-card/classes', [StudentController::class, 'generateIdCardClasses'])->name('student.id-card.classes');
                 Route::match(['get'], 'student/admission-fees-entry', [StudentController::class, 'admissionFeesEntry']);
+                Route::get('student/fees-collection/student-suggestions', [StudentController::class, 'feesCollectionStudentSuggestions'])->name('student.fees-collection.student-suggestions');
                 Route::match(['get', 'post'], 'student/fees-collection', [StudentController::class, 'feesCollection']);
                 Route::post('student/fees-collection/update', [StudentController::class, 'updateFeesCollection'])->name('student.fees-collection.update');
                 Route::post('student/fees-collection/due-report', [StudentController::class, 'feesCollectionDueReport'])->name('student.fees-collection.due-report');

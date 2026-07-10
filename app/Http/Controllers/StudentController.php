@@ -56,7 +56,11 @@ class StudentController extends Controller
                                                                 'units.name as unit_name',
                                                                 'branches.name as branch_name',
                                                                 'sessions.name as session_name',
-                                                                DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name")
+                                                                DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
+                                                                DB::raw("(SELECT COUNT(*) FROM transactions tx WHERE tx.deleted_at IS NULL AND COALESCE(tx.status, 1) != 3 AND tx.ledger_id = 4 AND tx.type = 'INCOME' AND tx.particulars LIKE 'Books Fee collected for %' AND tx.particulars LIKE CONCAT('%(', students.student_id_serial, ')%')) as books_fee_txn_count"),
+                                                                DB::raw("(SELECT COALESCE(SUM(tx.transaction_amount), 0) FROM transactions tx WHERE tx.deleted_at IS NULL AND COALESCE(tx.status, 1) != 3 AND tx.ledger_id = 4 AND tx.type = 'INCOME' AND tx.particulars LIKE 'Books Fee collected for %' AND tx.particulars LIKE CONCAT('%(', students.student_id_serial, ')%')) as books_fee_txn_amount"),
+                                                                DB::raw("(SELECT COUNT(*) FROM transactions tx WHERE tx.deleted_at IS NULL AND COALESCE(tx.status, 1) != 3 AND tx.ledger_id = 4 AND tx.type = 'INCOME' AND tx.particulars LIKE 'Uniform Fee collected for %' AND tx.particulars LIKE CONCAT('%(', students.student_id_serial, ')%')) as uniform_fee_txn_count"),
+                                                                DB::raw("(SELECT COALESCE(SUM(tx.transaction_amount), 0) FROM transactions tx WHERE tx.deleted_at IS NULL AND COALESCE(tx.status, 1) != 3 AND tx.ledger_id = 4 AND tx.type = 'INCOME' AND tx.particulars LIKE 'Uniform Fee collected for %' AND tx.particulars LIKE CONCAT('%(', students.student_id_serial, ')%')) as uniform_fee_txn_amount")
                                                             )
                                                             ->leftJoin('units', 'units.id', '=', 'students.unit_id')
                                                             ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
@@ -151,8 +155,8 @@ class StudentController extends Controller
                     'payment_reference'         => $paymentReferenceRules,
                     'admission_fees'            => 'required|numeric|gt:0',
                     'monthly_fees'              => 'required|numeric|gt:0',
-                    // 'books_fee'                 => 'required|numeric|gt:0',
-                    // 'uniform_fee'               => 'required|numeric|gt:0',
+                    'books_fee'                 => 'nullable|numeric|min:0',
+                    'uniform_fee'               => 'nullable|numeric|min:0',
                 ], [
                     'bank_account_id.required'   => 'Please select a bank account when payment mode is Bank.',
                     'bank_account_id.exists'     => 'Selected bank account is not valid.',
@@ -207,6 +211,11 @@ class StudentController extends Controller
                     }
                 }
                 // array_key_exists("tsa_subjects",$postData))
+                $admissionFeesValue = number_format((float)$request->admission_fees, 2, '.', '');
+                $monthlyFeesValue   = number_format((float)$request->monthly_fees, 2, '.', '');
+                $booksFeeValue      = number_format((float)$request->books_fee, 2, '.', '');
+                $uniformFeeValue    = number_format((float)$request->uniform_fee, 2, '.', '');
+
                 $fields = [
                     'sl_no'                     => $next_sl_no,
                     'student_id_serial'         => $student_id_serial,
@@ -242,10 +251,10 @@ class StudentController extends Controller
                     'emergency_relation'        => $request->emergency_relation,
                     'know_about_us'             => $request->know_about_us,
                     'blood_group'               => $request->blood_group,
-                    'admission_fees'            => $request->admission_fees,
-                    'monthly_fees'              => $request->monthly_fees,
-                    'books_fee'                 => number_format((float)$request->books_fee, 2, '.', ''),
-                    'uniform_fee'               => number_format((float)$request->uniform_fee, 2, '.', ''),
+                    'admission_fees'            => $admissionFeesValue,
+                    'monthly_fees'              => $monthlyFeesValue,
+                    'books_fee'                 => $booksFeeValue,
+                    'uniform_fee'               => $uniformFeeValue,
                     'photo'                     => $photo,
                     'created_by'                => $updatedBy,
                     'updated_by'                => $updatedBy,
@@ -255,7 +264,7 @@ class StudentController extends Controller
                 $bankAccountId = (($paymentMode === 'Bank') ? ((int)$request->bank_account_id ?: null) : null);
                 $paymentReference = $this->normalizePaymentReference($paymentMode, $request->payment_reference);
 
-                DB::transaction(function () use ($fields, $request, $updatedBy, $full_name, $student_id_serial, $paymentMode, $bankAccountId, $paymentReference) {
+                DB::transaction(function () use ($fields, $request, $updatedBy, $full_name, $student_id_serial, $paymentMode, $bankAccountId, $paymentReference, $admissionFeesValue, $monthlyFeesValue, $booksFeeValue, $uniformFeeValue) {
                     $student = Student::create($fields);
                     $id = $student->id;
 
@@ -270,8 +279,8 @@ class StudentController extends Controller
                                 'branch_id'         => $request->branch_id,
                                 'payable_month'     => $monthConfig['month'],
                                 'payable_year'      => $monthConfig['year'],
-                                'payable_amount'    => $request->monthly_fees,
-                                'due_amount'        => $request->monthly_fees,
+                                'payable_amount'    => $monthlyFeesValue,
+                                'due_amount'        => $monthlyFeesValue,
                                 'created_by'        => $updatedBy,
                                 'updated_by'        => $updatedBy,
                             ];
@@ -279,32 +288,44 @@ class StudentController extends Controller
                         }
                     /* student fees schedule generate */
 
-                    $lastTransaction = Transaction::withTrashed()->select('sl_no')
-                                                ->orderBy('sl_no', 'DESC')
-                                                ->lockForUpdate()
-                                                ->first();
-                    $nextSlNo       = (($lastTransaction)?((int)$lastTransaction->sl_no + 1):1);
-                    $nextTxnNo      = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
+                    $student->full_name = $full_name;
+                    $student->student_id_serial = $student_id_serial;
 
-                    Transaction::create([
-                        'sl_no'                  => $nextSlNo,
-                        'txn_no'                 => $nextTxnNo,
-                        'fee_id'                 => 0,
-                        'unit_id'                => (int)$request->unit_id,
-                        'branch_id'              => (int)$request->branch_id,
-                        'payment_mode'           => $paymentMode,
-                        'bank_account_id'        => $bankAccountId,
-                        'payment_reference'      => $paymentReference,
-                        'type'                   => 'INCOME',
-                        'ledger_id'              => 3,
-                        'transaction_timestamp'  => Carbon::now(),
-                        'transaction_amount'     => number_format((float)$request->admission_fees, 2, '.', ''),
-                        'particulars'            => 'Admission fee collected for '.$full_name.' ('. $student_id_serial .') during new admission',
-                        'note'                   => 'New student admission',
-                        'status'                 => 1,
-                        'created_by'             => $updatedBy,
-                        'updated_by'             => $updatedBy,
-                    ]);
+                    $this->createStudentFeeTransaction(
+                        $student,
+                        'Admission fee collected for '.$full_name.' ('. $student_id_serial .') during new admission',
+                        'New student admission',
+                        3,
+                        $admissionFeesValue,
+                        $paymentMode,
+                        $bankAccountId,
+                        $paymentReference,
+                        $updatedBy
+                    );
+
+                    $this->createStudentFeeTransaction(
+                        $student,
+                        'Books Fee collected for '.$full_name.' ('. $student_id_serial .') during new admission',
+                        'Books Fee collection',
+                        4,
+                        $booksFeeValue,
+                        $paymentMode,
+                        $bankAccountId,
+                        $paymentReference,
+                        $updatedBy
+                    );
+
+                    $this->createStudentFeeTransaction(
+                        $student,
+                        'Uniform Fee collected for '.$full_name.' ('. $student_id_serial .') during new admission',
+                        'Uniform Fee collection',
+                        4,
+                        $uniformFeeValue,
+                        $paymentMode,
+                        $bankAccountId,
+                        $paymentReference,
+                        $updatedBy
+                    );
                 });
 
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' added successfully !!!');
@@ -392,10 +413,15 @@ class StudentController extends Controller
                     'blood_group'               => 'required|string',
                     'admission_fees'            => 'required|numeric|gt:0',
                     'monthly_fees'              => 'required|numeric|gt:0',
-                    // 'books_fee'                 => 'required|numeric|gt:0',
-                    // 'uniform_fee'               => 'required|numeric|gt:0',
+                    'books_fee'                 => 'nullable|numeric|min:0',
+                    'uniform_fee'               => 'nullable|numeric|min:0',
                 ]);
                 $postData               = $request->all();
+                $updatedBy              = $this->currentUserId();
+                $admissionFeesValue     = number_format((float)$request->admission_fees, 2, '.', '');
+                $monthlyFeesValue       = number_format((float)$request->monthly_fees, 2, '.', '');
+                $booksFeeValue          = number_format((float)$request->books_fee, 2, '.', '');
+                $uniformFeeValue        = number_format((float)$request->uniform_fee, 2, '.', '');
                 if($request->unit_id == 1){
                     $tsa_subjects = json_encode(array());
                 } else {
@@ -405,58 +431,61 @@ class StudentController extends Controller
                         $tsa_subjects = json_encode(array());
                     }
                 }
-                $member->update([
-                    'student_id_serial'         => $student_id_serial,
-                    'unit_id'                   => $request->unit_id,
-                    'branch_id'                 => $request->branch_id,
-                    'session_id'                => $request->session_id,
-                    'admission_date'            => $request->admission_date,
-                    'first_name'                => $request->first_name,
-                    'middle_name'               => $request->middle_name,
-                    'last_name'                 => $request->last_name,
-                    'full_name'                 => $full_name,
-                    'gender'                    => $request->gender,
-                    'religion_id'               => $request->religion_id,
-                    'caste'                     => $request->caste,
-                    'dob'                       => $request->dob,
-                    'is_ph'                     => $request->is_ph,
-                    'permanent_address'         => $request->permanent_address,
-                    'permanent_pincode'         => $request->permanent_pincode,
-                    'vhs_class_id'              => $request->vhs_class_id,
-                    'vhs_daycare'               => $request->vhs_daycare,
-                    'tsa_class_id'              => $request->tsa_class_id,
-                    'tsa_board'                 => $request->tsa_board,
-                    'tsa_subjects'              => $tsa_subjects,
-                    'tsa_medium'                => $request->tsa_medium,
-                    'father_name'               => $request->father_name,
-                    'father_occupation'         => $request->father_occupation,
-                    'father_mobile'             => $request->father_mobile,
-                    'mother_name'               => $request->mother_name,
-                    'mother_occupation'         => $request->mother_occupation,
-                    'mother_mobile'             => $request->mother_mobile,
-                    'emergency_name'            => $request->emergency_name,
-                    'emergency_phone'           => $request->emergency_phone,
-                    'emergency_relation'        => $request->emergency_relation,
-                    'know_about_us'             => $request->know_about_us,
-                    'blood_group'               => $request->blood_group,
-                    'admission_fees'            => $request->admission_fees,
-                    'monthly_fees'              => $request->monthly_fees,
-                    'books_fee'                 => number_format((float)$request->books_fee, 2, '.', ''),
-                    'uniform_fee'               => number_format((float)$request->uniform_fee, 2, '.', ''),
-                    'photo'                     => $photo,
-                    'updated_by'                => session('user_data')['user_id'],
-                ]);
 
-                /* student monthly fees schedule update */
-                    $monthly_fees = $request->monthly_fees;
-                    $student_id = $id;
+                DB::transaction(function () use ($member, $request, $student_id_serial, $full_name, $tsa_subjects, $photo, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $booksFeeValue, $uniformFeeValue, $id) {
+                    $member->update([
+                        'student_id_serial'         => $student_id_serial,
+                        'unit_id'                   => $request->unit_id,
+                        'branch_id'                 => $request->branch_id,
+                        'session_id'                => $request->session_id,
+                        'admission_date'            => $request->admission_date,
+                        'first_name'                => $request->first_name,
+                        'middle_name'               => $request->middle_name,
+                        'last_name'                 => $request->last_name,
+                        'full_name'                 => $full_name,
+                        'gender'                    => $request->gender,
+                        'religion_id'               => $request->religion_id,
+                        'caste'                     => $request->caste,
+                        'dob'                       => $request->dob,
+                        'is_ph'                     => $request->is_ph,
+                        'permanent_address'         => $request->permanent_address,
+                        'permanent_pincode'         => $request->permanent_pincode,
+                        'vhs_class_id'              => $request->vhs_class_id,
+                        'vhs_daycare'               => $request->vhs_daycare,
+                        'tsa_class_id'              => $request->tsa_class_id,
+                        'tsa_board'                 => $request->tsa_board,
+                        'tsa_subjects'              => $tsa_subjects,
+                        'tsa_medium'                => $request->tsa_medium,
+                        'father_name'               => $request->father_name,
+                        'father_occupation'         => $request->father_occupation,
+                        'father_mobile'             => $request->father_mobile,
+                        'mother_name'               => $request->mother_name,
+                        'mother_occupation'         => $request->mother_occupation,
+                        'mother_mobile'             => $request->mother_mobile,
+                        'emergency_name'            => $request->emergency_name,
+                        'emergency_phone'           => $request->emergency_phone,
+                        'emergency_relation'        => $request->emergency_relation,
+                        'know_about_us'             => $request->know_about_us,
+                        'blood_group'               => $request->blood_group,
+                        'admission_fees'            => $admissionFeesValue,
+                        'monthly_fees'              => $monthlyFeesValue,
+                        'books_fee'                 => $booksFeeValue,
+                        'uniform_fee'               => $uniformFeeValue,
+                        'photo'                     => $photo,
+                        'updated_by'                => $updatedBy,
+                    ]);
 
-                    $fees_fields = [
-                        'payable_amount'    => $monthly_fees,
-                        'due_amount'        => $monthly_fees,
-                    ];
-                    StudentPayment::where('student_id', '=', $student_id)->update($fees_fields);
-                /* student monthly fees schedule update */
+                    StudentPayment::where('student_id', '=', $id)->update([
+                        'payable_amount'    => $monthlyFeesValue,
+                        'due_amount'        => DB::raw("CASE WHEN payment_amount > 0 THEN 0 ELSE {$monthlyFeesValue} END"),
+                    ]);
+
+                    $member->refresh();
+                    $this->createStudentFeeTransactionIfMissing($member, ['Admission fee', 'Session fee'], 'Admission fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Admission fee update sync', 3, $admissionFeesValue, 'Cash', null, null, $updatedBy);
+                    $this->createStudentFeeTransactionIfMissing($member, ['Books Fee'], 'Books Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Books Fee update sync', 4, $booksFeeValue, 'Cash', null, null, $updatedBy);
+                    $this->createStudentFeeTransactionIfMissing($member, ['Uniform Fee'], 'Uniform Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Uniform Fee update sync', 4, $uniformFeeValue, 'Cash', null, null, $updatedBy);
+                });
+
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
             }
 
@@ -627,7 +656,7 @@ class StudentController extends Controller
                     $studentPayment->payable_month   = $monthConfig['month'];
                     $studentPayment->payable_year    = $monthConfig['year'];
                     $studentPayment->payable_amount  = $monthlyFeesValue;
-                    $studentPayment->due_amount      = max(((float)$monthlyFeesValue - $alreadyPaid), 0);
+                    $studentPayment->due_amount      = $this->calculateStudentPaymentDue($monthlyFeesValue, $alreadyPaid);
                     $studentPayment->updated_by      = $updatedBy;
 
                     if (!$studentPayment->exists) {
@@ -639,32 +668,18 @@ class StudentController extends Controller
                     $studentPayment->save();
                 }
 
-                $lastTransaction = Transaction::withTrashed()->select('sl_no')
-                                            ->orderBy('sl_no', 'DESC')
-                                            ->lockForUpdate()
-                                            ->first();
-                $nextSlNo       = (($lastTransaction)?((int)$lastTransaction->sl_no + 1):1);
-                $nextTxnNo      = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
-
-                Transaction::create([
-                    'sl_no'                  => $nextSlNo,
-                    'txn_no'                 => $nextTxnNo,
-                    'fee_id'                 => 0,
-                    'unit_id'                => (int)$student->unit_id,
-                    'branch_id'              => (int)$student->branch_id,
-                    'ledger_id'              => $ledgerId,
-                    'payment_mode'           => $paymentMode,
-                    'bank_account_id'        => $bankAccountId,
-                    'payment_reference'      => $paymentReference,
-                    'type'                   => 'INCOME',
-                    'transaction_timestamp'  => Carbon::now(),
-                    'transaction_amount'     => $admissionFeesValue,
-                    'particulars'            => 'Session fee collected for '.$student->full_name.' ('.$student->student_id_serial.') during promotion to '.$promotedClass->name,
-                    'note'                   => 'Promotion from '.(($student->current_class_name != '') ? $student->current_class_name : '-').' to '.$promotedClass->name,
-                    'status'                 => 1,
-                    'created_by'             => $updatedBy,
-                    'updated_by'             => $updatedBy,
-                ]);
+                $this->createStudentFeeTransactionIfMissing(
+                    $student,
+                    ['Session fee'],
+                    'Session fee collected for '.$student->full_name.' ('.$student->student_id_serial.') during promotion to '.$promotedClass->name,
+                    'Promotion from '.(($student->current_class_name != '') ? $student->current_class_name : '-').' to '.$promotedClass->name,
+                    $ledgerId,
+                    $admissionFeesValue,
+                    $paymentMode,
+                    $bankAccountId,
+                    $paymentReference,
+                    $updatedBy
+                );
             });
 
             return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' promoted successfully !!!');
@@ -712,78 +727,93 @@ class StudentController extends Controller
                 'payment_reference.required'  => 'Please enter a payment reference when payment mode is Bank.',
             ]);
 
-            $student = Student::select(
-                                'students.id',
-                                'students.unit_id',
-                                'students.branch_id',
-                                'students.full_name',
-                                'students.student_id_serial',
-                                'students.session_id',
-                                'sessions.name as session_name'
-                            )
-                            ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
-                            ->where('students.id', '=', (int)$request->special_fee_student_id)
-                            ->where(function ($q) {
-                                $q->where('students.status', '=', 1)
-                                  ->orWhereNull('students.status');
-                            })
-                            ->first();
-
-            if (!$student) {
-                return redirect()->back()->with('error_message', 'Student not found !!!')->withInput();
-            }
-
             $feeType = (string)$request->special_fee_type;
             $feeLabel = (($feeType === 'books') ? 'Books Fee' : 'Uniform Fee');
             $feeField = (($feeType === 'books') ? 'books_fee' : 'uniform_fee');
-            $feeAmount = number_format((float)$request->special_fee_amount, 2, '.', '');
+            $enteredFeeAmount = (float)$request->special_fee_amount;
             $ledgerId = (int)$request->special_fee_ledger_id;
             $bankAccountId = (($paymentMode === 'Bank') ? ((int)$request->bank_account_id ?: null) : null);
             $paymentReference = $this->normalizePaymentReference($paymentMode, $request->payment_reference);
-            $studentName = trim((string)$student->full_name);
-            if ($studentName === '') {
-                $studentName = 'Unknown Student';
-            }
-
-            $sessionName = trim((string)$student->session_name);
-            $sessionText = (($sessionName !== '') ? ' for session ' . $sessionName : '');
             $updatedBy = $this->currentUserId();
 
-            DB::transaction(function () use ($student, $feeField, $feeAmount, $feeLabel, $studentName, $sessionText, $updatedBy, $paymentMode, $ledgerId, $bankAccountId, $paymentReference) {
+            $collectionResult = DB::transaction(function () use ($request, $feeField, $enteredFeeAmount, $feeLabel, $updatedBy, $paymentMode, $ledgerId, $bankAccountId, $paymentReference) {
+                $student = Student::where('id', '=', (int)$request->special_fee_student_id)
+                                ->where(function ($q) {
+                                    $q->where('status', '=', 1)
+                                      ->orWhereNull('status');
+                                })
+                                ->lockForUpdate()
+                                ->first();
+
+                if (!$student) {
+                    return [
+                        'status'  => false,
+                        'message' => 'Student not found !!!',
+                    ];
+                }
+
+                $studentName = trim((string)$student->full_name);
+                if ($studentName === '') {
+                    $studentName = 'Unknown Student';
+                }
+
+                $storedFeeAmount = (float)$student->{$feeField};
+                $feeAmountValue = (($storedFeeAmount > 0) ? $storedFeeAmount : $enteredFeeAmount);
+
+                if ($storedFeeAmount > 0 && abs($storedFeeAmount - $enteredFeeAmount) > 0.009) {
+                    return [
+                        'status'  => false,
+                        'message' => $feeLabel.' amount must match the saved student amount for '.$studentName.'.',
+                    ];
+                }
+
+                $existingSummary = $this->studentFeeTransactionSummary($student->student_id_serial, [$feeLabel], $ledgerId);
+                if ((int)$existingSummary['count'] > 0) {
+                    if (abs((float)$existingSummary['amount'] - $feeAmountValue) <= 0.009) {
+                        return [
+                            'status'  => false,
+                            'message' => $feeLabel.' is already collected for '.$studentName.'.',
+                        ];
+                    }
+
+                    return [
+                        'status'  => false,
+                        'message' => $feeLabel.' transaction mismatch found for '.$studentName.'. Please reconcile before collecting again.',
+                    ];
+                }
+
+                $session = Session::select('name')->where('id', '=', (int)$student->session_id)->first();
+                $sessionName = (($session) ? trim((string)$session->name) : '');
+                $sessionText = (($sessionName !== '') ? ' for session ' . $sessionName : '');
+                $feeAmount = number_format($feeAmountValue, 2, '.', '');
+
                 $student->{$feeField} = $feeAmount;
                 $student->updated_by = $updatedBy;
                 $student->save();
 
-                $lastTransaction = Transaction::withTrashed()->select('sl_no')
-                                        ->orderBy('sl_no', 'DESC')
-                                        ->lockForUpdate()
-                                        ->first();
+                $this->createStudentFeeTransaction(
+                    $student,
+                    $feeLabel . ' collected for ' . $studentName . ' (' . $student->student_id_serial . ')' . $sessionText,
+                    $feeLabel . ' collection',
+                    $ledgerId,
+                    $feeAmount,
+                    $paymentMode,
+                    $bankAccountId,
+                    $paymentReference,
+                    $updatedBy
+                );
 
-                $nextSlNo  = (($lastTransaction) ? ((int)$lastTransaction->sl_no + 1) : 1);
-                $nextTxnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
-
-                Transaction::create([
-                    'sl_no'                  => $nextSlNo,
-                    'txn_no'                 => $nextTxnNo,
-                    'fee_id'                 => 0,
-                    'unit_id'                => (int)$student->unit_id,
-                    'branch_id'              => (int)$student->branch_id,
-                    'ledger_id'              => $ledgerId,
-                    'payment_mode'           => $paymentMode,
-                    'bank_account_id'        => $bankAccountId,
-                    'payment_reference'      => $paymentReference,
-                    'type'                   => 'INCOME',
-                    'transaction_timestamp'  => Carbon::now(),
-                    'transaction_amount'     => $feeAmount,
-                    'particulars'            => $feeLabel . ' collected for ' . $studentName . ' (' . $student->student_id_serial . ')' . $sessionText,
-                    'note'                   => $feeLabel . ' collection',
-                    'status'                 => 1,
-                    'created_by'             => $updatedBy,
-                    'updated_by'             => $updatedBy,
-                ]);
+                return [
+                    'status'       => true,
+                    'student_name' => $studentName,
+                ];
             });
 
-            return redirect($this->data['controller_route'] . "/list")->with('success_message', $feeLabel.' collected successfully for '.$studentName.' !!!');
+            if (!$collectionResult['status']) {
+                return redirect()->back()->with('error_message', $collectionResult['message'])->withInput();
+            }
+
+            return redirect($this->data['controller_route'] . "/list")->with('success_message', $feeLabel.' collected successfully for '.$collectionResult['student_name'].' !!!');
         }
     /* special fee collection */
     public function details($id)
@@ -1251,6 +1281,7 @@ class StudentController extends Controller
             $defaultSessionData             = $this->getFinancialSessionData();
             $data['search_unit']            = '';
             $data['search_branch']          = '';
+            $data['search_student_id']      = '';
             $data['search_session']         = $defaultSessionData['session_id'];
             $data['search_session_name']    = $defaultSessionData['session_name'];
             $data['financial_months']       = $this->buildFinancialMonths($defaultSessionData['start_year'], $defaultSessionData['end_year']);
@@ -1265,55 +1296,73 @@ class StudentController extends Controller
             $data['bankAccounts']           = $this->bankAccountOptions();
 
             if($request->isMethod('post')){
-                $unit_id            = $request->unit_id;
-                $branch_id          = $request->branch_id;
-                $session_id         = $request->collection_session_id;
+                $unit_id            = $request->input('unit_id');
+                $branch_id          = $request->input('branch_id');
+                $student_id_serial  = trim((string)$request->input('student_id_serial', ''));
+                $session_id         = $request->input('collection_session_id');
                 $sessionData        = $this->getFinancialSessionData($session_id);
                 $financialMonths    = $this->buildFinancialMonths($sessionData['start_year'], $sessionData['end_year']);
 
                 $data['search_unit']            = $unit_id;
                 $data['search_branch']          = $branch_id;
+                $data['search_student_id']      = $student_id_serial;
                 $data['search_session']         = $sessionData['session_id'];
                 $data['search_session_name']    = $sessionData['session_name'];
                 $data['financial_months']       = $financialMonths;
                 $data['is_search']              = 1;
-                $data['report_unit']            = $unit_id;
-                $data['report_branch']          = $branch_id;
+                $data['report_unit']            = (($student_id_serial == '') ? $unit_id : '');
+                $data['report_branch']          = (($student_id_serial == '') ? $branch_id : '');
                 $data['report_session']         = $sessionData['session_id'];
                 $data['report_session_name']    = $sessionData['session_name'];
 
-                $paymentSubQuery = $this->buildFinancialPaymentSummarySubQuery($sessionData['session_id'], $financialMonths);
+                if ($student_id_serial == '' && ((int)$unit_id <= 0 || (int)$branch_id <= 0)) {
+                    session()->flash('error_message', 'Please select Unit and Branch, or enter Student ID with Session.');
+                } else {
+                    $paymentSubQuery = $this->buildFinancialPaymentSummarySubQuery($sessionData['session_id'], $financialMonths);
 
-                $data['rows'] = Student::select(
-                                        'students.id',
-                                        'students.student_id_serial',
-                                        'students.full_name',
-                                        'students.father_mobile',
-                                        'students.photo',
-                                        'students.session_id',
-                                        'units.name as unit_name',
-                                        'branches.name as branch_name',
-                                        'sessions.name as session_name',
-                                        'users.first_name',
-                                        'users.last_name',
-                                        DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
-                                        'payments.*'
-                                    )
-                                    ->leftJoinSub($paymentSubQuery, 'payments', function ($join) {
-                                        $join->on('payments.student_id', '=', 'students.id');
-                                    })
-                                    ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
-                                    ->leftJoin('units', 'units.id', '=', 'students.unit_id')
-                                    ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
-                                    ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
-                                    ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
-                                    ->leftJoin('users', 'users.id', '=', 'students.created_by')
-                                    ->where('students.status', '=', 1)
-                                    ->where('students.session_id', '=', $sessionData['session_id'])
-                                    ->where('students.unit_id', $unit_id)
-                                    ->where('students.branch_id', $branch_id)
-                                    ->orderBy('students.id', 'DESC')
-                                    ->get();
+                    $studentQuery = Student::select(
+                                            'students.id',
+                                            'students.student_id_serial',
+                                            'students.full_name',
+                                            'students.father_mobile',
+                                            'students.photo',
+                                            'students.session_id',
+                                            'units.name as unit_name',
+                                            'branches.name as branch_name',
+                                            'sessions.name as session_name',
+                                            'users.first_name',
+                                            'users.last_name',
+                                            DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name"),
+                                            'payments.*'
+                                        )
+                                        ->leftJoinSub($paymentSubQuery, 'payments', function ($join) {
+                                            $join->on('payments.student_id', '=', 'students.id');
+                                        })
+                                        ->leftJoin('sessions', 'sessions.id', '=', 'students.session_id')
+                                        ->leftJoin('units', 'units.id', '=', 'students.unit_id')
+                                        ->leftJoin('branches', 'branches.id', '=', 'students.branch_id')
+                                        ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                                        ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                                        ->leftJoin('users', 'users.id', '=', 'students.created_by')
+                                        ->where('students.status', '=', 1)
+                                        ->where('students.session_id', '=', $sessionData['session_id']);
+
+                    if ($student_id_serial != '') {
+                        $escapedStudentId = addcslashes($student_id_serial, '\\%_');
+                        $studentQuery->where(function ($query) use ($student_id_serial, $escapedStudentId) {
+                            $query->where('students.student_id_serial', 'like', '%' . $escapedStudentId . '%');
+
+                            if (ctype_digit($student_id_serial)) {
+                                $query->orWhere('students.id', '=', (int)$student_id_serial);
+                            }
+                        });
+                    } else {
+                        $studentQuery->where('students.unit_id', $unit_id)
+                                    ->where('students.branch_id', $branch_id);
+                    }
+
+                    $data['rows'] = $studentQuery->orderBy('students.id', 'DESC')->get();
+                }
             }            
             
             $data['units']                  = Unit::select('id', 'name')->where('status', '=', 1)->orderBy('name', 'ASC')->get();
@@ -1322,6 +1371,49 @@ class StudentController extends Controller
             
             $data = $this->siteAuthService->admin_after_login_layout($title, $page_name, $data);
             return view('front.pages.' . $page_name, $data);
+        }
+        public function feesCollectionStudentSuggestions(Request $request){
+            $term = trim((string)$request->query('term', ''));
+            $sessionData = $this->getFinancialSessionData($request->query('session_id'));
+
+            $studentQuery = Student::select(
+                                    'students.id',
+                                    'students.student_id_serial',
+                                    'students.full_name',
+                                    'students.father_mobile',
+                                    DB::raw("COALESCE(tsa_classes.name, vhs_classes.name) as class_name")
+                                )
+                                ->leftJoin('classes as tsa_classes', 'tsa_classes.id', '=', 'students.tsa_class_id')
+                                ->leftJoin('classes as vhs_classes', 'vhs_classes.id', '=', 'students.vhs_class_id')
+                                ->where('students.status', '=', 1)
+                                ->where('students.session_id', '=', $sessionData['session_id']);
+
+            if ($term != '') {
+                $escapedTerm = addcslashes($term, '\\%_');
+                $studentQuery->where(function ($query) use ($escapedTerm) {
+                    $query->where('students.student_id_serial', 'like', '%' . $escapedTerm . '%')
+                        ->orWhere('students.full_name', 'like', '%' . $escapedTerm . '%')
+                        ->orWhere('students.father_mobile', 'like', '%' . $escapedTerm . '%');
+                });
+            }
+
+            $students = $studentQuery->orderBy('students.student_id_serial', 'ASC')
+                                    ->limit(12)
+                                    ->get()
+                                    ->map(function ($student) {
+                                        return [
+                                            'id'      => $student->id,
+                                            'serial'  => $student->student_id_serial,
+                                            'name'    => $student->full_name,
+                                            'mobile'  => $student->father_mobile,
+                                            'class'   => $student->class_name,
+                                        ];
+                                    });
+
+            return response()->json([
+                'status'   => true,
+                'students' => $students,
+            ]);
         }
         public function feesCollectionDueReport(Request $request){
             $validator = Validator::make($request->all(), [
@@ -1491,53 +1583,74 @@ class StudentController extends Controller
                 ], 404);
             }
 
-            $studentPayment = StudentPayment::where('student_id', $request->student_id)
-                                            ->where('payable_month', $request->payable_month)
-                                            ->where('payable_year', $request->payable_year)
-                                            ->first();
-            if (!$studentPayment) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Payment schedule not found for this month.',
-                ], 404);
-            }
-
-            $monthName       = date('F', mktime(0, 0, 0, (int)$request->payable_month, 1));
-            $payableAmount   = (float)$studentPayment->payable_amount;
-            $alreadyPaid     = (float)$studentPayment->payment_amount;
+            $payableMonth    = (int)$request->payable_month;
+            $payableYear     = (int)$request->payable_year;
+            $monthName       = date('F', mktime(0, 0, 0, $payableMonth, 1));
             $enteredAmount   = (float)$request->payment_amount;
-            $currentDue      = max($payableAmount - $alreadyPaid, 0);
-
-            if ($currentDue <= 0) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'No due left for '.$student->full_name.' ('.$monthName.' '.$request->payable_year.').',
-                ], 422);
-            }
-
-            if ($enteredAmount > $payableAmount) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Payment amount cannot be greater than payable amount for '.$student->full_name.' ('.$monthName.' '.$request->payable_year.').',
-                ], 422);
-            }
-
-            if ($enteredAmount > $currentDue) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Payment amount cannot be greater than due amount for '.$student->full_name.' ('.$monthName.' '.$request->payable_year.').',
-                ], 422);
-            }
-
-            $newPaidAmount   = $alreadyPaid + $enteredAmount;
-            $newDueAmount    = max($payableAmount - $newPaidAmount, 0);
             $updatedBy       = ((session()->has('user_data') && array_key_exists('user_id', session('user_data')))?session('user_data')['user_id']:((Auth::check())?Auth::id():0));
-            $transactionAmount = number_format($enteredAmount, 2, '.', '');
             $ledgerId = (int)$request->ledger_id;
             $bankAccountId = (($paymentMode === 'Bank') ? ((int)$request->bank_account_id ?: null) : null);
             $paymentReference = $this->normalizePaymentReference($paymentMode, $request->payment_reference);
 
-            DB::transaction(function () use ($studentPayment, $newPaidAmount, $newDueAmount, $updatedBy, $student, $monthName, $request, $transactionAmount, $paymentMode, $ledgerId, $bankAccountId, $paymentReference) {
+            $collectionResult = DB::transaction(function () use ($request, $student, $monthName, $payableMonth, $payableYear, $enteredAmount, $updatedBy, $paymentMode, $ledgerId, $bankAccountId, $paymentReference) {
+                $studentPayment = StudentPayment::where('student_id', $request->student_id)
+                                                ->where('payable_month', $payableMonth)
+                                                ->where('payable_year', $payableYear)
+                                                ->lockForUpdate()
+                                                ->first();
+                if (!$studentPayment) {
+                    return [
+                        'status'      => false,
+                        'http_status' => 404,
+                        'message'     => 'Payment schedule not found for this month.',
+                    ];
+                }
+
+                $payableAmount = (float)$studentPayment->payable_amount;
+                $alreadyPaid   = (float)$studentPayment->payment_amount;
+                $currentDue    = (($alreadyPaid > 0) ? 0 : max($payableAmount, 0));
+
+                if ($currentDue <= 0) {
+                    return [
+                        'status'      => false,
+                        'http_status' => 422,
+                        'message'     => 'No due left for '.$student->full_name.' ('.$monthName.' '.$payableYear.').',
+                    ];
+                }
+
+                if ($enteredAmount > $payableAmount) {
+                    return [
+                        'status'      => false,
+                        'http_status' => 422,
+                        'message'     => 'Payment amount cannot be greater than payable amount for '.$student->full_name.' ('.$monthName.' '.$payableYear.').',
+                    ];
+                }
+
+                if (abs($enteredAmount - $currentDue) > 0.009) {
+                    return [
+                        'status'      => false,
+                        'http_status' => 422,
+                        'message'     => 'Please collect the full due amount for '.$student->full_name.' ('.$monthName.' '.$payableYear.').',
+                    ];
+                }
+
+                $existingTransaction = Transaction::where('fee_id', '=', $studentPayment->id)
+                                                ->whereNull('deleted_at')
+                                                ->where('status', '!=', 3)
+                                                ->selectRaw('COUNT(*) as txn_count, COALESCE(SUM(transaction_amount), 0) as txn_amount')
+                                                ->first();
+                if ($existingTransaction && (int)$existingTransaction->txn_count > 0) {
+                    return [
+                        'status'      => false,
+                        'http_status' => 422,
+                        'message'     => 'A transaction already exists for '.$student->full_name.' ('.$monthName.' '.$payableYear.'). Please refresh the fees collection page.',
+                    ];
+                }
+
+                $newPaidAmount     = $enteredAmount;
+                $newDueAmount      = 0;
+                $transactionAmount = number_format($enteredAmount, 2, '.', '');
+
                 $studentPayment->update([
                     'payment_amount' => $newPaidAmount,
                     'payment_date'   => date('Y-m-d'),
@@ -1565,19 +1678,49 @@ class StudentController extends Controller
                     'type'                   => 'INCOME',
                     'transaction_timestamp'  => Carbon::now(),
                     'transaction_amount'     => $transactionAmount,
-                    'particulars'            => 'Fees collection for '.$student->full_name.' ('.$student->student_id_serial.') '.$monthName.' '.$request->payable_year.' with amount '.$transactionAmount,
+                    'particulars'            => 'Fees collection for '.$student->full_name.' ('.$student->student_id_serial.') '.$monthName.' '.$payableYear.' with amount '.$transactionAmount,
+                    'note'                   => 'Monthly fees collection',
+                    'status'                 => 1,
                     'created_by'             => $updatedBy,
                     'updated_by'             => $updatedBy,
                 ]);
+
+                return [
+                    'status'          => true,
+                    'student_payment' => $studentPayment,
+                    'payable_amount'  => $payableAmount,
+                    'paid_amount'     => $newPaidAmount,
+                    'due_amount'      => $newDueAmount,
+                ];
             });
 
+            if (!$collectionResult['status']) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => $collectionResult['message'],
+                ], $collectionResult['http_status']);
+            }
+
+            $payableAmount = (float)$collectionResult['payable_amount'];
+            $newPaidAmount = (float)$collectionResult['paid_amount'];
+            $newDueAmount  = (float)$collectionResult['due_amount'];
+            $financialStartYear = (($payableMonth >= 4) ? $payableYear : ($payableYear - 1));
+            $financialEndYear   = $financialStartYear + 1;
             $totals = StudentPayment::select(
                                         DB::raw("COALESCE(SUM(payable_amount), 0) as total_payable"),
                                         DB::raw("COALESCE(SUM(payment_amount), 0) as total_paid"),
                                         DB::raw("COALESCE(SUM(due_amount), 0) as total_due")
                                     )
                                     ->where('student_id', $request->student_id)
-                                    ->where('payable_year', $request->payable_year)
+                                    ->where(function ($query) use ($financialStartYear, $financialEndYear) {
+                                        $query->where(function ($monthQuery) use ($financialStartYear) {
+                                            $monthQuery->where('payable_year', '=', $financialStartYear)
+                                                       ->whereBetween('payable_month', [4, 12]);
+                                        })->orWhere(function ($monthQuery) use ($financialEndYear) {
+                                            $monthQuery->where('payable_year', '=', $financialEndYear)
+                                                       ->whereBetween('payable_month', [1, 3]);
+                                        });
+                                    })
                                     ->first();
 
             return response()->json([
@@ -1589,13 +1732,15 @@ class StudentController extends Controller
                 ],
                 'month' => [
                     'name'    => $monthName,
-                    'year'    => (int)$request->payable_year,
+                    'year'    => $payableYear,
                     'payable' => number_format($payableAmount, 2),
                     'paid'    => number_format($newPaidAmount, 2),
                     'due'     => number_format($newDueAmount, 2),
                     'payable_numeric' => $payableAmount,
                     'paid_numeric'    => $newPaidAmount,
                     'due_numeric'     => $newDueAmount,
+                    'transaction_count' => 1,
+                    'transaction_amount' => $newPaidAmount,
                 ],
                 'total' => [
                     'payable' => number_format((float)$totals->total_payable, 2),
@@ -1661,7 +1806,7 @@ class StudentController extends Controller
                             $studentPayment->payable_month   = $monthConfig['month'];
                             $studentPayment->payable_year    = $monthConfig['year'];
                             $studentPayment->payable_amount  = $student->monthly_fees;
-                            $studentPayment->due_amount      = max(((float)$student->monthly_fees - $alreadyPaid), 0);
+                            $studentPayment->due_amount      = $this->calculateStudentPaymentDue($student->monthly_fees, $alreadyPaid);
                             $studentPayment->updated_by      = $updatedBy;
 
                             if (!$studentPayment->exists) {
@@ -1887,8 +2032,22 @@ class StudentController extends Controller
 
     private function buildFinancialPaymentSummarySubQuery($sessionId, array $financialMonths)
     {
+        $transactionSummarySubQuery = DB::table('transactions')
+                                        ->select(
+                                            'fee_id',
+                                            DB::raw('COUNT(*) as txn_count'),
+                                            DB::raw('COALESCE(SUM(transaction_amount), 0) as txn_amount')
+                                        )
+                                        ->where('fee_id', '>', 0)
+                                        ->whereNull('deleted_at')
+                                        ->where('status', '!=', 3)
+                                        ->groupBy('fee_id');
+
         $paymentSubQuery = DB::table('student_payments as sp')
                                 ->join('students as st', 'st.id', '=', 'sp.student_id')
+                                ->leftJoinSub($transactionSummarySubQuery, 'fee_tx', function ($join) {
+                                    $join->on('fee_tx.fee_id', '=', 'sp.id');
+                                })
                                 ->select('sp.student_id')
                                 ->where('st.session_id', '=', (int)$sessionId);
 
@@ -1901,6 +2060,8 @@ class StudentController extends Controller
             $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.payable_amount ELSE 0 END) as {$monthAlias}_payable"));
             $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.payment_amount ELSE 0 END) as {$monthAlias}_paid"));
             $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.due_amount ELSE 0 END) as {$monthAlias}_due"));
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN COALESCE(fee_tx.txn_count, 0) ELSE 0 END) as {$monthAlias}_txn_count"));
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN COALESCE(fee_tx.txn_amount, 0) ELSE 0 END) as {$monthAlias}_txn_amount"));
 
             $sessionMonthConditions[] = "(sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear})";
         }
@@ -2096,5 +2257,102 @@ class StudentController extends Controller
                         ->where('status', '=', 1)
                         ->orderBy('bank_name', 'ASC')
                         ->get();
+    }
+
+    private function studentFeeTransactionSummary($studentSerial, array $feePrefixes, $ledgerId)
+    {
+        $query = Transaction::whereNull('deleted_at')
+                            ->where('status', '!=', 3)
+                            ->where('type', '=', 'INCOME')
+                            ->where('ledger_id', '=', (int)$ledgerId)
+                            ->where('particulars', 'like', '%(' . $studentSerial . ')%')
+                            ->where(function ($query) use ($feePrefixes) {
+                                foreach ($feePrefixes as $prefix) {
+                                    $query->orWhere('particulars', 'like', $prefix . ' collected for %');
+                                }
+                            });
+
+        $summary = $query->selectRaw('COUNT(*) as txn_count, COALESCE(SUM(transaction_amount), 0) as txn_amount')->first();
+
+        return [
+            'count'  => (($summary) ? (int)$summary->txn_count : 0),
+            'amount' => (($summary) ? (float)$summary->txn_amount : 0),
+        ];
+    }
+
+    private function hasExactStudentFeeTransaction($studentSerial, array $feePrefixes, $ledgerId, $amount)
+    {
+        if ((float)$amount <= 0) {
+            return true;
+        }
+
+        return Transaction::whereNull('deleted_at')
+                        ->where('status', '!=', 3)
+                        ->where('type', '=', 'INCOME')
+                        ->where('ledger_id', '=', (int)$ledgerId)
+                        ->where('particulars', 'like', '%(' . $studentSerial . ')%')
+                        ->whereRaw('ABS(transaction_amount - ?) <= 0.009', [(float)$amount])
+                        ->where(function ($query) use ($feePrefixes) {
+                            foreach ($feePrefixes as $prefix) {
+                                $query->orWhere('particulars', 'like', $prefix . ' collected for %');
+                            }
+                        })
+                        ->exists();
+    }
+
+    private function createStudentFeeTransactionIfMissing($student, array $feePrefixes, $particulars, $note, $ledgerId, $amount, $paymentMode, $bankAccountId, $paymentReference, $updatedBy)
+    {
+        if ((float)$amount <= 0) {
+            return null;
+        }
+
+        if ($this->hasExactStudentFeeTransaction($student->student_id_serial, $feePrefixes, $ledgerId, $amount)) {
+            return null;
+        }
+
+        return $this->createStudentFeeTransaction($student, $particulars, $note, $ledgerId, $amount, $paymentMode, $bankAccountId, $paymentReference, $updatedBy);
+    }
+
+    private function createStudentFeeTransaction($student, $particulars, $note, $ledgerId, $amount, $paymentMode, $bankAccountId, $paymentReference, $updatedBy)
+    {
+        if ((float)$amount <= 0) {
+            return null;
+        }
+
+        $lastTransaction = Transaction::withTrashed()->select('sl_no')
+                                    ->orderBy('sl_no', 'DESC')
+                                    ->lockForUpdate()
+                                    ->first();
+        $nextSlNo  = (($lastTransaction) ? ((int)$lastTransaction->sl_no + 1) : 1);
+        $nextTxnNo = str_pad($nextSlNo, 8, '0', STR_PAD_LEFT);
+
+        return Transaction::create([
+            'sl_no'                  => $nextSlNo,
+            'txn_no'                 => $nextTxnNo,
+            'fee_id'                 => 0,
+            'unit_id'                => (int)$student->unit_id,
+            'branch_id'              => (int)$student->branch_id,
+            'ledger_id'              => (int)$ledgerId,
+            'payment_mode'           => $paymentMode,
+            'bank_account_id'        => $bankAccountId,
+            'payment_reference'      => $paymentReference,
+            'type'                   => 'INCOME',
+            'transaction_timestamp'  => Carbon::now(),
+            'transaction_amount'     => number_format((float)$amount, 2, '.', ''),
+            'particulars'            => $particulars,
+            'note'                   => $note,
+            'status'                 => 1,
+            'created_by'             => $updatedBy,
+            'updated_by'             => $updatedBy,
+        ]);
+    }
+
+    private function calculateStudentPaymentDue($payableAmount, $paidAmount)
+    {
+        if ((float)$paidAmount > 0) {
+            return 0;
+        }
+
+        return max((float)$payableAmount, 0);
     }
 }

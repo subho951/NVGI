@@ -160,6 +160,62 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         padding-top: 0;
         padding-bottom: 0;
     }
+    .student-id-autocomplete {
+        position: relative;
+    }
+    .student-suggest-list {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 4px);
+        z-index: 30;
+        max-height: 238px;
+        overflow-y: auto;
+        border: 1px solid #cfe0f1;
+        border-radius: 10px;
+        background: #ffffff;
+        box-shadow: 0 12px 28px rgba(18, 50, 76, 0.16);
+        padding: 5px;
+    }
+    .student-suggest-item {
+        width: 100%;
+        border: 0;
+        border-radius: 8px;
+        background: #ffffff;
+        text-align: left;
+        padding: 7px 8px;
+        display: block;
+        color: #122f49;
+    }
+    .student-suggest-item:hover,
+    .student-suggest-item.is-active {
+        background: #ecf5ff;
+    }
+    .student-suggest-serial {
+        display: block;
+        font-size: 12px;
+        font-weight: 800;
+        color: #0f5b99;
+        line-height: 1.2;
+    }
+    .student-suggest-name {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.25;
+        margin-top: 2px;
+    }
+    .student-suggest-meta,
+    .student-suggest-empty {
+        display: block;
+        font-size: 10px;
+        color: #5a7086;
+        line-height: 1.25;
+        margin-top: 2px;
+    }
+    .student-suggest-empty {
+        padding: 7px 8px;
+    }
     .fees-actions {
         display: flex;
         gap: 8px;
@@ -205,11 +261,12 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
     }
     .fees-table-wrap {
         padding: 14px 14px 12px;
-        overflow-x: hidden;
+        overflow-x: auto;
     }
     .fees-table {
         margin-bottom: 0;
         width: 100%;
+        min-width: 1540px;
         table-layout: fixed;
     }
     .fees-table thead th {
@@ -239,6 +296,11 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
     }
     .fees-col-total {
         width: 115px;
+    }
+    .fees-col-month,
+    .month-cell {
+        width: 100px;
+        min-width: 100px;
     }
     .fees-table tbody tr:hover td {
         background: #f8fbff;
@@ -273,8 +335,40 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         line-height: 1.2;
     }
     .month-cell {
-        width: 78px;
-        min-width: 78px;
+        position: relative;
+        padding: 6px !important;
+        background: #f8fbff;
+    }
+    .fees-table tbody tr:hover td.month-cell {
+        background: #f2f7fc;
+    }
+    .month-fee-box {
+        min-height: 122px;
+        border: 1px solid #cfe0f1;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 6px;
+        box-shadow: 0 1px 4px rgba(18, 50, 76, 0.08);
+    }
+    .month-fee-box.paid {
+        border-color: #bde6cb;
+        background: #f8fff9;
+    }
+    .month-fee-box.pending {
+        border-color: #d7e6f5;
+        background: #ffffff;
+    }
+    .month-fee-box.warning {
+        border-color: #e9bd69;
+        background: #fffaf0;
+    }
+    .month-fee-box.error {
+        border-color: #f0b8bf;
+        background: #fffafa;
+    }
+    .month-fee-box.neutral {
+        border-color: #d7e1ea;
+        background: #f8fafc;
     }
     .fee-line {
         display: flex;
@@ -304,6 +398,10 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         flex-direction: column;
         gap: 3px;
         margin-top: 5px;
+    }
+    .fee-payment-form.is-processing {
+        opacity: 0.64;
+        pointer-events: none;
     }
     .fee-payment-form .payment-mode-select {
         font-size: 10px;
@@ -344,18 +442,56 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         padding: 0;
         font-size: 10px;
     }
-    .due-cleared-badge {
+    .collection-status-badge {
         margin-top: 5px;
         display: inline-flex;
         align-items: center;
         gap: 4px;
         font-size: 9px;
         font-weight: 700;
+        border-radius: 999px;
+        padding: 2px 6px;
+        line-height: 1.15;
+        white-space: normal;
+    }
+    .collection-status-badge.paid {
         color: #0f6b3f;
         background: #ebfbf1;
         border: 1px solid #bde6cb;
-        border-radius: 999px;
-        padding: 2px 6px;
+    }
+    .collection-status-badge.pending {
+        color: #815500;
+        background: #fff8e6;
+        border: 1px solid #f4d58d;
+    }
+    .collection-status-badge.warning {
+        color: #7a4b00;
+        background: #fff3db;
+        border: 1px solid #e9bd69;
+    }
+    .collection-status-badge.error {
+        color: #b42331;
+        background: #fff1f1;
+        border: 1px solid #f0b8bf;
+    }
+    .collection-status-badge.neutral {
+        color: #4f6479;
+        background: #eef3f7;
+        border: 1px solid #d7e1ea;
+    }
+    .fee-cell-loader {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.72);
+        color: #0f5b99;
+        font-size: 18px;
+    }
+    .fee-cell-loader.d-none {
+        display: none !important;
     }
     .total-cell {
         width: 115px;
@@ -432,14 +568,13 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             overflow-x: auto;
         }
         .fees-table {
-            min-width: 1240px;
-            table-layout: auto;
+            min-width: 1540px;
+            table-layout: fixed;
         }
         .month-cell,
-        .total-cell,
-        .student-meta {
-            min-width: auto;
-            width: auto;
+        .fees-col-month {
+            min-width: 100px;
+            width: 100px;
         }
     }
 </style>
@@ -492,25 +627,41 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
         <form method="POST" action="">
             @csrf
             <div class="row g-3 align-items-end">
-                <div class="col-lg-3 col-md-6">
+                <div class="col-xl-2 col-lg-3 col-md-6">
+                    <label class="fees-label" for="student_id_serial">Student Serial No</label>
+                    <div class="student-id-autocomplete">
+                        <input type="text"
+                               class="form-control form-control-sm fees-select-control"
+                               name="student_id_serial"
+                               id="student_id_serial"
+                               value="<?= htmlspecialchars(($search_student_id ?? ''), ENT_QUOTES) ?>"
+                               placeholder="Student Serial No"
+                               autocomplete="off"
+                               aria-autocomplete="list"
+                               aria-expanded="false"
+                               aria-controls="studentSerialSuggestions">
+                        <div id="studentSerialSuggestions" class="student-suggest-list d-none"></div>
+                    </div>
+                </div>
+                <div class="col-xl-2 col-lg-3 col-md-6">
                     <label class="fees-label" for="unit_id">Unit</label>
-                    <select class="form-select form-select-sm fees-select-control" name="unit_id" id="unit_id" required>
+                    <select class="form-select form-select-sm fees-select-control" name="unit_id" id="unit_id" <?= (($search_student_id ?? '') == '' ? 'required' : '') ?>>
                         <option selected value="">Select</option>
                         <?php if($units){ foreach($units as $loop_row){?>
                         <option value="<?= $loop_row->id ?>" <?= (($search_unit == $loop_row->id)?'selected':'') ?>><?= $loop_row->name ?></option>
                         <?php } } ?>
                     </select>
                 </div>
-                <div class="col-lg-3 col-md-6">
+                <div class="col-xl-2 col-lg-3 col-md-6">
                     <label class="fees-label" for="branch_id">Branch</label>
-                    <select class="form-select form-select-sm fees-select-control" name="branch_id" id="branch_id" required>
+                    <select class="form-select form-select-sm fees-select-control" name="branch_id" id="branch_id" <?= (($search_student_id ?? '') == '' ? 'required' : '') ?>>
                         <option selected value="">Select</option>
                         <?php if($branches){ foreach($branches as $loop_row){?>
                         <option class="branch unit<?= $loop_row->unit_id ?>" value="<?= $loop_row->id ?>" <?= (($search_branch == $loop_row->id)?'selected':'') ?>><?= $loop_row->name ?></option>
                         <?php } } ?>
                     </select>
                 </div>
-                <div class="col-lg-2 col-md-4">
+                <div class="col-xl-2 col-lg-3 col-md-6">
                     <label class="fees-label" for="collection_session_id">Session</label>
                     <select class="form-select form-select-sm fees-select-control" name="collection_session_id" id="collection_session_id" required>
                         <option selected value="">Select</option>
@@ -519,7 +670,7 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                         <?php } } ?>
                     </select>
                 </div>
-                <div class="col-lg-4 col-md-8">
+                <div class="col-xl-4 col-lg-12 col-md-12">
                     <div class="fees-actions">
                         <button type="submit" class="btn btn-success fees-action-btn"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
                         <?php if($is_search){?>
@@ -605,7 +756,7 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                         <th class="text-center fees-col-index">#</th>
                         <th class="text-center fees-col-student">Student Info</th>
                         <?php foreach ($financialMonths as $monthInfo) { ?>
-                        <th class="text-center">
+                        <th class="text-center fees-col-month">
                             <?= $monthInfo['short'] ?><br>
                             <small><?= $monthInfo['year'] ?></small>
                         </th>
@@ -638,69 +789,108 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                             $month_payable = (isset($row->{$monthAlias . '_payable'}) ? $row->{$monthAlias . '_payable'} : 0);
                             $month_paid    = (isset($row->{$monthAlias . '_paid'}) ? $row->{$monthAlias . '_paid'} : 0);
                             $month_due     = (isset($row->{$monthAlias . '_due'}) ? $row->{$monthAlias . '_due'} : 0);
+                            $month_txn_count  = (isset($row->{$monthAlias . '_txn_count'}) ? (int)$row->{$monthAlias . '_txn_count'} : 0);
+                            $month_txn_amount = (isset($row->{$monthAlias . '_txn_amount'}) ? (float)$row->{$monthAlias . '_txn_amount'} : 0);
                             $monthName     = date("F", mktime(0, 0, 0, $monthInfo['month'], 1));
-                            $isMonthPaid   = ((float)$month_due <= 0);
+                            $canCollect    = ((float)$month_payable > 0 && (float)$month_paid <= 0 && (float)$month_due > 0 && $month_txn_count <= 0);
+                            $statusClass   = 'pending';
+                            $statusLabel   = 'Pending';
+                            $statusIcon    = 'fa-clock';
+
+                            if ((float)$month_payable <= 0) {
+                                $statusClass = 'neutral';
+                                $statusLabel = 'No Fee';
+                                $statusIcon  = 'fa-minus';
+                            } elseif ((float)$month_paid > 0 && (float)$month_due > 0) {
+                                $statusClass = 'error';
+                                $statusLabel = 'Due Glitch';
+                                $statusIcon  = 'fa-triangle-exclamation';
+                            } elseif ((float)$month_paid > 0 && $month_txn_count <= 0) {
+                                $statusClass = 'error';
+                                $statusLabel = 'Txn Missing';
+                                $statusIcon  = 'fa-triangle-exclamation';
+                            } elseif ((float)$month_paid > 0 && abs(((float)$month_paid) - $month_txn_amount) > 0.009) {
+                                $statusClass = 'error';
+                                $statusLabel = 'Txn Mismatch';
+                                $statusIcon  = 'fa-triangle-exclamation';
+                            } elseif ((float)$month_paid > 0 && $month_txn_count > 1) {
+                                $statusClass = 'warning';
+                                $statusLabel = 'Multiple Txn';
+                                $statusIcon  = 'fa-circle-info';
+                            } elseif ((float)$month_paid > 0 && (float)$month_due <= 0) {
+                                $statusClass = 'paid';
+                                $statusLabel = 'Paid';
+                                $statusIcon  = 'fa-circle-check';
+                            }
                         ?>
                         <td class="month-cell" data-student-id="<?= $row->id ?>" data-month="<?= $monthInfo['month'] ?>">
-                            <div class="fee-line payable">Payable <span class="month-payable"><?= number_format((float)$month_payable,2) ?></span></div>
-                            <div class="fee-line paid">Paid <span class="month-paid"><?= number_format((float)$month_paid,2) ?></span></div>
-                            <div class="fee-line due">Due <span class="month-due"><?= number_format((float)$month_due,2) ?></span></div>
+                            <div class="month-fee-box <?= $statusClass ?>">
+                                <div class="fee-line payable">Payable <span class="month-payable"><?= number_format((float)$month_payable,2) ?></span></div>
+                                <div class="fee-line paid">Paid <span class="month-paid"><?= number_format((float)$month_paid,2) ?></span></div>
+                                <div class="fee-line due">Due <span class="month-due"><?= number_format((float)$month_due,2) ?></span></div>
 
-                            <form method="POST"
-                                action="javascript:void(0);"
-                                class="fee-payment-form <?= ($isMonthPaid ? 'd-none' : '') ?>"
-                                data-student-id="<?= $row->id ?>"
-                                data-student-name="<?= htmlspecialchars($row->full_name, ENT_QUOTES) ?>"
-                                data-month="<?= $monthInfo['month'] ?>"
-                                data-month-name="<?= $monthName ?>"
-                                data-year="<?= $monthInfo['year'] ?>"
-                                data-payable="<?= number_format((float)$month_payable, 2, '.', '') ?>"
-                                data-due="<?= number_format((float)$month_due, 2, '.', '') ?>">
-                                @csrf
-                                <select class="form-select form-select-sm payment-mode-select" name="payment_mode" required>
-                                    <option value="Cash">Cash</option>
-                                    <option value="Bank" selected>Bank</option>
-                                </select>
-                                <div class="bank-account-group">
-                                    <select class="form-select form-select-sm bank-account-select"
-                                            name="bank_account_id"
-                                            required>
-                                        <option value="">Bank Account</option>
-                                        @forelse($bankAccounts as $bankAccountRow)
-                                            <option value="{{ $bankAccountRow->id }}">
-                                                {{ $bankAccountRow->bank_name }}{{ ($bankAccountRow->account_no != '') ? ' (' . $bankAccountRow->account_no . ')' : '' }}
-                                            </option>
-                                        @empty
-                                            <option value="">No bank accounts available</option>
-                                        @endforelse
+                                <form method="POST"
+                                    action="javascript:void(0);"
+                                    class="fee-payment-form <?= (!$canCollect ? 'd-none' : '') ?>"
+                                    data-student-id="<?= $row->id ?>"
+                                    data-student-name="<?= htmlspecialchars($row->full_name, ENT_QUOTES) ?>"
+                                    data-month="<?= $monthInfo['month'] ?>"
+                                    data-month-name="<?= $monthName ?>"
+                                    data-year="<?= $monthInfo['year'] ?>"
+                                    data-payable="<?= number_format((float)$month_payable, 2, '.', '') ?>"
+                                    data-due="<?= number_format((float)$month_due, 2, '.', '') ?>"
+                                    data-transaction-count="<?= $month_txn_count ?>"
+                                    data-transaction-amount="<?= number_format((float)$month_txn_amount, 2, '.', '') ?>">
+                                    @csrf
+                                    <select class="form-select form-select-sm payment-mode-select" name="payment_mode" required>
+                                        <option value="Cash">Cash</option>
+                                        <option value="Bank" selected>Bank</option>
                                     </select>
-                                </div>
-                                <div class="payment-reference-group">
-                                    <input type="text"
-                                           class="form-control form-control-sm payment-reference-input"
-                                           name="payment_reference"
-                                           placeholder="UTR / cheque number / transaction ID"
-                                           autocomplete="off"
-                                           required>
-                                </div>
-                                <input type="hidden" name="ledger_id" value="1">
-                                <div class="payment-actions">
-                                    <input type="text"
-                                        name="payment_amount"
-                                        class="form-control form-control-sm payment-amount-input"
-                                        placeholder="Amount"
-                                        autocomplete="off"
-                                        oninput="allowNumberDot(this)">
+                                    <div class="bank-account-group">
+                                        <select class="form-select form-select-sm bank-account-select"
+                                                name="bank_account_id"
+                                                required>
+                                            <option value="">Bank Account</option>
+                                            @forelse($bankAccounts as $bankAccountRow)
+                                                <option value="{{ $bankAccountRow->id }}">
+                                                    {{ $bankAccountRow->bank_name }}{{ ($bankAccountRow->account_no != '') ? ' (' . $bankAccountRow->account_no . ')' : '' }}
+                                                </option>
+                                            @empty
+                                                <option value="">No bank accounts available</option>
+                                            @endforelse
+                                        </select>
+                                    </div>
+                                    <div class="payment-reference-group">
+                                        <input type="text"
+                                               class="form-control form-control-sm payment-reference-input"
+                                               name="payment_reference"
+                                               placeholder="UTR / cheque number / transaction ID"
+                                               autocomplete="off"
+                                               required>
+                                    </div>
+                                    <input type="hidden" name="ledger_id" value="1">
+                                    <div class="payment-actions">
+                                        <input type="text"
+                                            name="payment_amount"
+                                            class="form-control form-control-sm payment-amount-input"
+                                            placeholder="Amount"
+                                            value="<?= number_format((float)$month_due, 2, '.', '') ?>"
+                                            autocomplete="off"
+                                            readonly
+                                            oninput="allowNumberDot(this)">
 
-                                    <button type="submit" class="btn btn-success btn-sm payment-submit-btn" title="Submit">
-                                        <i class="fa-solid fa-arrow-right"></i>
-                                    </button>
-                                </div>
-                            </form>
+                                        <button type="submit" class="btn btn-success btn-sm payment-submit-btn" title="Submit">
+                                            <i class="fa-solid fa-arrow-right payment-btn-icon"></i>
+                                            <i class="fa-solid fa-spinner fa-spin payment-btn-loader d-none"></i>
+                                        </button>
+                                    </div>
+                                </form>
 
-                            <div class="due-cleared-badge <?= ($isMonthPaid ? '' : 'd-none') ?>">
-                                <i class="fa-solid fa-circle-check"></i> Paid
+                                <div class="collection-status-badge <?= $statusClass ?>" data-status-badge>
+                                    <i class="fa-solid <?= $statusIcon ?>"></i> <span><?= $statusLabel ?></span>
+                                </div>
                             </div>
+                            <div class="fee-cell-loader d-none"><i class="fa-solid fa-spinner fa-spin"></i></div>
                         </td>
                         <?php } ?>
 
@@ -737,9 +927,14 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
     $(function(){
         var search_unit = '<?= $search_unit ?>';
         var search_branch = '<?= $search_branch ?>';
+        var search_student_id = @json($search_student_id ?? '');
         var report_unit = '<?= $report_unit ?>';
         var report_branch = '<?= $report_branch ?>';
         var report_class = '<?= $report_class ?>';
+        var studentSuggestUrl = @json(route('student.fees-collection.student-suggestions'));
+        var studentSuggestTimer = null;
+        var studentSuggestRequest = null;
+        var studentSuggestActiveIndex = -1;
 
         function bindUnitWiseBranch(unitId, branchSelector, optionClass, selectedBranch){
             var branchSelect = $(branchSelector);
@@ -766,12 +961,187 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             }
         }
 
+        function escapeHtml(value) {
+            return $('<div>').text(value || '').html();
+        }
+
+        function hideStudentSuggestions() {
+            studentSuggestActiveIndex = -1;
+            $('#studentSerialSuggestions').addClass('d-none').empty();
+            $('#student_id_serial').attr('aria-expanded', 'false');
+        }
+
+        function setActiveStudentSuggestion(index) {
+            var items = $('#studentSerialSuggestions .student-suggest-item');
+            if (!items.length) {
+                studentSuggestActiveIndex = -1;
+                return;
+            }
+
+            if (index < 0) {
+                index = items.length - 1;
+            }
+            if (index >= items.length) {
+                index = 0;
+            }
+
+            studentSuggestActiveIndex = index;
+            items.removeClass('is-active');
+            $(items.get(index)).addClass('is-active');
+        }
+
+        function renderStudentSuggestions(students) {
+            if (!$('#student_id_serial').is(':focus')) {
+                return;
+            }
+
+            var suggestionBox = $('#studentSerialSuggestions');
+            students = Array.isArray(students) ? students : Object.values(students || {});
+            studentSuggestActiveIndex = -1;
+
+            if (!students.length) {
+                suggestionBox.html('<div class="student-suggest-empty">No matching student found</div>');
+                suggestionBox.removeClass('d-none');
+                $('#student_id_serial').attr('aria-expanded', 'true');
+                return;
+            }
+
+            var html = students.map(function(student){
+                var metaParts = [];
+                if (student.class) {
+                    metaParts.push(student.class);
+                }
+                if (student.mobile) {
+                    metaParts.push(student.mobile);
+                }
+
+                return '<button type="button" class="student-suggest-item" data-student-serial="' + escapeHtml(student.serial) + '">' +
+                    '<span class="student-suggest-serial">' + escapeHtml(student.serial) + '</span>' +
+                    '<span class="student-suggest-name">' + escapeHtml(student.name) + '</span>' +
+                    '<span class="student-suggest-meta">' + escapeHtml(metaParts.join(' | ')) + '</span>' +
+                '</button>';
+            }).join('');
+
+            suggestionBox.html(html).removeClass('d-none');
+            $('#student_id_serial').attr('aria-expanded', 'true');
+        }
+
+        function loadStudentSuggestions() {
+            var sessionId = $('#collection_session_id').val();
+            if (!sessionId) {
+                hideStudentSuggestions();
+                return;
+            }
+
+            if (studentSuggestRequest) {
+                studentSuggestRequest.abort();
+            }
+
+            studentSuggestRequest = $.ajax({
+                url: studentSuggestUrl,
+                method: 'GET',
+                dataType: 'json',
+                data: {
+                    term: $.trim($('#student_id_serial').val()),
+                    session_id: sessionId
+                },
+                success: function(response){
+                    renderStudentSuggestions(response.students || []);
+                },
+                error: function(xhr){
+                    if (xhr.statusText !== 'abort') {
+                        hideStudentSuggestions();
+                    }
+                },
+                complete: function(){
+                    studentSuggestRequest = null;
+                }
+            });
+        }
+
+        function scheduleStudentSuggestions(delay) {
+            clearTimeout(studentSuggestTimer);
+            studentSuggestTimer = setTimeout(function(){
+                loadStudentSuggestions();
+            }, delay);
+        }
+
+        function selectStudentSuggestion(button) {
+            var serial = button.attr('data-student-serial');
+            $('#student_id_serial').val(serial).trigger('change');
+            hideStudentSuggestions();
+            syncStudentSearchMode();
+        }
+
         bindUnitWiseBranch(search_unit, '#branch_id', 'branch', search_branch);
         bindUnitWiseBranch(report_unit, '#report_branch_id', 'report-branch', report_branch);
         bindUnitWiseClass(report_unit, '#report_class_id', 'report-class', report_class);
 
+        function syncStudentSearchMode(){
+            var hasStudentId = $.trim($('#student_id_serial').val()) !== '';
+            $('#unit_id, #branch_id')
+                .prop('required', !hasStudentId)
+                .prop('disabled', hasStudentId);
+        }
+
+        $('#student_id_serial').val(search_student_id);
+        syncStudentSearchMode();
+
+        $('#student_id_serial').on('focus', function(){
+            scheduleStudentSuggestions(0);
+        });
+
+        $('#student_id_serial').on('input', function(){
+            syncStudentSearchMode();
+            scheduleStudentSuggestions(220);
+        });
+
+        $('#student_id_serial').on('change', function(){
+            syncStudentSearchMode();
+        });
+
+        $('#student_id_serial').on('keydown', function(event){
+            var suggestionBox = $('#studentSerialSuggestions');
+            var items = suggestionBox.find('.student-suggest-item');
+
+            if (suggestionBox.hasClass('d-none') || !items.length) {
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveStudentSuggestion(studentSuggestActiveIndex + 1);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveStudentSuggestion(studentSuggestActiveIndex - 1);
+            } else if (event.key === 'Enter' && studentSuggestActiveIndex >= 0) {
+                event.preventDefault();
+                selectStudentSuggestion($(items.get(studentSuggestActiveIndex)));
+            } else if (event.key === 'Escape') {
+                hideStudentSuggestions();
+            }
+        });
+
+        $(document).on('mousedown', '.student-suggest-item', function(event){
+            event.preventDefault();
+            selectStudentSuggestion($(this));
+        });
+
+        $(document).on('mousedown', function(event){
+            if (!$(event.target).closest('.student-id-autocomplete').length) {
+                hideStudentSuggestions();
+            }
+        });
+
         $('#unit_id').on('change', function(){
             bindUnitWiseBranch($('#unit_id').val(), '#branch_id', 'branch', '');
+            syncStudentSearchMode();
+        });
+
+        $('#collection_session_id').on('change', function(){
+            if ($('#student_id_serial').is(':focus')) {
+                scheduleStudentSuggestions(0);
+            }
         });
 
         $('#report_unit_id').on('change', function(){
@@ -831,6 +1201,27 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             }
         }
 
+        function setFeeFormProcessing(form, isProcessing) {
+            var monthCell = form.closest('.month-cell');
+            form.toggleClass('is-processing', isProcessing);
+            monthCell.find('.fee-cell-loader').toggleClass('d-none', !isProcessing);
+            form.find('input, select, button').prop('disabled', isProcessing);
+            form.find('.payment-btn-icon').toggleClass('d-none', isProcessing);
+            form.find('.payment-btn-loader').toggleClass('d-none', !isProcessing);
+
+            if (!isProcessing) {
+                toggleBankPaymentFields(form, form.find('select[name="payment_mode"]').val());
+            }
+        }
+
+        function updateCollectionStatus(monthCell, statusClass, statusLabel, statusIcon) {
+            var badge = monthCell.find('[data-status-badge]');
+            var box = monthCell.find('.month-fee-box');
+            box.removeClass('paid pending warning error neutral').addClass(statusClass);
+            badge.removeClass('paid pending warning error neutral').addClass(statusClass);
+            badge.html('<i class="fa-solid ' + statusIcon + '"></i> <span>' + statusLabel + '</span>');
+        }
+
         $('.fee-payment-form').each(function () {
             var form = $(this);
             toggleBankPaymentFields(form, form.find('select[name="payment_mode"]').val());
@@ -845,8 +1236,11 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             e.preventDefault();
 
             var form = $(this);
+            if (form.hasClass('is-processing')) {
+                return;
+            }
+
             var amountInput = form.find('.payment-amount-input');
-            var submitButton = form.find('.payment-submit-btn');
             var enteredAmount = $.trim(amountInput.val());
             var amountNumber = parseFloat(enteredAmount);
             var paymentMode = form.find('select[name="payment_mode"]').val();
@@ -872,12 +1266,12 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             if (dueAmount <= 0) {
                 showFeesToast('No due left for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
                 form.addClass('d-none');
-                form.closest('.month-cell').find('.due-cleared-badge').removeClass('d-none');
+                updateCollectionStatus(form.closest('.month-cell'), 'paid', 'Paid', 'fa-circle-check');
                 return;
             }
 
-            if (amountNumber > dueAmount) {
-                showFeesToast('Payment amount cannot be greater than due amount for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
+            if (Math.abs(amountNumber - dueAmount) > 0.009) {
+                showFeesToast('Please collect the full due amount for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
                 return;
             }
 
@@ -912,7 +1306,7 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                 dataType: "json",
                 data: requestData,
                 beforeSend: function(){
-                    submitButton.prop('disabled', true);
+                    setFeeFormProcessing(form, true);
                 },
                 success: function(response){
                     var monthCell = form.closest('.month-cell');
@@ -928,15 +1322,22 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
 
                     form.data('payable', response.month.payable_numeric);
                     form.data('due', response.month.due_numeric);
+                    form.data('transaction-count', response.month.transaction_count);
+                    form.data('transaction-amount', response.month.transaction_amount);
                     form.attr('data-payable', response.month.payable_numeric);
                     form.attr('data-due', response.month.due_numeric);
+                    form.attr('data-transaction-count', response.month.transaction_count);
+                    form.attr('data-transaction-amount', response.month.transaction_amount);
 
                     if (parseFloat(response.month.due_numeric) <= 0) {
                         form.addClass('d-none');
-                        monthCell.find('.due-cleared-badge').removeClass('d-none');
+                        updateCollectionStatus(monthCell, 'paid', 'Paid', 'fa-circle-check');
+                        amountInput.val('');
+                    } else {
+                        amountInput.val(response.month.due_numeric);
+                        updateCollectionStatus(monthCell, 'pending', 'Pending', 'fa-clock');
                     }
 
-                    amountInput.val('');
                     showFeesToast(response.message, 'success');
                 },
                 error: function(xhr){
@@ -947,7 +1348,7 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                     showFeesToast(message, 'error');
                 },
                 complete: function(){
-                    submitButton.prop('disabled', false);
+                    setFeeFormProcessing(form, false);
                 }
             });
         });

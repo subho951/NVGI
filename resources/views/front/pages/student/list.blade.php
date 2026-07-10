@@ -75,6 +75,22 @@ $controllerRoute = $module['controller_route'];
         min-width: 92px;
         white-space: nowrap;
     }
+    .student-fee-btn.fee-paid{
+        background: #198754;
+        border-color: #198754;
+        color: #ffffff;
+        opacity: 1;
+    }
+    .student-fee-btn.fee-warning{
+        background: #f59f00;
+        border-color: #f59f00;
+        color: #111827;
+    }
+    .student-fee-btn.fee-error{
+        background: #dc3545;
+        border-color: #dc3545;
+        color: #ffffff;
+    }
 </style>
 <h2 class="student-page-title mb-3">Manage <?= $module['title'] ?></h2>
 @if(session('success_message'))
@@ -180,9 +196,27 @@ $controllerRoute = $module['controller_route'];
                                         <a href="javascript:void(0);" onclick="showConfirmBox('<?= $encoded_id ?>', '<?= $status_url ?>', 'Are you sure you want to activate this record?')" class="text-warning" title="Blocked <?= $module['title'] ?>"><i class="fas fa-ban text-danger"></i></a>
                                     <?php } ?>
                                     |
-                                    <?php if($row->unit_id == 1){?>
+                                    <?php if($row->unit_id == 1){
+                                        $booksFeeAmount = (float)$row->books_fee;
+                                        $booksTxnCount = (int)($row->books_fee_txn_count ?? 0);
+                                        $booksTxnAmount = (float)($row->books_fee_txn_amount ?? 0);
+                                        $booksIsPaid = ($booksFeeAmount > 0 && $booksTxnCount > 0 && abs($booksTxnAmount - $booksFeeAmount) <= 0.009);
+                                        $booksHasMismatch = ($booksTxnCount > 0 && !$booksIsPaid);
+                                        $booksBtnClass = ($booksIsPaid ? 'fee-paid' : ($booksHasMismatch ? 'fee-error' : (($booksFeeAmount > 0) ? 'fee-warning' : '')));
+                                        $booksBtnLabel = ($booksIsPaid ? 'Books Paid' : ($booksHasMismatch ? 'Books Check' : (($booksFeeAmount > 0) ? 'Books Missing' : 'Books Fee')));
+                                        $booksBtnDisabled = (($booksIsPaid || $booksHasMismatch) ? 'disabled' : '');
+
+                                        $uniformFeeAmount = (float)$row->uniform_fee;
+                                        $uniformTxnCount = (int)($row->uniform_fee_txn_count ?? 0);
+                                        $uniformTxnAmount = (float)($row->uniform_fee_txn_amount ?? 0);
+                                        $uniformIsPaid = ($uniformFeeAmount > 0 && $uniformTxnCount > 0 && abs($uniformTxnAmount - $uniformFeeAmount) <= 0.009);
+                                        $uniformHasMismatch = ($uniformTxnCount > 0 && !$uniformIsPaid);
+                                        $uniformBtnClass = ($uniformIsPaid ? 'fee-paid' : ($uniformHasMismatch ? 'fee-error' : (($uniformFeeAmount > 0) ? 'fee-warning' : '')));
+                                        $uniformBtnLabel = ($uniformIsPaid ? 'Uniform Paid' : ($uniformHasMismatch ? 'Uniform Check' : (($uniformFeeAmount > 0) ? 'Uniform Missing' : 'Uniform Fee')));
+                                        $uniformBtnDisabled = (($uniformIsPaid || $uniformHasMismatch) ? 'disabled' : '');
+                                    ?>
                                         <button type="button"
-                                                class="btn btn-info btn-sm student-fee-btn feeCollectionBtn"
+                                                class="btn btn-info btn-sm student-fee-btn feeCollectionBtn <?= $booksBtnClass ?>"
                                                 data-student-id="<?= $row->id ?>"
                                                 data-student-name="<?= e($studentNameDisplay) ?>"
                                                 data-student-serial="<?= e($row->student_id_serial) ?>"
@@ -190,12 +224,13 @@ $controllerRoute = $module['controller_route'];
                                                 data-books-fee="<?= e($row->books_fee) ?>"
                                                 data-uniform-fee="<?= e($row->uniform_fee) ?>"
                                                 data-fee-type="books"
-                                                data-fee-label="Books Fee">
-                                            Books Fee
+                                                data-fee-label="Books Fee"
+                                                <?= $booksBtnDisabled ?>>
+                                            <?= $booksBtnLabel ?>
                                         </button>
                                         |
                                         <button type="button"
-                                                class="btn btn-secondary btn-sm student-fee-btn feeCollectionBtn"
+                                                class="btn btn-secondary btn-sm student-fee-btn feeCollectionBtn <?= $uniformBtnClass ?>"
                                                 data-student-id="<?= $row->id ?>"
                                                 data-student-name="<?= e($studentNameDisplay) ?>"
                                                 data-student-serial="<?= e($row->student_id_serial) ?>"
@@ -203,8 +238,9 @@ $controllerRoute = $module['controller_route'];
                                                 data-books-fee="<?= e($row->books_fee) ?>"
                                                 data-uniform-fee="<?= e($row->uniform_fee) ?>"
                                                 data-fee-type="uniform"
-                                                data-fee-label="Uniform Fee">
-                                            Uniform Fee
+                                                data-fee-label="Uniform Fee"
+                                                <?= $uniformBtnDisabled ?>>
+                                            <?= $uniformBtnLabel ?>
                                         </button>
                                         |
                                     <?php }?>
@@ -406,7 +442,10 @@ $controllerRoute = $module['controller_route'];
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-success btn-sm" id="special_fee_submit_btn">Collect Fee</button>
+                    <button type="submit" class="btn btn-success btn-sm" id="special_fee_submit_btn">
+                        <span class="special-fee-submit-label">Collect Fee</span>
+                        <i class="fa-solid fa-spinner fa-spin special-fee-submit-loader d-none"></i>
+                    </button>
                 </div>
             </form>
         </div>
@@ -668,7 +707,17 @@ $controllerRoute = $module['controller_route'];
                 paymentReferenceField.value = (data.paymentReference !== undefined && data.paymentReference !== null) ? data.paymentReference : '';
             }
             amountField.value = (data.feeAmount !== undefined && data.feeAmount !== null && data.feeAmount !== '') ? data.feeAmount : defaultAmount;
-            submitButton.textContent = 'Collect ' + feeLabel;
+            if (submitButton) {
+                const submitLabel = submitButton.querySelector('.special-fee-submit-label');
+                const submitLoader = submitButton.querySelector('.special-fee-submit-loader');
+                if (submitLabel) {
+                    submitLabel.textContent = 'Collect ' + feeLabel;
+                }
+                if (submitLoader) {
+                    submitLoader.classList.add('d-none');
+                }
+                submitButton.disabled = false;
+            }
 
             toggleBankPaymentFields(
                 paymentModeField ? paymentModeField.value : 'Cash',
@@ -713,6 +762,25 @@ $controllerRoute = $module['controller_route'];
                     '#special_fee_payment_reference_group',
                     '#special_fee_payment_reference'
                 );
+            });
+        }
+
+        if (document.getElementById('studentSpecialFeeForm')) {
+            document.getElementById('studentSpecialFeeForm').addEventListener('submit', function () {
+                const submitButton = document.getElementById('special_fee_submit_btn');
+                if (!submitButton) {
+                    return;
+                }
+
+                const submitLabel = submitButton.querySelector('.special-fee-submit-label');
+                const submitLoader = submitButton.querySelector('.special-fee-submit-loader');
+                submitButton.disabled = true;
+                if (submitLabel) {
+                    submitLabel.textContent = 'Processing';
+                }
+                if (submitLoader) {
+                    submitLoader.classList.remove('d-none');
+                }
             });
         }
     </script>
