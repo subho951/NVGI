@@ -68,6 +68,24 @@ class PayrollDataMigrationTest extends TestCase
             $table->decimal('tsa_teacher_leave_count', 8, 2)->default(0);
             $table->timestamps();
         });
+
+        Schema::create('modules', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->tinyInteger('status')->default(1);
+            $table->integer('created_by')->default(1);
+            $table->integer('updated_by')->default(1);
+            $table->timestamp('deleted_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('roles', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->text('module_id')->nullable();
+            $table->tinyInteger('status')->default(1);
+            $table->timestamps();
+        });
     }
 
     public function test_known_duplicate_leave_and_tsa_allotments_are_repaired(): void
@@ -163,11 +181,30 @@ class PayrollDataMigrationTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        DB::table('roles')->insert([
+            [
+                'id' => 1,
+                'name' => 'Master Admin',
+                'module_id' => json_encode(['6']),
+                'status' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 2,
+                'name' => 'Payroll Only',
+                'module_id' => json_encode(['32']),
+                'status' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
 
         (require database_path('migrations/2026_07_30_000001_create_employee_holidays_table.php'))->up();
         (require database_path('migrations/2026_07_30_000002_add_payroll_integrity_fields.php'))->up();
         (require database_path('migrations/2026_07_30_000003_repair_riddhi_duplicate_leave.php'))->up();
         (require database_path('migrations/2026_07_30_000004_disable_tsa_leave_allotments.php'))->up();
+        (require database_path('migrations/2026_07_30_000005_add_holiday_management_module.php'))->up();
 
         $this->assertDatabaseHas('leave_applications', [
             'id' => 9,
@@ -205,5 +242,20 @@ class PayrollDataMigrationTest extends TestCase
             'holiday_date' => '2026-07-16',
             'status' => 1,
         ]);
+        $this->assertDatabaseHas('modules', [
+            'id' => 40,
+            'name' => 'Masters - Holiday Management',
+            'status' => 1,
+        ]);
+        $masterModuleIds = json_decode(
+            DB::table('roles')->where('id', 1)->value('module_id'),
+            true
+        );
+        $payrollModuleIds = json_decode(
+            DB::table('roles')->where('id', 2)->value('module_id'),
+            true
+        );
+        $this->assertContains('40', $masterModuleIds);
+        $this->assertNotContains('40', $payrollModuleIds);
     }
 }

@@ -16,10 +16,8 @@ class EmployeeHolidayService
         }
 
         return EmployeeHoliday::where('status', '=', 1)
-            ->whereBetween('holiday_date', [
-                $fromDate->toDateString(),
-                $toDate->toDateString(),
-            ])
+            ->whereDate('holiday_date', '>=', $fromDate->toDateString())
+            ->whereDate('holiday_date', '<=', $toDate->toDateString())
             ->orderBy('holiday_date')
             ->orderBy('id')
             ->get();

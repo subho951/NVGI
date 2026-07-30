@@ -26,6 +26,7 @@ use App\Http\Controllers\MediumController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\KnowAboutController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\ReligionController;
 use App\Http\Controllers\RoleController;
@@ -219,6 +220,13 @@ use App\Http\Controllers\Common\TableController;
                     Route::match(['get', 'post'], 'bank-account/edit/{id}', [BankAccountController::class, 'edit']);
                     Route::get('bank-account/change-status/{id}', [BankAccountController::class, 'change_status']);
                 /* bank accounts */
+                /* holidays */
+                    Route::get('holiday/list', [HolidayController::class, 'list'])->name('holiday.list');
+                    Route::match(['get', 'post'], 'holiday/add', [HolidayController::class, 'add'])->name('holiday.add');
+                    Route::match(['get', 'post'], 'holiday/edit/{id}', [HolidayController::class, 'edit'])->name('holiday.edit');
+                    Route::get('holiday/change-status/{id}', [HolidayController::class, 'change_status'])->name('holiday.change-status');
+                    Route::get('holiday/delete/{id}', [HolidayController::class, 'delete'])->name('holiday.delete');
+                /* holidays */
             /* masters */
             /* student */
                 Route::match(['get', 'post'], 'student/list', [StudentController::class, 'list']);

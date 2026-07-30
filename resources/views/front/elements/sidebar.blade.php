@@ -78,20 +78,20 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
         </li>
     <?php } ?>
 
-    <?php if((in_array(6, $moduleIds)) || (in_array(7, $moduleIds)) || (in_array(8, $moduleIds)) || (in_array(9, $moduleIds)) || (in_array(10, $moduleIds)) || (in_array(11, $moduleIds)) || (in_array(12, $moduleIds)) || (in_array(13, $moduleIds)) || (in_array(14, $moduleIds)) || (in_array(27, $moduleIds))){?>
+    <?php if((in_array(6, $moduleIds)) || (in_array(7, $moduleIds)) || (in_array(8, $moduleIds)) || (in_array(9, $moduleIds)) || (in_array(10, $moduleIds)) || (in_array(11, $moduleIds)) || (in_array(12, $moduleIds)) || (in_array(13, $moduleIds)) || (in_array(14, $moduleIds)) || (in_array(27, $moduleIds)) || (in_array(40, $moduleIds))){?>
         <!-- Masters -->
         <li class="nav-item">
-            <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['unit', 'branch', 'subject', 'session', 'board', 'medium', 'know-about', 'class', 'religion', 'bank-account']) ? 'active-link' : '' ?>"
+            <a class="nav-link d-flex justify-content-between align-items-center <?= in_array($pageSegment, ['unit', 'branch', 'subject', 'session', 'board', 'medium', 'know-about', 'class', 'religion', 'bank-account', 'holiday']) ? 'active-link' : '' ?>"
                 data-bs-toggle="collapse"
                 href="#mastersMenu"
                 role="button"
-                aria-expanded="<?= in_array($pageSegment, ['unit', 'branch', 'subject', 'session', 'board', 'medium', 'know-about', 'class', 'religion', 'bank-account']) ? 'true' : 'false' ?>"
+                aria-expanded="<?= in_array($pageSegment, ['unit', 'branch', 'subject', 'session', 'board', 'medium', 'know-about', 'class', 'religion', 'bank-account', 'holiday']) ? 'true' : 'false' ?>"
                 aria-controls="mastersMenu">
                 <span><i class="fa-solid fa-database"></i> Masters</span>
                 <i class="fa-solid fa-angle-down menu-arrow"></i>
             </a>
 
-            <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['unit', 'branch', 'subject', 'session', 'board', 'medium', 'know-about', 'class', 'religion', 'bank-account']) ? 'show' : '' ?>" id="mastersMenu">
+            <ul class="collapse list-unstyled ps-3 <?= in_array($pageSegment, ['unit', 'branch', 'subject', 'session', 'board', 'medium', 'know-about', 'class', 'religion', 'bank-account', 'holiday']) ? 'show' : '' ?>" id="mastersMenu">
                 <?php if(in_array(6, $moduleIds)){?>
                     <li>
                         <a href="<?= url('unit/list') ?>" class="nav-link <?= (($pageSegment == 'unit') ? 'active-link' : '') ?>">
@@ -159,6 +159,13 @@ $siteLogo = ((Helper::getSettingValue('site_logo') != '') ? config('constants.ap
                     <li>
                         <a href="<?= url('bank-account/list') ?>" class="nav-link <?= (($pageSegment == 'bank-account') ? 'active-link' : '') ?>">
                             <i class="fa-solid fa-arrow-right"></i> <span>Bank Accounts</span>
+                        </a>
+                    </li>
+                <?php } ?>
+                <?php if(in_array(40, $moduleIds)){?>
+                    <li>
+                        <a href="<?= url('holiday/list') ?>" class="nav-link <?= (($pageSegment == 'holiday') ? 'active-link' : '') ?>">
+                            <i class="fa-solid fa-arrow-right"></i> <span>Holiday Management</span>
                         </a>
                     </li>
                 <?php } ?>

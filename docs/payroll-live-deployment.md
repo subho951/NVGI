@@ -1,6 +1,6 @@
 # Payroll and roster correction deployment
 
-These changes include four ordered migrations. Take a database backup before
+These changes include five ordered migrations. Take a database backup before
 running them on the live server.
 
 ## 1. Check migration state
@@ -10,7 +10,7 @@ php artisan migrate:status
 ```
 
 If the live database shows many old migrations as pending even though their
-tables already exist, run only the four migration files below instead of a
+tables already exist, run only the five migration files below instead of a
 general `php artisan migrate`.
 
 ## 2. Run the payroll migrations in order
@@ -20,6 +20,7 @@ php artisan migrate --force --path=database/migrations/2026_07_30_000001_create_
 php artisan migrate --force --path=database/migrations/2026_07_30_000002_add_payroll_integrity_fields.php
 php artisan migrate --force --path=database/migrations/2026_07_30_000003_repair_riddhi_duplicate_leave.php
 php artisan migrate --force --path=database/migrations/2026_07_30_000004_disable_tsa_leave_allotments.php
+php artisan migrate --force --path=database/migrations/2026_07_30_000005_add_holiday_management_module.php
 php artisan optimize:clear
 ```
 
@@ -33,6 +34,8 @@ The migrations automatically:
   duplicates and recalculate the employee's leave balance;
 - set TSA category leave counts to zero and deactivate TSA-only employee leave
   allotments.
+- add month-wise Holiday Management under Masters and grant it to existing
+  master-data roles.
 
 ## 3. Verify the live data
 
