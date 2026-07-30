@@ -30,7 +30,20 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
             $table->text('middle_name')->nullable();
             $table->text('last_name')->nullable();
             $table->text('category')->nullable();
+            $table->date('doj')->nullable();
             $table->tinyInteger('status')->default(1);
+        });
+
+        Schema::create('employee_holidays', function (Blueprint $table) {
+            $table->id();
+            $table->date('holiday_date')->index();
+            $table->string('name');
+            $table->string('branch_name')->nullable();
+            $table->string('category')->nullable();
+            $table->tinyInteger('status')->default(1);
+            $table->integer('created_by')->default(0);
+            $table->integer('updated_by')->default(0);
+            $table->timestamps();
         });
 
         Schema::create('employee_schedule_rosters', function (Blueprint $table) {
@@ -269,6 +282,74 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
         $this->assertSame(0, EmployeeAttendance::count());
     }
 
+    public function test_bulk_attendance_skips_rosters_before_employee_joining_date(): void
+    {
+        $this->insertEmployee(6, 'VHS TEACHER', '2026-07-30');
+        $this->insertRoster(6, 'VHS TEACHER', $this->selectedDate, '10:00', '15:00');
+
+        $result = app(EmployeeRosterAttendanceService::class)->markPresent(
+            $this->selectedDate,
+            ['VHS TEACHER']
+        );
+
+        $this->assertSame(1, $result['skipped_pre_doj']);
+        $this->assertSame(0, $result['marked_present']);
+        $this->assertSame(0, EmployeeAttendance::count());
+    }
+
+    public function test_bulk_attendance_skips_configured_holiday(): void
+    {
+        $this->insertEmployee(7, 'FRONT-DESK', '2026-07-01');
+        $this->insertRoster(7, 'FRONT-DESK', $this->selectedDate, '08:30', '17:30');
+        DB::table('employee_holidays')->insert([
+            'holiday_date' => $this->selectedDate->toDateString(),
+            'name' => 'Test Holiday',
+            'status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $result = app(EmployeeRosterAttendanceService::class)->markPresent(
+            $this->selectedDate,
+            ['FRONT-DESK']
+        );
+
+        $this->assertSame(1, $result['skipped_holidays']);
+        $this->assertSame(0, $result['marked_present']);
+        $this->assertSame(0, EmployeeAttendance::count());
+    }
+
+    public function test_holiday_does_not_create_fallback_roster_from_previous_timeslot(): void
+    {
+        $this->insertEmployee(8, 'GROUP-D', '2026-07-01');
+        $this->insertRoster(
+            8,
+            'GROUP-D',
+            $this->selectedDate->copy()->subDay(),
+            '08:00',
+            '20:00'
+        );
+        DB::table('employee_holidays')->insert([
+            'holiday_date' => $this->selectedDate->toDateString(),
+            'name' => 'Test Holiday',
+            'status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $result = app(EmployeeRosterAttendanceService::class)->markPresent(
+            $this->selectedDate,
+            ['GROUP-D']
+        );
+
+        $this->assertSame(1, $result['skipped_holidays']);
+        $this->assertSame(0, $result['fallback_created']);
+        $this->assertSame(0, DB::table('employee_schedule_rosters')
+            ->whereDate('roster_date', $this->selectedDate->toDateString())
+            ->count());
+        $this->assertSame(0, EmployeeAttendance::count());
+    }
+
     private function attendanceRequest(string $path): Request
     {
         $request = Request::create($path, 'POST', [
@@ -279,7 +360,11 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
         return $request;
     }
 
-    private function insertEmployee(int $employeeId, string $category): void
+    private function insertEmployee(
+        int $employeeId,
+        string $category,
+        ?string $dateOfJoining = null
+    ): void
     {
         DB::table('employees')->insert([
             'id' => $employeeId,
@@ -287,6 +372,7 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
             'first_name' => 'EMPLOYEE',
             'last_name' => (string) $employeeId,
             'category' => json_encode([$category]),
+            'doj' => $dateOfJoining,
             'status' => 1,
         ]);
     }

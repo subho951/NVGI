@@ -50,7 +50,6 @@ abstract class Controller
             $mailLibrary->addAddress($email);
         endif;
         // $mailLibrary->AddCC('subhomoy.freelancer.samanta@gmail.com', 'Subhomoy Samanta');
-        $mailLibrary->AddCC('deblina@keylines.net', 'Deblina Das');
         $mailLibrary->WordWrap      = 5000;
         $mailLibrary->Subject       = $subject;
         $mailLibrary->Body          = $message;

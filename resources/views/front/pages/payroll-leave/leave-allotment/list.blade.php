@@ -205,7 +205,7 @@ $formatCount = function ($value) {
                                         <div class="count-grid">
                                             <span class="count-chip">FD: {{ $formatCount($row->front_desk_leave_count) }}</span>
                                             <span class="count-chip">GD: {{ $formatCount($row->group_d_leave_count) }}</span>
-                                            <span class="count-chip">TSA: {{ $formatCount($row->tsa_teacher_leave_count) }}</span>
+                                            <span class="count-chip">TSA: Not applicable</span>
                                             <span class="count-chip">VHS: {{ $formatCount($row->vhs_teacher_leave_count) }}</span>
                                         </div>
                                     </td>

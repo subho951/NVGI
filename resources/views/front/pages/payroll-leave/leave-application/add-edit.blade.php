@@ -181,7 +181,7 @@ $formatCount = function ($value) {
 
                     <div class="col-md-4">
                         <label for="no_of_days" class="form-label">No Of Days Leave <span class="text-danger">*</span></label>
-                        <input type="number" step="0.25" min="0.25" max="365" name="no_of_days" id="no_of_days" class="form-control" value="{{ $noOfDays }}" required>
+                        <input type="number" step="1" min="1" max="365" name="no_of_days" id="no_of_days" class="form-control" value="{{ $noOfDays }}" readonly required>
                         @error('no_of_days') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
 

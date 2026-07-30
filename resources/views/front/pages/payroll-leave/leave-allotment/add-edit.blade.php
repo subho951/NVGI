@@ -8,7 +8,6 @@ $leaveTenureTo = old('leave_tenure_to', $isEdit ? optional($row->leave_tenure_to
 $leaveTypeId = (int) old('leave_type_id', $isEdit ? $row->leave_type_id : 0);
 $frontDeskLeaveCount = old('front_desk_leave_count', $isEdit ? $row->front_desk_leave_count : 0);
 $groupDLeaveCount = old('group_d_leave_count', $isEdit ? $row->group_d_leave_count : 0);
-$tsaTeacherLeaveCount = old('tsa_teacher_leave_count', $isEdit ? $row->tsa_teacher_leave_count : 0);
 $vhsTeacherLeaveCount = old('vhs_teacher_leave_count', $isEdit ? $row->vhs_teacher_leave_count : 0);
 $isCarryForward = (int) old('is_carry_forward', $isEdit && $row->is_carry_forward ? 1 : 0);
 ?>
@@ -178,11 +177,7 @@ $isCarryForward = (int) old('is_carry_forward', $isEdit && $row->is_carry_forwar
                     @error('group_d_leave_count') <span class="text-danger">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="col-md-3">
-                    <label for="tsa_teacher_leave_count" class="form-label">TSA TEACHER Count</label>
-                    <input type="number" class="form-control" name="tsa_teacher_leave_count" id="tsa_teacher_leave_count" value="{{ $tsaTeacherLeaveCount }}" min="0" max="365" step="0.5">
-                    @error('tsa_teacher_leave_count') <span class="text-danger">{{ $message }}</span> @enderror
-                </div>
+                <input type="hidden" name="tsa_teacher_leave_count" value="0">
 
                 <div class="col-md-3">
                     <label for="vhs_teacher_leave_count" class="form-label">VHS TEACHER Count</label>

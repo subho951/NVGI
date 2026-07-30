@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class LeaveApplicationController extends Controller
 {
@@ -72,14 +73,26 @@ class LeaveApplicationController extends Controller
 
         if ($request->isMethod('post')) {
             $request->validate($this->validationRules($clLeaveType));
-            $employee = $this->employeeForApplication((int) $request->employee_id, (int) $clLeaveType->id);
+            $application = DB::transaction(function () use ($request, $clLeaveType) {
+                $employee = $this->employeeForApplication(
+                    (int) $request->employee_id,
+                    (int) $clLeaveType->id,
+                    true
+                );
+                $this->validateApplicationAvailability(
+                    $employee,
+                    $clLeaveType,
+                    (string) $request->leave_from_date,
+                    (string) $request->leave_to_date
+                );
 
-            $application = LeaveApplication::create($this->payload($request, $employee, $clLeaveType) + [
-                'application_status' => self::STATUS_PENDING,
-                'status' => 1,
-                'created_by' => $this->currentUserId(),
-                'updated_by' => $this->currentUserId(),
-            ]);
+                return LeaveApplication::create($this->payload($request, $employee, $clLeaveType) + [
+                    'application_status' => self::STATUS_PENDING,
+                    'status' => 1,
+                    'created_by' => $this->currentUserId(),
+                    'updated_by' => $this->currentUserId(),
+                ]);
+            });
 
             $this->sendLeaveApplicationEmail($application, 'applied');
 
@@ -119,11 +132,28 @@ class LeaveApplicationController extends Controller
 
         if ($request->isMethod('post')) {
             $request->validate($this->validationRules($clLeaveType));
-            $employee = $this->employeeForApplication((int) $request->employee_id, (int) $clLeaveType->id);
+            DB::transaction(function () use ($request, $clLeaveType, $row) {
+                $lockedRow = LeaveApplication::where('id', '=', (int) $row->id)
+                    ->where('application_status', '=', self::STATUS_PENDING)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $employee = $this->employeeForApplication(
+                    (int) $request->employee_id,
+                    (int) $clLeaveType->id,
+                    true
+                );
+                $this->validateApplicationAvailability(
+                    $employee,
+                    $clLeaveType,
+                    (string) $request->leave_from_date,
+                    (string) $request->leave_to_date,
+                    (int) $lockedRow->id
+                );
 
-            $row->update($this->payload($request, $employee, $clLeaveType) + [
-                'updated_by' => $this->currentUserId(),
-            ]);
+                $lockedRow->update($this->payload($request, $employee, $clLeaveType) + [
+                    'updated_by' => $this->currentUserId(),
+                ]);
+            });
 
             return redirect($this->data['controller_route'].'/list')->with('success_message', $this->data['title'].' updated successfully !!!');
         }
@@ -139,14 +169,39 @@ class LeaveApplicationController extends Controller
             return redirect($this->data['controller_route'].'/list')->with('error_message', 'Only Master Admin can approve leave application !!!');
         }
 
-        $application = $this->pendingApplication($id);
-        if (! $application) {
-            return redirect($this->data['controller_route'].'/list')->with('error_message', 'Pending leave application not found !!!');
-        }
-
         try {
-            DB::transaction(function () use ($application) {
+            $applicationId = (int) Helper::decoded($id);
+            $application = DB::transaction(function () use ($applicationId) {
+                $application = LeaveApplication::where($this->data['primary_key'], '=', $applicationId)
+                    ->where('status', '!=', 3)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $application || (int) $application->application_status !== self::STATUS_PENDING) {
+                    throw ValidationException::withMessages([
+                        'leave_application' => 'This leave application is no longer pending.',
+                    ]);
+                }
+
+                $allotment = $this->employeeLeaveAllotmentForApplication($application, true);
+                if (! $allotment) {
+                    throw ValidationException::withMessages([
+                        'leave_application' => 'No valid leave allotment covers the requested leave period.',
+                    ]);
+                }
+
+                $leaveDays = (float) $application->no_of_days;
+                $availableLeave = $this->availableLeaveBalance($allotment);
+                if ($availableLeave < $leaveDays) {
+                    throw ValidationException::withMessages([
+                        'leave_application' => 'Insufficient leave balance. Available: '
+                            .$this->formatLeaveCount($availableLeave)
+                            .', requested: '.$this->formatLeaveCount($leaveDays).'.',
+                    ]);
+                }
+
                 $history = EmployeeLeaveTakenHistory::create([
+                    'leave_application_id' => (int) $application->id,
                     'employee_id' => (int) $application->employee_id,
                     'employee_no' => $application->employee_no,
                     'employee_name' => $application->employee_name,
@@ -159,7 +214,7 @@ class LeaveApplicationController extends Controller
                     'updated_by' => $this->currentUserId(),
                 ]);
 
-                $this->deductEmployeeLeaveBalance($application);
+                $this->deductEmployeeLeaveBalance($application, $allotment);
 
                 $application->update([
                     'application_status' => self::STATUS_APPROVED,
@@ -168,10 +223,15 @@ class LeaveApplicationController extends Controller
                     'leave_taken_history_id' => $history->id,
                     'updated_by' => $this->currentUserId(),
                 ]);
+
+                return $application;
             });
 
             $application->refresh();
             $this->sendLeaveApplicationEmail($application, 'approved');
+        } catch (ValidationException $e) {
+            return redirect($this->data['controller_route'].'/list')
+                ->with('error_message', collect($e->errors())->flatten()->first() ?: 'Unable to approve leave application !!!');
         } catch (\Throwable $e) {
             report($e);
 
@@ -240,7 +300,7 @@ class LeaveApplicationController extends Controller
             ],
             'leave_from_date' => ['required', 'date'],
             'leave_to_date' => ['required', 'date', 'after_or_equal:leave_from_date'],
-            'no_of_days' => ['required', 'numeric', 'min:0.25', 'max:365'],
+            'no_of_days' => ['nullable', 'numeric', 'min:1', 'max:365'],
             'apply_date' => ['required', 'date', 'before_or_equal:today'],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ];
@@ -259,57 +319,156 @@ class LeaveApplicationController extends Controller
             'leave_type_name' => $clLeaveType->name,
             'leave_from_date' => $request->leave_from_date,
             'leave_to_date' => $request->leave_to_date,
-            'no_of_days' => round((float) $request->no_of_days, 2),
+            'no_of_days' => $this->calculatedLeaveDays(
+                (string) $request->leave_from_date,
+                (string) $request->leave_to_date
+            ),
             'apply_date' => $request->apply_date,
             'remarks' => $this->nullableText($request->remarks),
         ];
     }
 
-    private function deductEmployeeLeaveBalance(LeaveApplication $application): void
+    private function deductEmployeeLeaveBalance(
+        LeaveApplication $application,
+        EmployeeLeaveAllotment $allotment
+    ): void
     {
-        $allotment = EmployeeLeaveAllotment::where('employee_id', '=', (int) $application->employee_id)
+        $usedLeave = (float) EmployeeLeaveTakenHistory::where(
+            'employee_id',
+            '=',
+            (int) $allotment->employee_id
+        )
+            ->where('leave_type_id', '=', (int) $allotment->leave_type_id)
+            ->where('status', '!=', 3)
+            ->whereBetween('leave_date', [
+                Carbon::parse($allotment->leave_tenure_from)->toDateString(),
+                Carbon::parse($allotment->leave_tenure_to)->toDateString(),
+            ])
+            ->sum('leave_count');
+        $allotment->used_leave = $usedLeave;
+        $allotment->balance_leave = max((float) $allotment->total_allotment - $usedLeave, 0);
+        $allotment->save();
+    }
+
+    private function employeeLeaveAllotmentForApplication(
+        LeaveApplication $application,
+        bool $lock = false
+    ): ?EmployeeLeaveAllotment {
+        $query = EmployeeLeaveAllotment::where('employee_id', '=', (int) $application->employee_id)
             ->where('leave_type_id', '=', (int) $application->leave_type_id)
             ->where('status', '!=', 3)
             ->whereDate('leave_tenure_from', '<=', Carbon::parse($application->leave_from_date)->toDateString())
-            ->whereDate('leave_tenure_to', '>=', Carbon::parse($application->leave_from_date)->toDateString())
+            ->whereDate('leave_tenure_to', '>=', Carbon::parse($application->leave_to_date)->toDateString())
             ->orderBy('leave_tenure_to', 'DESC')
-            ->orderBy('id', 'DESC')
+            ->orderBy('id', 'DESC');
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
+    }
+
+    private function validateNoOverlappingApplication(
+        int $employeeId,
+        int $leaveTypeId,
+        string $leaveFromDate,
+        string $leaveToDate,
+        int $excludeApplicationId = 0
+    ): void {
+        $query = LeaveApplication::where('employee_id', '=', $employeeId)
+            ->where('leave_type_id', '=', $leaveTypeId)
+            ->where('status', '!=', 3)
+            ->whereIn('application_status', [
+                self::STATUS_PENDING,
+                self::STATUS_APPROVED,
+            ])
+            ->whereDate('leave_from_date', '<=', Carbon::parse($leaveToDate)->toDateString())
+            ->whereDate('leave_to_date', '>=', Carbon::parse($leaveFromDate)->toDateString());
+
+        if ($excludeApplicationId > 0) {
+            $query->where('id', '!=', $excludeApplicationId);
+        }
+
+        if ($query->exists()) {
+            throw ValidationException::withMessages([
+                'leave_from_date' => 'This employee already has a pending or approved leave application overlapping the selected dates.',
+            ]);
+        }
+    }
+
+    private function validateApplicationAvailability(
+        Employee $employee,
+        LeaveType $leaveType,
+        string $leaveFromDate,
+        string $leaveToDate,
+        int $excludeApplicationId = 0
+    ): void {
+        $this->validateNoOverlappingApplication(
+            (int) $employee->id,
+            (int) $leaveType->id,
+            $leaveFromDate,
+            $leaveToDate,
+            $excludeApplicationId
+        );
+
+        $allotment = EmployeeLeaveAllotment::where('employee_id', '=', (int) $employee->id)
+            ->where('leave_type_id', '=', (int) $leaveType->id)
+            ->where('status', '!=', 3)
+            ->whereDate('leave_tenure_from', '<=', Carbon::parse($leaveFromDate)->toDateString())
+            ->whereDate('leave_tenure_to', '>=', Carbon::parse($leaveToDate)->toDateString())
+            ->lockForUpdate()
             ->first();
 
         if (! $allotment) {
-            $allotment = EmployeeLeaveAllotment::where('employee_id', '=', (int) $application->employee_id)
-                ->where('leave_type_id', '=', (int) $application->leave_type_id)
-                ->where('status', '!=', 3)
-                ->orderBy('leave_tenure_to', 'DESC')
-                ->orderBy('id', 'DESC')
-                ->first();
-        }
-
-        if (! $allotment) {
-            $leaveFrom = Carbon::parse($application->leave_from_date);
-            $allotment = EmployeeLeaveAllotment::create([
-                'leave_allotment_id' => 0,
-                'employee_id' => (int) $application->employee_id,
-                'employee_no' => $application->employee_no,
-                'employee_name' => $application->employee_name,
-                'employee_category' => $application->employee_category,
-                'leave_type_id' => (int) $application->leave_type_id,
-                'leave_tenure_from' => $leaveFrom->copy()->startOfYear()->toDateString(),
-                'leave_tenure_to' => $leaveFrom->copy()->endOfYear()->toDateString(),
-                'current_allotment' => 0,
-                'previous_balance' => 0,
-                'total_allotment' => 0,
-                'used_leave' => 0,
-                'balance_leave' => 0,
-                'status' => 1,
-                'assigned_by' => $this->currentUserId(),
+            throw ValidationException::withMessages([
+                'leave_from_date' => 'No leave allotment covers the complete requested period.',
             ]);
         }
 
-        $usedLeave = (float) $allotment->used_leave + (float) $application->no_of_days;
-        $allotment->used_leave = $usedLeave;
-        $allotment->balance_leave = (float) $allotment->total_allotment - $usedLeave;
-        $allotment->save();
+        $requestedLeave = $this->calculatedLeaveDays($leaveFromDate, $leaveToDate);
+        $availableLeave = $this->availableLeaveBalance($allotment);
+
+        if ($availableLeave < $requestedLeave) {
+            throw ValidationException::withMessages([
+                'leave_from_date' => 'Insufficient leave balance. Available: '
+                    .$this->formatLeaveCount($availableLeave)
+                    .', requested: '.$this->formatLeaveCount($requestedLeave).'.',
+            ]);
+        }
+    }
+
+    private function availableLeaveBalance(EmployeeLeaveAllotment $allotment): float
+    {
+        $usedLeave = (float) EmployeeLeaveTakenHistory::where(
+            'employee_id',
+            '=',
+            (int) $allotment->employee_id
+        )
+            ->where('leave_type_id', '=', (int) $allotment->leave_type_id)
+            ->where('status', '!=', 3)
+            ->whereBetween('leave_date', [
+                Carbon::parse($allotment->leave_tenure_from)->toDateString(),
+                Carbon::parse($allotment->leave_tenure_to)->toDateString(),
+            ])
+            ->sum('leave_count');
+
+        return round(max((float) $allotment->total_allotment - $usedLeave, 0), 2);
+    }
+
+    private function calculatedLeaveDays(string $leaveFromDate, string $leaveToDate): float
+    {
+        $fromDate = Carbon::parse($leaveFromDate)->startOfDay();
+        $toDate = Carbon::parse($leaveToDate)->startOfDay();
+
+        return (float) ($fromDate->diffInDays($toDate) + 1);
+    }
+
+    private function formatLeaveCount($value): string
+    {
+        $formatted = number_format((float) $value, 2, '.', '');
+
+        return rtrim(rtrim($formatted, '0'), '.');
     }
 
     private function pendingApplication($id)
@@ -334,9 +493,9 @@ class LeaveApplicationController extends Controller
             ->first();
     }
 
-    private function employeeForApplication(int $employeeId, int $leaveTypeId): Employee
+    private function employeeForApplication(int $employeeId, int $leaveTypeId, bool $lock = false): Employee
     {
-        return Employee::where('id', '=', $employeeId)
+        $query = Employee::where('id', '=', $employeeId)
             ->where('status', '=', 1)
             ->whereIn('id', function ($query) use ($leaveTypeId) {
                 $query
@@ -344,8 +503,21 @@ class LeaveApplicationController extends Controller
                     ->from('employee_leave_allotments')
                     ->where('leave_type_id', '=', $leaveTypeId)
                     ->where('status', '!=', 3);
-            })
-            ->firstOrFail();
+            });
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        $employee = $query->firstOrFail();
+
+        if (! $this->employeeHasLeaveEligibleCategory($employee)) {
+            throw ValidationException::withMessages([
+                'employee_id' => 'TSA Teacher employees do not have allotted leave.',
+            ]);
+        }
+
+        return $employee;
     }
 
     private function employeesWithLeaveAllotment(int $leaveTypeId)
@@ -363,6 +535,8 @@ class LeaveApplicationController extends Controller
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get()
+            ->filter(fn ($employee) => $this->employeeHasLeaveEligibleCategory($employee))
+            ->values()
             ->map(function ($employee) use ($balanceMap) {
                 $employee->cl_balance = (float) ($balanceMap[$employee->id] ?? 0);
 
@@ -483,6 +657,14 @@ class LeaveApplicationController extends Controller
         });
 
         return array_values(array_unique($categories));
+    }
+
+    private function employeeHasLeaveEligibleCategory(Employee $employee): bool
+    {
+        return ! empty(array_intersect(
+            $this->employeeCategoryValues($employee->category),
+            ['VHS TEACHER', 'FRONT-DESK', 'GROUP-D']
+        ));
     }
 
     private function employeeName($employee): string

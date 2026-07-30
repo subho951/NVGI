@@ -7,6 +7,7 @@ use App\Models\EmployeeAttendance;
 use App\Models\EmployeeScheduleRoster;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class EmployeeRosterAttendanceService
 {
@@ -30,6 +31,8 @@ class EmployeeRosterAttendanceService
             'fallback_restored' => 0,
             'skipped_employees' => 0,
             'skipped_invalid_time' => 0,
+            'skipped_holidays' => 0,
+            'skipped_pre_doj' => 0,
         ];
 
         if (empty($categories)) {
@@ -37,12 +40,23 @@ class EmployeeRosterAttendanceService
         }
 
         return DB::transaction(function () use ($attendanceDate, $categories, $userId, $result) {
-            $selectedRosters = $this->selectedDateRosters($attendanceDate, $categories);
+            $holidayService = app(EmployeeHolidayService::class);
+            $attendanceHolidays = $holidayService->forPeriod($attendanceDate, $attendanceDate);
+            $allSelectedRosters = $this->selectedDateRosters($attendanceDate, $categories);
+            [$selectedRosters, $eligibilitySkips] = $this->attendanceEligibleRosters(
+                $allSelectedRosters,
+                $attendanceDate
+            );
+            $result['skipped_holidays'] = $eligibilitySkips['holidays'];
+            $result['skipped_pre_doj'] = $eligibilitySkips['pre_doj'];
             $selectedEmployeeCategories = $selectedRosters
                 ->mapWithKeys(fn ($roster) => [$this->employeeCategoryKey($roster->employee_id, $roster->category) => true])
                 ->all();
 
-            $eligibleEmployeeCategories = $this->eligibleEmployeeCategories($categories);
+            $eligibleEmployeeCategories = $this->eligibleEmployeeCategories(
+                $categories,
+                $attendanceDate
+            );
             $previousRows = $this->latestPreviousRosterRows(
                 $attendanceDate,
                 $categories,
@@ -60,6 +74,17 @@ class EmployeeRosterAttendanceService
                     isset($selectedEmployeeCategories[$employeeCategoryKey])
                     || ! isset($eligibleEmployeeCategories[$employeeCategoryKey])
                 ) {
+                    continue;
+                }
+
+                if ($holidayService->applies(
+                    $attendanceDate,
+                    (string) $previousRow->branch_name,
+                    (string) $previousRow->category,
+                    $attendanceHolidays
+                )) {
+                    $result['skipped_holidays']++;
+
                     continue;
                 }
 
@@ -90,7 +115,18 @@ class EmployeeRosterAttendanceService
                 ->unique()
                 ->count();
 
-            $selectedRosters = $this->selectedDateRosters($attendanceDate, $categories, true);
+            [$selectedRosters, $finalEligibilitySkips] = $this->attendanceEligibleRosters(
+                $this->selectedDateRosters($attendanceDate, $categories, true),
+                $attendanceDate
+            );
+            $result['skipped_holidays'] = max(
+                $result['skipped_holidays'],
+                $finalEligibilitySkips['holidays']
+            );
+            $result['skipped_pre_doj'] = max(
+                $result['skipped_pre_doj'],
+                $finalEligibilitySkips['pre_doj']
+            );
             $result['roster_assignments'] = $selectedRosters->count();
 
             foreach ($selectedRosters as $roster) {
@@ -168,13 +204,28 @@ class EmployeeRosterAttendanceService
         return $query->get();
     }
 
-    private function eligibleEmployeeCategories(array $categories): array
+    private function eligibleEmployeeCategories(array $categories, Carbon $attendanceDate): array
     {
         $eligible = [];
+        $employeeColumns = ['id', 'category'];
+
+        if (Schema::hasColumn('employees', 'doj')) {
+            $employeeColumns[] = 'doj';
+        }
 
         Employee::where('status', '=', 1)
-            ->get(['id', 'category'])
-            ->each(function ($employee) use ($categories, &$eligible) {
+            ->get($employeeColumns)
+            ->each(function ($employee) use ($categories, $attendanceDate, &$eligible) {
+                if (! empty($employee->doj)) {
+                    try {
+                        if (Carbon::parse($employee->doj)->startOfDay()->greaterThan($attendanceDate)) {
+                            return;
+                        }
+                    } catch (\Throwable $e) {
+                        // Keep employees with an invalid legacy DOJ rather than silently excluding them.
+                    }
+                }
+
                 foreach ($this->employeeCategoryValues($employee->category) as $category) {
                     if (in_array($category, $categories, true)) {
                         $eligible[$this->employeeCategoryKey($employee->id, $category)] = (int) $employee->id;
@@ -183,6 +234,60 @@ class EmployeeRosterAttendanceService
             });
 
         return $eligible;
+    }
+
+    private function attendanceEligibleRosters($rosters, Carbon $attendanceDate): array
+    {
+        $employeeColumns = ['id'];
+
+        if (Schema::hasColumn('employees', 'doj')) {
+            $employeeColumns[] = 'doj';
+        }
+
+        $employees = Employee::whereIn('id', $rosters->pluck('employee_id')->unique())
+            ->get($employeeColumns)
+            ->keyBy('id');
+        $holidayService = app(EmployeeHolidayService::class);
+        $holidays = $holidayService->forPeriod($attendanceDate, $attendanceDate);
+        $skips = [
+            'holidays' => 0,
+            'pre_doj' => 0,
+        ];
+
+        $eligibleRosters = $rosters->filter(function ($roster) use (
+            $attendanceDate,
+            $employees,
+            $holidayService,
+            $holidays,
+            &$skips
+        ) {
+            $employee = $employees->get((int) $roster->employee_id);
+
+            if (
+                $employee
+                && ! empty($employee->doj)
+                && $attendanceDate->lessThan(Carbon::parse($employee->doj)->startOfDay())
+            ) {
+                $skips['pre_doj']++;
+
+                return false;
+            }
+
+            if ($holidayService->applies(
+                $attendanceDate,
+                (string) $roster->branch_name,
+                (string) $roster->category,
+                $holidays
+            )) {
+                $skips['holidays']++;
+
+                return false;
+            }
+
+            return true;
+        })->values();
+
+        return [$eligibleRosters, $skips];
     }
 
     private function latestPreviousRosterRows(

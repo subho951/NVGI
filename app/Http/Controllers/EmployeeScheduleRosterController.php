@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\EmployeeScheduleRoster;
+use App\Services\EmployeeHolidayService;
 use App\Services\EmployeeRosterAttendanceService;
 use App\Services\SiteAuthService;
 use Carbon\Carbon;
@@ -254,7 +255,8 @@ class EmployeeScheduleRosterController extends Controller
                 'success_message',
                 'VHS roster copied. New rows: ' . $result['created']
                     . ', restored rows: ' . $result['restored']
-                    . ', existing rows kept: ' . $result['existing'] . '.'
+                    . ', existing rows kept: ' . $result['existing']
+                    . ', unavailable dates skipped: ' . $result['skipped'] . '.'
             );
     }
 
@@ -465,6 +467,18 @@ class EmployeeScheduleRosterController extends Controller
         $branch = $this->supportBranchForEmployee($employee, $branchName);
         if (!$branch) {
             return redirect()->back()->withInput()->with('error_message', 'Please select a valid branch.');
+        }
+
+        if ($this->isBeforeEmployeeJoiningDate($employee, $rosterDate)) {
+            return redirect()->back()->withInput()->with('error_message', 'Additional class cannot be added before the employee joining date.');
+        }
+
+        if (app(EmployeeHolidayService::class)->applies(
+            $rosterDate,
+            (string) $branch->name,
+            self::TSA_TEACHER
+        )) {
+            return redirect()->back()->withInput()->with('error_message', 'Additional class cannot be added on a holiday.');
         }
 
         if ($this->hasOverlappingTsaClass((int) $employee->id, $rosterDate, $inTime, $outTime)) {
@@ -738,6 +752,13 @@ class EmployeeScheduleRosterController extends Controller
         }
 
         if ($result['roster_assignments'] <= 0) {
+            if ($result['skipped_holidays'] > 0) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error_message', 'The selected date is a holiday. Attendance punches were not created.');
+            }
+
             return redirect()
                 ->back()
                 ->withInput()
@@ -760,6 +781,10 @@ class EmployeeScheduleRosterController extends Controller
 
         if ($result['skipped_invalid_time'] > 0) {
             $message .= ', roster assignments skipped with invalid time: ' . $result['skipped_invalid_time'];
+        }
+
+        if ($result['skipped_pre_doj'] > 0) {
+            $message .= ', pre-joining roster assignments skipped: ' . $result['skipped_pre_doj'];
         }
 
         return redirect()
@@ -813,7 +838,13 @@ class EmployeeScheduleRosterController extends Controller
 
         return redirect()
             ->to(url($routePath) . '?' . http_build_query(array_filter($query)))
-            ->with('success_message', 'Roster copied. New rows: ' . $result['created'] . ', restored rows: ' . $result['restored'] . ', existing rows kept: ' . $result['existing'] . '.');
+            ->with(
+                'success_message',
+                'Roster copied. New rows: ' . $result['created']
+                    . ', restored rows: ' . $result['restored']
+                    . ', existing rows kept: ' . $result['existing']
+                    . ', unavailable dates skipped: ' . $result['skipped'] . '.'
+            );
     }
 
     private function manualRosterDelete(Request $request, array $allowedCategories, string $routePath)
@@ -955,7 +986,7 @@ class EmployeeScheduleRosterController extends Controller
             'rows' => 0,
         ];
 
-        DB::transaction(function () use ($employeeId, $category, $branchName, $sourceDate, $targetDate, $updateDutyTime, $inTime, $outTime, &$result) {
+        DB::transaction(function () use ($employee, $employeeId, $category, $branchName, $sourceDate, $targetDate, $updateDutyTime, $inTime, $outTime, &$result) {
             $sourceRows = $this->manualRosterShiftRows($employeeId, $category, $sourceDate, $branchName)
                 ->lockForUpdate()
                 ->get();
@@ -981,6 +1012,31 @@ class EmployeeScheduleRosterController extends Controller
 
             $dutyRows = $sourceRows->isNotEmpty() ? $sourceRows : $targetRows;
             $dutyTargetDate = $sourceRows->isNotEmpty() ? $targetDate : $sourceDate;
+            $datesToValidate = $sourceRows->isNotEmpty() && $targetRows->isNotEmpty()
+                ? [$sourceDate, $targetDate]
+                : [$dutyTargetDate];
+            $holidayService = app(EmployeeHolidayService::class);
+            $holidayBranchName = $branchName !== ''
+                ? $branchName
+                : (string) ($dutyRows->first()->branch_name ?? '');
+
+            foreach ($datesToValidate as $dutyDate) {
+                if ($this->isBeforeEmployeeJoiningDate($employee, $dutyDate)) {
+                    $result['message'] = 'Duty cannot be shifted before the employee joining date.';
+
+                    return;
+                }
+
+                if ($holidayService->applies(
+                    $dutyDate,
+                    $holidayBranchName,
+                    $category
+                )) {
+                    $result['message'] = 'Duty cannot be shifted onto a holiday.';
+
+                    return;
+                }
+            }
 
             if ($updateDutyTime && $dutyRows->count() !== 1) {
                 $result['message'] = 'Please shift a date containing one TSA class at a time when changing duty time.';
@@ -1082,6 +1138,12 @@ class EmployeeScheduleRosterController extends Controller
             : $this->rosterDates($targetMonth, [$category]);
         $preparedRows = [];
         $partialDates = [];
+        $unavailableDates = [];
+        $holidayService = app(EmployeeHolidayService::class);
+        $holidays = $holidayService->forPeriod(
+            $targetMonth->copy()->startOfMonth(),
+            $targetMonth->copy()->endOfMonth()
+        );
 
         foreach ($rosterDates as $date) {
             $dateKey = $date->toDateString();
@@ -1097,6 +1159,21 @@ class EmployeeScheduleRosterController extends Controller
                 continue;
             }
 
+            if ($this->isBeforeEmployeeJoiningDate($employee, $date)) {
+                $unavailableDates[] = $date->format('d-m-Y') . ' (before DOJ)';
+                continue;
+            }
+
+            if ($holidayService->applies(
+                $date,
+                (string) $branch->name,
+                $category,
+                $holidays
+            )) {
+                $unavailableDates[] = $date->format('d-m-Y') . ' (holiday)';
+                continue;
+            }
+
             $preparedRows[] = [
                 'date' => $date->copy(),
                 'in_time' => $inTime,
@@ -1106,6 +1183,13 @@ class EmployeeScheduleRosterController extends Controller
 
         if (!empty($partialDates)) {
             return redirect()->back()->withInput()->with('error_message', 'Please fill both from and to time, or clear the date, for: ' . implode(', ', $partialDates) . '.');
+        }
+
+        if (!empty($unavailableDates)) {
+            return redirect()->back()->withInput()->with(
+                'error_message',
+                'Roster cannot be saved for: ' . implode(', ', $unavailableDates) . '.'
+            );
         }
 
         if (empty($preparedRows)) {
@@ -1184,6 +1268,11 @@ class EmployeeScheduleRosterController extends Controller
         $dates = $category === self::VHS_TEACHER && $selectedBranch
             ? $this->vhsRosterDates($targetMonth, (string) $selectedBranch->name)
             : $this->rosterDates($targetMonth, [$category]);
+        $holidayService = app(EmployeeHolidayService::class);
+        $holidays = $holidayService->forPeriod(
+            $targetMonth->copy()->startOfMonth(),
+            $targetMonth->copy()->endOfMonth()
+        );
         $userId = $this->currentUserId();
         $result = [
             'employees' => $employees->count(),
@@ -1193,7 +1282,18 @@ class EmployeeScheduleRosterController extends Controller
             'skipped' => $branchSkippedCount,
         ];
 
-        DB::transaction(function () use ($employees, $branchMap, $dates, $category, $targetMonth, $userId, $selectedBranchId, &$result) {
+        DB::transaction(function () use (
+            $employees,
+            $branchMap,
+            $dates,
+            $category,
+            $targetMonth,
+            $userId,
+            $selectedBranchId,
+            $holidayService,
+            $holidays,
+            &$result
+        ) {
             foreach ($employees as $employee) {
                 $branchIds = $selectedBranchId > 0
                     ? [$selectedBranchId]
@@ -1213,6 +1313,19 @@ class EmployeeScheduleRosterController extends Controller
                     }
 
                     foreach ($dates as $date) {
+                        if (
+                            $this->isBeforeEmployeeJoiningDate($employee, $date)
+                            || $holidayService->applies(
+                                $date,
+                                (string) $branch->name,
+                                $category,
+                                $holidays
+                            )
+                        ) {
+                            $result['skipped']++;
+                            continue;
+                        }
+
                         $roster = EmployeeScheduleRoster::firstOrCreate(
                             [
                                 'employee_id' => (int) $employee->id,
@@ -2116,6 +2229,7 @@ class EmployeeScheduleRosterController extends Controller
             'created' => 0,
             'restored' => 0,
             'existing' => 0,
+            'skipped' => 0,
         ];
 
         if ($sourceRows->isEmpty()) {
@@ -2123,8 +2237,24 @@ class EmployeeScheduleRosterController extends Controller
         }
 
         $userId = $this->currentUserId();
+        $employees = Employee::whereIn('id', $sourceRows->pluck('employee_id')->unique())
+            ->get()
+            ->keyBy('id');
+        $holidayService = app(EmployeeHolidayService::class);
+        $holidays = $holidayService->forPeriod(
+            $targetMonth->copy()->startOfMonth(),
+            $targetMonth->copy()->endOfMonth()
+        );
 
-        DB::transaction(function () use ($sourceRows, $targetMonth, $userId, &$result) {
+        DB::transaction(function () use (
+            $sourceRows,
+            $targetMonth,
+            $userId,
+            $employees,
+            $holidayService,
+            $holidays,
+            &$result
+        ) {
             $sourceGroups = $sourceRows->groupBy(function ($row) {
                 return (int) $row->employee_id . '|' . (int) $row->branch_id;
             });
@@ -2132,9 +2262,23 @@ class EmployeeScheduleRosterController extends Controller
             foreach ($sourceGroups as $groupRows) {
                 $groupRows = $groupRows->sortBy('roster_date')->values();
                 $firstRow = $groupRows->first();
+                $employee = $employees->get((int) $firstRow->employee_id);
                 $targetDates = $this->vhsRosterDates($targetMonth, (string) $firstRow->branch_name);
 
                 foreach ($targetDates as $targetDate) {
+                    if (
+                        $this->isBeforeEmployeeJoiningDate($employee, $targetDate)
+                        || $holidayService->applies(
+                            $targetDate,
+                            (string) $firstRow->branch_name,
+                            self::VHS_TEACHER,
+                            $holidays
+                        )
+                    ) {
+                        $result['skipped']++;
+                        continue;
+                    }
+
                     $sourceRow = $this->sourceRowForTargetDate($groupRows, $targetDate);
                     if (!$sourceRow) {
                         continue;
@@ -2182,13 +2326,32 @@ class EmployeeScheduleRosterController extends Controller
             'created' => 0,
             'restored' => 0,
             'existing' => 0,
+            'skipped' => 0,
         ];
 
         if ($sourceRows->isEmpty()) {
             return $result;
         }
 
-        DB::transaction(function () use ($sourceRows, $targetDates, $targetMonth, $userId, &$result) {
+        $employees = Employee::whereIn('id', $sourceRows->pluck('employee_id')->unique())
+            ->get()
+            ->keyBy('id');
+        $holidayService = app(EmployeeHolidayService::class);
+        $holidays = $holidayService->forPeriod(
+            $targetMonth->copy()->startOfMonth(),
+            $targetMonth->copy()->endOfMonth()
+        );
+
+        DB::transaction(function () use (
+            $sourceRows,
+            $targetDates,
+            $targetMonth,
+            $userId,
+            $employees,
+            $holidayService,
+            $holidays,
+            &$result
+        ) {
             $sourceGroups = $sourceRows->groupBy(function ($row) {
                 return (int) $row->employee_id . '|' . (string) $row->category . '|' . (int) $row->branch_id;
             });
@@ -2196,8 +2359,22 @@ class EmployeeScheduleRosterController extends Controller
             foreach ($sourceGroups as $groupRows) {
                 $groupRows = $groupRows->sortBy('roster_date')->values();
                 $firstRow = $groupRows->first();
+                $employee = $employees->get((int) $firstRow->employee_id);
 
                 foreach ($targetDates as $targetDate) {
+                    if (
+                        $this->isBeforeEmployeeJoiningDate($employee, $targetDate)
+                        || $holidayService->applies(
+                            $targetDate,
+                            (string) $firstRow->branch_name,
+                            (string) $firstRow->category,
+                            $holidays
+                        )
+                    ) {
+                        $result['skipped']++;
+                        continue;
+                    }
+
                     $sourceRow = $this->sourceRowForTargetDate($groupRows, $targetDate);
                     if (!$sourceRow) {
                         continue;
@@ -2455,6 +2632,21 @@ class EmployeeScheduleRosterController extends Controller
     private function employeeHasCategory($employee, string $category): bool
     {
         return in_array($category, $this->employeeCategoryValues($employee->category), true);
+    }
+
+    private function isBeforeEmployeeJoiningDate($employee, Carbon $date): bool
+    {
+        if (!$employee || empty($employee->doj)) {
+            return false;
+        }
+
+        try {
+            return $date->copy()->startOfDay()->lessThan(
+                Carbon::parse($employee->doj)->startOfDay()
+            );
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     private function employeeAssignedToBranch($employee, int $branchId): bool

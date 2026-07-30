@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeeScheduleRoster;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class EmployeeAttendanceAbsenceService
 {
@@ -37,19 +39,60 @@ class EmployeeAttendanceAbsenceService
             $query->whereIn('branch_id', $branchIds);
         }
 
+        $holidayFrom = $fromDate
+            ? $fromDate->copy()->startOfDay()
+            : Carbon::create(2000, 1, 1, 0, 0, 0, self::ATTENDANCE_TIMEZONE);
+        $holidayTo = $toDate ? $toDate->copy()->endOfDay() : $now->copy()->endOfDay();
+        $holidayService = app(EmployeeHolidayService::class);
+        $holidays = $holidayService->forPeriod($holidayFrom, $holidayTo);
         $markedCount = 0;
 
-        $query->chunkById(200, function ($rosters) use ($now, &$markedCount) {
+        $query->chunkById(200, function ($rosters) use (
+            $now,
+            $holidayService,
+            $holidays,
+            &$markedCount
+        ) {
             $attendances = EmployeeAttendance::whereIn('roster_id', $rosters->pluck('id'))
                 ->get()
                 ->keyBy('roster_id');
+            $employeeColumns = ['id'];
+
+            if (Schema::hasColumn('employees', 'doj')) {
+                $employeeColumns[] = 'doj';
+            }
+
+            $employees = Employee::whereIn('id', $rosters->pluck('employee_id')->unique())
+                ->get($employeeColumns)
+                ->keyBy('id');
 
             foreach ($rosters as $roster) {
+                $attendance = $attendances->get((int) $roster->id);
+                $employee = $employees->get((int) $roster->employee_id);
+
+                if (
+                    $this->isBeforeDateOfJoining($roster, $employee)
+                    || $holidayService->applies(
+                        $roster->roster_date,
+                        (string) $roster->branch_name,
+                        (string) $roster->category,
+                        $holidays
+                    )
+                ) {
+                    if ($attendance && $attendance->is_absent && ! $attendance->punch_in_at) {
+                        $attendance->update([
+                            'is_absent' => false,
+                            'absent_marked_at' => null,
+                        ]);
+                    }
+
+                    continue;
+                }
+
                 if (! $this->classHasEnded($roster, $now)) {
                     continue;
                 }
 
-                $attendance = $attendances->get((int) $roster->id);
                 if ($attendance && $attendance->punch_in_at) {
                     if ($attendance->is_absent) {
                         $attendance->update([
@@ -80,6 +123,20 @@ class EmployeeAttendanceAbsenceService
         });
 
         return $markedCount;
+    }
+
+    private function isBeforeDateOfJoining($roster, $employee): bool
+    {
+        if (! $employee || empty($employee->doj)) {
+            return false;
+        }
+
+        try {
+            return Carbon::parse($roster->roster_date)->startOfDay()
+                ->lessThan(Carbon::parse($employee->doj)->startOfDay());
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     private function classHasEnded($roster, Carbon $now): bool

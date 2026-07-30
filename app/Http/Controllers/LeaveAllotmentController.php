@@ -19,7 +19,6 @@ class LeaveAllotmentController extends Controller
     private const CATEGORY_FIELDS = [
         'FRONT-DESK' => 'front_desk_leave_count',
         'GROUP-D' => 'group_d_leave_count',
-        'TSA TEACHER' => 'tsa_teacher_leave_count',
         'VHS TEACHER' => 'vhs_teacher_leave_count',
     ];
 
@@ -297,7 +296,7 @@ class LeaveAllotmentController extends Controller
             ],
             'front_desk_leave_count' => ['nullable', 'numeric', 'min:0', 'max:365'],
             'group_d_leave_count' => ['nullable', 'numeric', 'min:0', 'max:365'],
-            'tsa_teacher_leave_count' => ['nullable', 'numeric', 'min:0', 'max:365'],
+            'tsa_teacher_leave_count' => ['nullable', 'numeric', 'min:0', 'max:0'],
             'vhs_teacher_leave_count' => ['nullable', 'numeric', 'min:0', 'max:365'],
             'is_carry_forward' => ['nullable', Rule::in(['0', '1', 0, 1])],
         ];
@@ -311,7 +310,7 @@ class LeaveAllotmentController extends Controller
             'leave_type_id' => (int) $request->leave_type_id,
             'front_desk_leave_count' => $this->numberValue($request->front_desk_leave_count),
             'group_d_leave_count' => $this->numberValue($request->group_d_leave_count),
-            'tsa_teacher_leave_count' => $this->numberValue($request->tsa_teacher_leave_count),
+            'tsa_teacher_leave_count' => 0,
             'vhs_teacher_leave_count' => $this->numberValue($request->vhs_teacher_leave_count),
             'is_carry_forward' => (int) $request->input('is_carry_forward', 0) === 1,
         ];

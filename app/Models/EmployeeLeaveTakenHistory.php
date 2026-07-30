@@ -9,6 +9,7 @@ class EmployeeLeaveTakenHistory extends Model
     protected $table = 'employee_leave_taken_histories';
 
     protected $fillable = [
+        'leave_application_id',
         'employee_id',
         'employee_no',
         'employee_name',

@@ -7,6 +7,11 @@ if ($leaveCodes->isEmpty()) {
     $leaveCodes = collect(['CL', 'ML']);
 }
 
+$isTsaCategory = strtoupper(trim((string) ($filters['category'] ?? ''))) === 'TSA TEACHER';
+if ($isTsaCategory) {
+    $leaveCodes = collect();
+}
+
 $earningSalaryHeads = collect($salaryHeads)->where('type', \App\Models\SalaryHead::TYPE_EARNING)->values();
 $deductionSalaryHeads = collect($salaryHeads)->where('type', \App\Models\SalaryHead::TYPE_DEDUCTION)->values();
 
@@ -66,7 +71,7 @@ $formatDateTime = function ($value) {
     <table>
         <thead>
             <tr>
-                <th colspan="{{ 21 + ($leaveCodes->count() * 2) }}">
+                <th colspan="{{ 30 + ($leaveCodes->count() * 2) }}">
                     Salary Generation - {{ $monthOptions[(int) $filters['month']] ?? $filters['month'] }} {{ $filters['year'] }} - {{ $filters['branch_name'] }} - {{ $filters['category'] }}
                 </th>
             </tr>
@@ -79,16 +84,25 @@ $formatDateTime = function ($value) {
                 <th>Employee Code</th>
                 <th>Name</th>
                 <th>DOJ</th>
-                <th>Gross Salary</th>
+                <th>Eligible From</th>
+                <th>Eligible To</th>
+                <th>Eligible Days</th>
+                <th>Monthly Gross Salary</th>
+                <th>Payable Gross Salary</th>
                 <th>Earning Total</th>
                 <th>Deduction Total</th>
                 <th>Net</th>
                 <th>Assigned Hour</th>
                 <th>Attendance Hour</th>
+                <th>Absent Hour</th>
                 <th>Late Count</th>
                 <th>Late Penalty</th>
+                <th>Late Amount</th>
                 <th>Absent Count</th>
+                <th>Approved Leave Days</th>
                 <th>Unpaid Absent Days</th>
+                <th>Holiday Days</th>
+                <th>Before DOJ Excluded Days</th>
                 <th>Absent Amount</th>
                 @foreach($leaveCodes as $leaveCode)
                     <th>{{ $leaveCode }} Alloted</th>
@@ -104,6 +118,8 @@ $formatDateTime = function ($value) {
                     $headDetails = json_decode((string) $row->salary_head_details, true);
                     $headMap = collect(is_array($headDetails) ? $headDetails : [])->keyBy('salary_head_id');
                     $leaveDetails = json_decode((string) $row->leave_details, true);
+                    $attendanceDetails = json_decode((string) $row->attendance_details, true);
+                    $attendanceDetails = is_array($attendanceDetails) ? $attendanceDetails : [];
 
                     if (! is_array($leaveDetails) || empty($leaveDetails)) {
                         $leaveDetails = [
@@ -121,7 +137,11 @@ $formatDateTime = function ($value) {
                     <td>{{ $row->employee_no }}</td>
                     <td>{{ $row->employee_name }}</td>
                     <td>{{ $formatDate($row->doj) }}</td>
+                    <td>{{ $formatDate($row->salary_period_start) }}</td>
+                    <td>{{ $formatDate($row->salary_period_end) }}</td>
+                    <td>{{ $formatCount($row->eligible_days ?? 0) }}</td>
                     <td>{{ $formatMoney($row->gross_salary) }}</td>
+                    <td>{{ $formatMoney($row->payable_gross_salary ?? $row->gross_salary) }}</td>
                     <td class="earning">
                         @foreach($earningSalaryHeads as $salaryHead)
                             @php
@@ -145,10 +165,15 @@ $formatDateTime = function ($value) {
                     <td>{{ $formatRoundedMoney($row->net_salary) }}</td>
                     <td>{{ $formatCount($row->assigned_hours) }}</td>
                     <td>{{ $formatCount($row->attendance_hours) }}</td>
+                    <td>{{ $formatCount($attendanceDetails['absent_hours'] ?? 0) }}</td>
                     <td>{{ $formatCount($row->late_count ?? 0) }}</td>
                     <td>{{ $formatCount($row->late_penalty_units ?? 0) }}</td>
+                    <td>{{ $formatMoney($row->late_amount ?? 0) }}</td>
                     <td>{{ $formatCount($row->absent_days) }}</td>
+                    <td>{{ $formatCount($row->approved_leave_days ?? 0) }}</td>
                     <td>{{ $formatCount($row->unpaid_absent_days) }}</td>
+                    <td>{{ $formatCount($row->holiday_days ?? 0) }}</td>
+                    <td>{{ $formatCount($row->pre_doj_excluded_days ?? 0) }}</td>
                     <td>{{ $formatMoney($row->absent_amount) }}</td>
                     @foreach($leaveCodes as $leaveCode)
                         @php

@@ -9,8 +9,10 @@ use App\Models\LeaveType;
 use App\Models\SalaryGeneration;
 use App\Models\SalaryHead;
 use App\Services\EmployeeAttendanceAbsenceService;
+use App\Services\EmployeeHolidayService;
 use App\Services\SiteAuthService;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -173,22 +175,31 @@ class SalaryGenerationController extends Controller
                         'employee_name' => $row->employee_name,
                         'employee_category' => $filters['category'],
                         'doj' => $row->doj,
+                        'salary_period_start' => $row->employment_period['start']->toDateString(),
+                        'salary_period_end' => $row->employment_period['end']->toDateString(),
+                        'eligible_days' => $row->employment_period['eligible_days'],
                         'gross_salary' => $row->gross_salary,
+                        'payable_gross_salary' => $row->payable_gross_salary,
                         'earning_total' => $row->earning_total,
                         'deduction_total' => $row->deduction_total,
                         'net_salary' => $row->net_salary,
                         'absent_days' => $row->absence['absent_days'],
                         'unpaid_absent_days' => $row->absence['unpaid_absent_days'],
+                        'approved_leave_days' => $row->absence['approved_leave_days'],
+                        'holiday_days' => $row->absence['holiday_days'],
+                        'pre_doj_excluded_days' => $row->absence['pre_doj_excluded_days'],
                         'absent_amount' => $row->absence['amount'],
                         'assigned_hours' => $row->absence['assigned_hours'],
                         'attendance_hours' => $row->absence['attendance_hours'],
                         'late_count' => $row->absence['late_count'],
                         'late_penalty_units' => $row->absence['late_penalty_units'],
+                        'late_amount' => $row->absence['late_amount'],
                         'cl_alloted' => $clLeave['alloted'],
                         'cl_balance' => $clLeave['balance'],
                         'ml_alloted' => $mlLeave['alloted'],
                         'ml_balance' => $mlLeave['balance'],
                         'leave_details' => json_encode($row->leave),
+                        'attendance_details' => json_encode($row->absence['details']),
                         'salary_head_details' => json_encode(array_values($row->salary_head_details)),
                         'status' => 1,
                         'created_by' => $userId,
@@ -226,8 +237,13 @@ class SalaryGenerationController extends Controller
             ->orderBy('last_name')
             ->orderBy('employee_no')
             ->get()
-            ->filter(function ($employee) use ($branchIds, $filters, $selectedEmployeeIds) {
+            ->filter(function ($employee) use ($branchIds, $filters, $selectedEmployeeIds, $period) {
                 if (is_array($selectedEmployeeIds) && ! in_array((int) $employee->id, $selectedEmployeeIds, true)) {
+                    return false;
+                }
+
+                $dateOfJoining = $this->employeeDateOfJoining($employee);
+                if ($dateOfJoining && $dateOfJoining->greaterThan($period['end'])) {
                     return false;
                 }
 
@@ -252,7 +268,15 @@ class SalaryGenerationController extends Controller
             ->get()
             ->groupBy('employee_id');
         $leaveMap = $this->leaveSnapshotMap($employeeIds, $filters, $leaveTypes);
-        $attendanceMetricMap = $this->attendanceMetricMap($employeeIds, $filters, $branchIds);
+        $approvedLeaveDateMap = $this->approvedLeaveDateMap($employeeIds, $period);
+        $holidays = app(EmployeeHolidayService::class)->forPeriod($period['start'], $period['end']);
+        $attendanceMetricMap = $this->attendanceMetricMap(
+            $employeeIds,
+            $filters,
+            $branchIds,
+            $employees->keyBy('id'),
+            $holidays
+        );
         $generatedMap = SalaryGeneration::where('status', '!=', 3)
             ->where('salary_month', '=', (int) $filters['month'])
             ->where('salary_year', '=', (int) $filters['year'])
@@ -262,7 +286,17 @@ class SalaryGenerationController extends Controller
             ->get()
             ->keyBy('employee_id');
 
-        return $employees->map(function ($employee) use ($salaryHeads, $salaryRowsMap, $leaveMap, $attendanceMetricMap, $generatedMap, $filters, $period, $leaveTypes) {
+        return $employees->map(function ($employee) use (
+            $salaryHeads,
+            $salaryRowsMap,
+            $leaveMap,
+            $approvedLeaveDateMap,
+            $attendanceMetricMap,
+            $generatedMap,
+            $filters,
+            $period,
+            $leaveTypes
+        ) {
             $salaryRows = $salaryRowsMap->get($employee->id, collect());
             $salaryRowsByHead = $salaryRows->keyBy('salary_head_id');
             $grossSalary = $salaryRows->isNotEmpty()
@@ -270,7 +304,18 @@ class SalaryGenerationController extends Controller
                 : $this->employeeCategorySalary($employee, $filters['category']);
             $leaveSnapshot = $leaveMap[$employee->id] ?? $this->defaultLeaveSnapshot($leaveTypes);
             $attendanceMetric = $attendanceMetricMap[$employee->id] ?? $this->defaultAttendanceMetric();
-            $absence = $this->absenceSnapshot($filters['category'], $grossSalary, $leaveSnapshot, $attendanceMetric, $period);
+            $employmentPeriod = $this->employeeSalaryPeriod($period, $employee->doj);
+            $prorationRatio = $period['days'] > 0
+                ? (float) $employmentPeriod['eligible_days'] / (float) $period['days']
+                : 0.0;
+            $payableGrossSalary = round($grossSalary * $prorationRatio, 2);
+            $absence = $this->absenceSnapshot(
+                $filters['category'],
+                $grossSalary,
+                $approvedLeaveDateMap[$employee->id] ?? [],
+                $attendanceMetric,
+                $employmentPeriod
+            );
             $salaryValues = [];
             $salaryHeadDetails = [];
             $missingSalaryHeadCount = 0;
@@ -278,9 +323,16 @@ class SalaryGenerationController extends Controller
             foreach ($salaryHeads as $salaryHead) {
                 $salaryRow = $salaryRowsByHead->get($salaryHead->id);
                 $isAbsentHead = $this->isAbsentHead($salaryHead);
-                $amount = $isAbsentHead
-                    ? $absence['amount']
-                    : ($salaryRow ? round((float) $salaryRow->calculated_amount, 2) : null);
+                $isLateHead = $this->isLateHead($salaryHead);
+                $amount = null;
+
+                if ($isAbsentHead) {
+                    $amount = $absence['amount'];
+                } elseif ($isLateHead) {
+                    $amount = $absence['late_amount'];
+                } elseif ($salaryRow) {
+                    $amount = round((float) $salaryRow->calculated_amount * $prorationRatio, 2);
+                }
 
                 if ($amount === null) {
                     $missingSalaryHeadCount++;
@@ -289,11 +341,24 @@ class SalaryGenerationController extends Controller
                 $salaryValues[(int) $salaryHead->id] = $amount;
 
                 if ($amount !== null) {
+                    $formulaLabel = $salaryRow
+                        ? $salaryRow->formula_label
+                        : $salaryHead->formula_label;
+
+                    if ($isAbsentHead) {
+                        $formulaLabel = $absence['formula_label'];
+                    } elseif ($isLateHead) {
+                        $formulaLabel = $absence['late_formula_label'];
+                    } elseif ($prorationRatio < 1) {
+                        $formulaLabel = '('.$formulaLabel.') x '
+                            .$employmentPeriod['eligible_days'].'/'.$period['days'];
+                    }
+
                     $salaryHeadDetails[] = [
                         'salary_head_id' => (int) $salaryHead->id,
                         'salary_head_name' => $salaryRow ? $salaryRow->salary_head_name : $salaryHead->name,
                         'salary_head_type' => $salaryRow ? $salaryRow->salary_head_type : $salaryHead->type,
-                        'formula_label' => $isAbsentHead ? $absence['formula_label'] : ($salaryRow ? $salaryRow->formula_label : $salaryHead->formula_label),
+                        'formula_label' => $formulaLabel,
                         'is_payslip_show' => $salaryRow ? ($salaryRow->is_payslip_show ? 1 : 0) : ($salaryHead->is_payslip_show ? 1 : 0),
                         'calculated_amount' => round((float) $amount, 2),
                     ];
@@ -325,9 +390,11 @@ class SalaryGenerationController extends Controller
                 'employee_name' => $this->employeeName($employee),
                 'doj' => $employee->doj,
                 'gross_salary' => $grossSalary,
+                'payable_gross_salary' => $payableGrossSalary,
+                'employment_period' => $employmentPeriod,
                 'earning_total' => round($earningTotal, 2),
                 'deduction_total' => round($deductionTotal, 2),
-                'net_salary' => round($earningTotal - $deductionTotal),
+                'net_salary' => round($earningTotal - $deductionTotal, 2),
                 'salary_values' => $salaryValues,
                 'salary_head_details' => $salaryHeadDetails,
                 'leave' => $leaveSnapshot,
@@ -363,7 +430,6 @@ class SalaryGenerationController extends Controller
                 'ela.employee_id',
                 DB::raw('UPPER(lt.name) as leave_code'),
                 DB::raw('SUM(ela.total_allotment) as total_allotment'),
-                DB::raw('SUM(ela.balance_leave) as balance_leave'),
             ])
             ->whereIn('ela.employee_id', $employeeIds)
             ->where('ela.status', '!=', 3)
@@ -372,6 +438,26 @@ class SalaryGenerationController extends Controller
             ->whereDate('ela.leave_tenure_to', '>=', $period['start']->toDateString())
             ->groupBy('ela.employee_id', DB::raw('UPPER(lt.name)'))
             ->get();
+        $usedLeaveRows = DB::table('employee_leave_taken_histories as history')
+            ->leftJoin('leave_types as lt', 'lt.id', '=', 'history.leave_type_id')
+            ->select([
+                'history.employee_id',
+                DB::raw('UPPER(lt.name) as leave_code'),
+                DB::raw('SUM(history.leave_count) as used_leave'),
+            ])
+            ->whereIn('history.employee_id', $employeeIds)
+            ->where('history.status', '!=', 3)
+            ->where('lt.status', '!=', 3)
+            ->whereDate('history.leave_date', '<=', $period['end']->toDateString())
+            ->groupBy('history.employee_id', DB::raw('UPPER(lt.name)'))
+            ->get();
+        $usedLeaveMap = [];
+
+        foreach ($usedLeaveRows as $usedLeaveRow) {
+            $usedLeaveMap[(int) $usedLeaveRow->employee_id][strtoupper((string) $usedLeaveRow->leave_code)]
+                = (float) $usedLeaveRow->used_leave;
+        }
+
         $leaveMap = [];
 
         foreach ($leaveRows as $leaveRow) {
@@ -382,13 +468,73 @@ class SalaryGenerationController extends Controller
             }
 
             $leaveCode = strtoupper((string) $leaveRow->leave_code);
+            $allottedLeave = round((float) $leaveRow->total_allotment, 2);
+            $usedLeave = round((float) ($usedLeaveMap[$employeeId][$leaveCode] ?? 0), 2);
             $leaveMap[$employeeId][$leaveCode] = [
-                'alloted' => round((float) $leaveRow->total_allotment, 2),
-                'balance' => round((float) $leaveRow->balance_leave, 2),
+                'alloted' => $allottedLeave,
+                'used' => $usedLeave,
+                'balance' => round(max($allottedLeave - $usedLeave, 0), 2),
             ];
         }
 
         return $leaveMap;
+    }
+
+    private function approvedLeaveDateMap(array $employeeIds, array $period): array
+    {
+        $applications = DB::table('leave_applications as application')
+            ->leftJoin('leave_types as leave_type', 'leave_type.id', '=', 'application.leave_type_id')
+            ->select([
+                'application.employee_id',
+                'application.leave_from_date',
+                'application.leave_to_date',
+                'application.no_of_days',
+                DB::raw('UPPER(leave_type.name) as leave_code'),
+            ])
+            ->whereIn('application.employee_id', $employeeIds)
+            ->where('application.status', '!=', 3)
+            ->where('application.application_status', '=', 1)
+            ->where('leave_type.status', '!=', 3)
+            ->whereDate('application.leave_from_date', '<=', $period['end']->toDateString())
+            ->whereDate('application.leave_to_date', '>=', $period['start']->toDateString())
+            ->orderBy('application.employee_id')
+            ->orderBy('application.leave_from_date')
+            ->orderBy('application.id')
+            ->get();
+        $dateMap = [];
+
+        foreach ($applications as $application) {
+            if (strtoupper((string) $application->leave_code) !== 'CL') {
+                continue;
+            }
+
+            $remainingLeave = max((float) $application->no_of_days, 0);
+
+            foreach (CarbonPeriod::create(
+                Carbon::parse($application->leave_from_date)->startOfDay(),
+                Carbon::parse($application->leave_to_date)->startOfDay()
+            ) as $leaveDate) {
+                if ($remainingLeave <= 0) {
+                    break;
+                }
+
+                $coverage = min(1, $remainingLeave);
+                $remainingLeave -= $coverage;
+
+                if ($leaveDate->lessThan($period['start']) || $leaveDate->greaterThan($period['end'])) {
+                    continue;
+                }
+
+                $employeeId = (int) $application->employee_id;
+                $dateKey = $leaveDate->toDateString();
+                $dateMap[$employeeId][$dateKey] = min(
+                    1,
+                    (float) ($dateMap[$employeeId][$dateKey] ?? 0) + $coverage
+                );
+            }
+        }
+
+        return $dateMap;
     }
 
     private function defaultLeaveSnapshot($leaveTypes = null): array
@@ -399,27 +545,36 @@ class SalaryGenerationController extends Controller
         foreach ($leaveTypes as $leaveType) {
             $snapshot[strtoupper((string) $leaveType->name)] = [
                 'alloted' => 0.0,
+                'used' => 0.0,
                 'balance' => 0.0,
             ];
         }
 
         if (empty($snapshot)) {
             $snapshot = [
-                'CL' => ['alloted' => 0.0, 'balance' => 0.0],
-                'ML' => ['alloted' => 0.0, 'balance' => 0.0],
+                'CL' => ['alloted' => 0.0, 'used' => 0.0, 'balance' => 0.0],
+                'ML' => ['alloted' => 0.0, 'used' => 0.0, 'balance' => 0.0],
             ];
         }
 
         return $snapshot;
     }
 
-    private function attendanceMetricMap(array $employeeIds, array $filters, array $branchIds): array
-    {
+    private function attendanceMetricMap(
+        array $employeeIds,
+        array $filters,
+        array $branchIds,
+        $employees,
+        $holidays
+    ): array {
         $period = $this->salaryPeriod($filters);
+        $holidayService = app(EmployeeHolidayService::class);
         $rows = DB::table('employee_schedule_rosters as roster')
             ->leftJoin('employee_attendances as attendance', 'attendance.roster_id', '=', 'roster.id')
             ->select([
                 'roster.employee_id',
+                'roster.category',
+                'roster.branch_name',
                 'roster.roster_date',
                 'roster.in_time',
                 'roster.out_time',
@@ -443,26 +598,49 @@ class SalaryGenerationController extends Controller
 
             if (! isset($metricMap[$employeeId])) {
                 $metricMap[$employeeId] = $this->defaultAttendanceMetric();
-                $metricMap[$employeeId]['_absent_dates'] = [];
             }
 
-            $metricMap[$employeeId]['assigned_hours'] += $this->scheduledHours($row->roster_date, $row->in_time, $row->out_time);
+            $rosterDate = Carbon::parse($row->roster_date)->startOfDay();
+            $employee = $employees->get($employeeId);
+            $dateOfJoining = $employee ? $this->employeeDateOfJoining($employee) : null;
+
+            if ($dateOfJoining && $rosterDate->lessThan($dateOfJoining)) {
+                $metricMap[$employeeId]['pre_doj_dates'][$rosterDate->toDateString()] = true;
+
+                continue;
+            }
+
+            if ($holidayService->applies(
+                $rosterDate,
+                (string) $row->branch_name,
+                (string) $row->category,
+                $holidays
+            )) {
+                $metricMap[$employeeId]['holiday_dates'][$rosterDate->toDateString()] = true;
+
+                continue;
+            }
+
+            $scheduledHours = $this->scheduledHours($row->roster_date, $row->in_time, $row->out_time);
+            $metricMap[$employeeId]['assigned_hours'] += $scheduledHours;
             $metricMap[$employeeId]['attendance_hours'] += $this->attendanceHours($row);
 
             if ((bool) $row->is_absent) {
-                $metricMap[$employeeId]['_absent_dates'][(string) $row->roster_date] = true;
+                $metricMap[$employeeId]['absent_dates'][$rosterDate->toDateString()] = true;
+                $metricMap[$employeeId]['absent_hours'] += $scheduledHours;
             }
 
             if ((bool) $row->is_late) {
                 $metricMap[$employeeId]['late_count']++;
+                $metricMap[$employeeId]['late_dates'][$rosterDate->toDateString()] = true;
             }
         }
 
         foreach ($metricMap as $employeeId => $metric) {
             $metricMap[$employeeId]['assigned_hours'] = round((float) $metric['assigned_hours'], 2);
             $metricMap[$employeeId]['attendance_hours'] = round((float) $metric['attendance_hours'], 2);
-            $metricMap[$employeeId]['absent_days'] = count($metric['_absent_dates']);
-            unset($metricMap[$employeeId]['_absent_dates']);
+            $metricMap[$employeeId]['absent_hours'] = round((float) $metric['absent_hours'], 2);
+            $metricMap[$employeeId]['absent_days'] = count($metric['absent_dates']);
         }
 
         return $metricMap;
@@ -473,51 +651,104 @@ class SalaryGenerationController extends Controller
         return [
             'assigned_hours' => 0.0,
             'attendance_hours' => 0.0,
+            'absent_hours' => 0.0,
             'absent_days' => 0.0,
             'late_count' => 0,
+            'absent_dates' => [],
+            'late_dates' => [],
+            'holiday_dates' => [],
+            'pre_doj_dates' => [],
         ];
     }
 
-    private function absenceSnapshot(string $category, float $grossSalary, array $leaveSnapshot, array $attendanceMetric, array $period): array
+    private function absenceSnapshot(
+        string $category,
+        float $grossSalary,
+        array $approvedLeaveDates,
+        array $attendanceMetric,
+        array $period
+    ): array
     {
         $assignedHours = round((float) ($attendanceMetric['assigned_hours'] ?? 0), 2);
         $attendanceHours = round((float) ($attendanceMetric['attendance_hours'] ?? 0), 2);
-        $absentDays = round((float) ($attendanceMetric['absent_days'] ?? 0), 2);
+        $absentHours = round((float) ($attendanceMetric['absent_hours'] ?? 0), 2);
+        $absentDates = array_keys($attendanceMetric['absent_dates'] ?? []);
+        $absentDays = (float) count($absentDates);
         $lateCount = (int) ($attendanceMetric['late_count'] ?? 0);
         $latePenaltyUnits = (float) floor($lateCount / 3);
+        $holidayDates = array_keys($attendanceMetric['holiday_dates'] ?? []);
+        $preDojDates = array_keys($attendanceMetric['pre_doj_dates'] ?? []);
+        $approvedLeaveDays = 0.0;
+        $unpaidAbsentDays = 0.0;
+
+        foreach ($absentDates as $absentDate) {
+            $approvedCoverage = min(1, max((float) ($approvedLeaveDates[$absentDate] ?? 0), 0));
+            $approvedLeaveDays += $approvedCoverage;
+            $unpaidAbsentDays += 1 - $approvedCoverage;
+        }
+
+        $approvedLeaveDays = round($approvedLeaveDays, 2);
+        $unpaidAbsentDays = round($unpaidAbsentDays, 2);
+        $details = [
+            'employment_start_date' => $period['start']->toDateString(),
+            'employment_end_date' => $period['end']->toDateString(),
+            'eligible_days' => $period['eligible_days'],
+            'absent_hours' => $absentHours,
+            'absent_dates' => $absentDates,
+            'approved_leave_dates' => collect($absentDates)
+                ->filter(fn ($date) => (float) ($approvedLeaveDates[$date] ?? 0) > 0)
+                ->values()
+                ->all(),
+            'holiday_dates' => $holidayDates,
+            'pre_doj_excluded_dates' => $preDojDates,
+            'late_dates' => array_keys($attendanceMetric['late_dates'] ?? []),
+        ];
 
         if ($this->isTsaCategory($category)) {
             $hourlySalary = $assignedHours > 0 ? $grossSalary / $assignedHours : 0;
-            $absentHours = max($assignedHours - min($attendanceHours, $assignedHours), 0);
-            $totalAbsentHours = $assignedHours > 0 ? min($assignedHours, $absentHours + $latePenaltyUnits) : 0;
-            $absentAmount = $hourlySalary * $totalAbsentHours;
+            $chargeableLateHours = $assignedHours > 0
+                ? min($latePenaltyUnits, max($assignedHours - $absentHours, 0))
+                : 0;
+            $absentAmount = $hourlySalary * $absentHours;
+            $lateAmount = $hourlySalary * $chargeableLateHours;
 
             return [
                 'amount' => round($absentAmount, 2),
                 'absent_days' => $absentDays,
                 'unpaid_absent_days' => 0.0,
+                'approved_leave_days' => 0.0,
+                'holiday_days' => count($holidayDates),
+                'pre_doj_excluded_days' => count($preDojDates),
                 'assigned_hours' => $assignedHours,
                 'attendance_hours' => $attendanceHours,
+                'absent_hours' => $absentHours,
                 'late_count' => $lateCount,
                 'late_penalty_units' => $latePenaltyUnits,
-                'formula_label' => '((Assigned Hour - Attendance Hour) + FLOOR(Late Count / 3)) x (Gross / Assigned Hour)',
+                'late_amount' => round($lateAmount, 2),
+                'formula_label' => 'Absent Roster Hour x (Monthly Gross / Assigned Hour)',
+                'late_formula_label' => 'FLOOR(Late Count / 3) x (Monthly Gross / Assigned Hour)',
+                'details' => $details,
             ];
         }
 
-        $clBalance = (float) ($leaveSnapshot['CL']['balance'] ?? 0);
-        $totalAbsentDays = $absentDays + $latePenaltyUnits;
-        $unpaidAbsentDays = max($totalAbsentDays - $clBalance, 0);
         $perDaySalary = $period['days'] > 0 ? $grossSalary / $period['days'] : 0;
 
         return [
             'amount' => round($perDaySalary * $unpaidAbsentDays, 2),
-            'absent_days' => round($totalAbsentDays, 2),
+            'absent_days' => round($absentDays, 2),
             'unpaid_absent_days' => round($unpaidAbsentDays, 2),
+            'approved_leave_days' => $approvedLeaveDays,
+            'holiday_days' => count($holidayDates),
+            'pre_doj_excluded_days' => count($preDojDates),
             'assigned_hours' => $assignedHours,
             'attendance_hours' => $attendanceHours,
+            'absent_hours' => $absentHours,
             'late_count' => $lateCount,
             'late_penalty_units' => $latePenaltyUnits,
-            'formula_label' => '(Gross / Month Days) x MAX((Absent Day + FLOOR(Late Count / 3)) - CL Balance, 0)',
+            'late_amount' => round($perDaySalary * $latePenaltyUnits, 2),
+            'formula_label' => '(Monthly Gross / Month Days) x Unpaid Absent Days',
+            'late_formula_label' => '(Monthly Gross / Month Days) x FLOOR(Late Count / 3)',
+            'details' => $details,
         ];
     }
 
@@ -575,6 +806,11 @@ class SalaryGenerationController extends Controller
         return preg_replace('/[^a-z0-9]+/', '', strtolower((string) $salaryHead->name)) === 'absent';
     }
 
+    private function isLateHead(SalaryHead $salaryHead): bool
+    {
+        return preg_replace('/[^a-z0-9]+/', '', strtolower((string) $salaryHead->name)) === 'late';
+    }
+
     private function isTsaCategory(string $category): bool
     {
         return strtoupper(trim($category)) === 'TSA TEACHER';
@@ -589,6 +825,47 @@ class SalaryGenerationController extends Controller
             'end' => $start->copy()->endOfMonth(),
             'days' => (int) $start->daysInMonth,
         ];
+    }
+
+    private function employeeSalaryPeriod(array $period, $dateOfJoining): array
+    {
+        $employmentStart = $period['start']->copy();
+        $parsedDateOfJoining = $this->parseDate($dateOfJoining);
+
+        if ($parsedDateOfJoining && $parsedDateOfJoining->greaterThan($employmentStart)) {
+            $employmentStart = $parsedDateOfJoining;
+        }
+
+        $eligibleDays = $employmentStart->greaterThan($period['end'])
+            ? 0
+            : $employmentStart->diffInDays($period['end']) + 1;
+
+        return [
+            'start' => $employmentStart,
+            'end' => $period['end']->copy(),
+            'days' => $period['days'],
+            'eligible_days' => (int) $eligibleDays,
+        ];
+    }
+
+    private function employeeDateOfJoining($employee): ?Carbon
+    {
+        return $this->parseDate($employee->doj ?? null);
+    }
+
+    private function parseDate($value): ?Carbon
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->startOfDay();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private function filterRules(): array

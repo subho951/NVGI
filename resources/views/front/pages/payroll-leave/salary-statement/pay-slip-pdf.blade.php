@@ -15,6 +15,8 @@ $deductions = $headDetails->filter(function ($head) {
     return strtoupper((string) ($head['salary_head_type'] ?? '')) === \App\Models\SalaryHead::TYPE_DEDUCTION;
 })->values();
 $leaveDetails = json_decode((string) $salaryGeneration->leave_details, true);
+$attendanceDetails = json_decode((string) $salaryGeneration->attendance_details, true);
+$attendanceDetails = is_array($attendanceDetails) ? $attendanceDetails : [];
 if (! is_array($leaveDetails) || empty($leaveDetails)) {
     $leaveDetails = [
         'CL' => ['alloted' => $salaryGeneration->cl_alloted, 'balance' => $salaryGeneration->cl_balance],
@@ -148,7 +150,13 @@ $formatDate = function ($value) {
                 <td><span class="label">Employee Code</span><span class="value">{{ $salaryGeneration->employee_no ?: '--' }}</span></td>
                 <td><span class="label">Employee Name</span><span class="value">{{ $salaryGeneration->employee_name ?: '--' }}</span></td>
                 <td><span class="label">DOJ</span><span class="value">{{ $formatDate($salaryGeneration->doj) }}</span></td>
-                <td><span class="label">Gross Salary</span><span class="value">{{ $formatMoney($salaryGeneration->gross_salary) }}</span></td>
+                <td>
+                    <span class="label">Monthly / Payable Gross</span>
+                    <span class="value">
+                        {{ $formatMoney($salaryGeneration->gross_salary) }} /
+                        {{ $formatMoney($salaryGeneration->payable_gross_salary ?? $salaryGeneration->gross_salary) }}
+                    </span>
+                </td>
             </tr>
             <tr>
                 <td><span class="label">Bank Name</span><span class="value">{{ $statement->bank_name ?: '--' }}</span></td>
@@ -205,12 +213,26 @@ $formatDate = function ($value) {
             </tr>
             <tr>
                 @if($isTsaTeacher)
-                    <td colspan="2"><span class="label">Assigned Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->assigned_hours) }}</span></td>
-                    <td colspan="2"><span class="label">Attendance Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->attendance_hours) }}</span></td>
+                    <td><span class="label">Assigned Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->assigned_hours) }}</span></td>
+                    <td><span class="label">Attendance Hour</span><span class="value">{{ $formatDecimal($salaryGeneration->attendance_hours) }}</span></td>
+                    <td><span class="label">Absent Hour</span><span class="value">{{ $formatDecimal($attendanceDetails['absent_hours'] ?? 0) }}</span></td>
+                    <td><span class="label">Late Amount</span><span class="value">{{ $formatMoney($salaryGeneration->late_amount ?? 0) }}</span></td>
                 @else
                     <td colspan="2"><span class="label">CL Balance</span><span class="value">{{ $formatDecimal($leaveDetails['CL']['balance'] ?? $salaryGeneration->cl_balance) }}</span></td>
                     <td colspan="2"><span class="label">ML Balance</span><span class="value">{{ $formatDecimal($leaveDetails['ML']['balance'] ?? $salaryGeneration->ml_balance) }}</span></td>
                 @endif
+            </tr>
+            <tr>
+                <td>
+                    <span class="label">Eligible Salary Period</span>
+                    <span class="value">
+                        {{ $formatDate($salaryGeneration->salary_period_start) }} -
+                        {{ $formatDate($salaryGeneration->salary_period_end) }}
+                    </span>
+                </td>
+                <td><span class="label">Eligible Days</span><span class="value">{{ $formatDecimal($salaryGeneration->eligible_days ?? 0) }}</span></td>
+                <td><span class="label">Approved Leave / Holiday</span><span class="value">{{ $formatDecimal($salaryGeneration->approved_leave_days ?? 0) }} / {{ $formatDecimal($salaryGeneration->holiday_days ?? 0) }}</span></td>
+                <td><span class="label">Late Amount</span><span class="value">{{ $formatMoney($salaryGeneration->late_amount ?? 0) }}</span></td>
             </tr>
         </table>
 
