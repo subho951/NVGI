@@ -307,16 +307,18 @@ class SalaryGenerationController extends Controller
             $leaveSnapshot = $leaveMap[$employee->id] ?? $this->defaultLeaveSnapshot($leaveTypes);
             $attendanceMetric = $attendanceMetricMap[$employee->id] ?? $this->defaultAttendanceMetric();
             $employmentPeriod = $this->employeeSalaryPeriod($period, $employee->doj);
-            $prorationRatio = $period['days'] > 0
-                ? (float) $employmentPeriod['eligible_days'] / (float) $period['days']
+            $prorationRatio = $employmentPeriod['days'] > 0
+                ? (float) $employmentPeriod['eligible_days'] / (float) $employmentPeriod['days']
                 : 0.0;
-            $payableGrossSalary = round($grossSalary * $prorationRatio, 2);
+            $unroundedPayableGrossSalary = $grossSalary * $prorationRatio;
+            $payableGrossSalary = round($unroundedPayableGrossSalary, 2);
             $absence = $this->absenceSnapshot(
                 $filters['category'],
                 $grossSalary,
                 $approvedLeaveDateMap[$employee->id] ?? [],
                 $attendanceMetric,
-                $employmentPeriod
+                $employmentPeriod,
+                $unroundedPayableGrossSalary
             );
             $salaryValues = [];
             $salaryHeadDetails = [];
@@ -353,7 +355,7 @@ class SalaryGenerationController extends Controller
                         $formulaLabel = $absence['late_formula_label'];
                     } elseif ($prorationRatio < 1) {
                         $formulaLabel = '('.$formulaLabel.') x '
-                            .$employmentPeriod['eligible_days'].'/'.$period['days'];
+                            .$employmentPeriod['eligible_days'].'/'.$employmentPeriod['days'];
                     }
 
                     $salaryHeadDetails[] = [
@@ -365,6 +367,25 @@ class SalaryGenerationController extends Controller
                         'calculated_amount' => round((float) $amount, 2),
                     ];
                 }
+            }
+
+            $unproratedEarningTotal = round(
+                (float) $salaryRows
+                    ->where('salary_head_type', SalaryHead::TYPE_EARNING)
+                    ->sum(fn ($salaryRow) => (float) $salaryRow->calculated_amount),
+                2
+            );
+
+            if (
+                $prorationRatio < 1
+                && abs($unproratedEarningTotal - $grossSalary) < 0.01
+            ) {
+                [$salaryValues, $salaryHeadDetails] = $this->reconcileProratedEarningRounding(
+                    $salaryHeads,
+                    $salaryValues,
+                    $salaryHeadDetails,
+                    $payableGrossSalary
+                );
             }
 
             $earningTotal = 0.0;
@@ -406,6 +427,54 @@ class SalaryGenerationController extends Controller
                 'generated_at' => $generated ? $generated->updated_at : null,
             ];
         });
+    }
+
+    private function reconcileProratedEarningRounding(
+        $salaryHeads,
+        array $salaryValues,
+        array $salaryHeadDetails,
+        float $targetEarningTotal
+    ): array {
+        $earningHeadIds = collect($salaryHeads)
+            ->where('type', SalaryHead::TYPE_EARNING)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if (
+            $earningHeadIds->isEmpty()
+            || $earningHeadIds->contains(fn ($salaryHeadId) => ! array_key_exists($salaryHeadId, $salaryValues)
+                || $salaryValues[$salaryHeadId] === null)
+        ) {
+            return [$salaryValues, $salaryHeadDetails];
+        }
+
+        $currentEarningTotal = round(
+            (float) $earningHeadIds->sum(fn ($salaryHeadId) => (float) $salaryValues[$salaryHeadId]),
+            2
+        );
+        $roundingDifference = round($targetEarningTotal - $currentEarningTotal, 2);
+
+        if ($roundingDifference == 0.0) {
+            return [$salaryValues, $salaryHeadDetails];
+        }
+
+        $adjustedSalaryHeadId = (int) $earningHeadIds->last();
+        $salaryValues[$adjustedSalaryHeadId] = round(
+            (float) $salaryValues[$adjustedSalaryHeadId] + $roundingDifference,
+            2
+        );
+
+        foreach ($salaryHeadDetails as &$salaryHeadDetail) {
+            if ((int) $salaryHeadDetail['salary_head_id'] === $adjustedSalaryHeadId) {
+                $salaryHeadDetail['calculated_amount'] = $salaryValues[$adjustedSalaryHeadId];
+
+                break;
+            }
+        }
+        unset($salaryHeadDetail);
+
+        return [$salaryValues, $salaryHeadDetails];
     }
 
     private function salaryHeads()
@@ -668,12 +737,14 @@ class SalaryGenerationController extends Controller
         float $grossSalary,
         array $approvedLeaveDates,
         array $attendanceMetric,
-        array $period
+        array $period,
+        ?float $payableGrossSalary = null
     ): array
     {
         $assignedHours = round((float) ($attendanceMetric['assigned_hours'] ?? 0), 2);
         $attendanceHours = round((float) ($attendanceMetric['attendance_hours'] ?? 0), 2);
         $absentHours = round((float) ($attendanceMetric['absent_hours'] ?? 0), 2);
+        $shortHours = round(max($assignedHours - $attendanceHours, 0), 2);
         $absentDates = array_keys($attendanceMetric['absent_dates'] ?? []);
         $absentDays = (float) count($absentDates);
         $lateCount = (int) ($attendanceMetric['late_count'] ?? 0);
@@ -699,6 +770,7 @@ class SalaryGenerationController extends Controller
             'deduction_day_divisor' => self::SALARY_DEDUCTION_DAY_DIVISOR,
             'deduction_day_rate' => round($perDaySalary, 2),
             'absent_hours' => $absentHours,
+            'short_hours' => $shortHours,
             'absent_dates' => $absentDates,
             'approved_leave_dates' => collect($absentDates)
                 ->filter(fn ($date) => (float) ($approvedLeaveDates[$date] ?? 0) > 0)
@@ -710,23 +782,35 @@ class SalaryGenerationController extends Controller
         ];
 
         if ($this->isTsaCategory($category)) {
-            $unpaidAbsentDays = $absentDays;
+            $payableGrossSalary = $payableGrossSalary ?? (
+                $grossSalary * ((float) ($period['eligible_days'] ?? self::SALARY_DEDUCTION_DAY_DIVISOR)
+                    / self::SALARY_DEDUCTION_DAY_DIVISOR)
+            );
+            $hourlyRate = $assignedHours > 0
+                ? $payableGrossSalary / $assignedHours
+                : 0.0;
+            $hourDeductionAmount = round($hourlyRate * $shortHours, 2);
+            $details['hourly_rate'] = round($hourlyRate, 2);
+            $details['hour_deduction_amount'] = $hourDeductionAmount;
+            $details['late_dates'] = [];
 
             return [
-                'amount' => round($perDaySalary * $unpaidAbsentDays, 2),
+                'amount' => $hourDeductionAmount,
                 'absent_days' => $absentDays,
-                'unpaid_absent_days' => $unpaidAbsentDays,
+                'unpaid_absent_days' => 0.0,
                 'approved_leave_days' => 0.0,
                 'holiday_days' => count($holidayDates),
                 'pre_doj_excluded_days' => count($preDojDates),
                 'assigned_hours' => $assignedHours,
                 'attendance_hours' => $attendanceHours,
                 'absent_hours' => $absentHours,
-                'late_count' => $lateCount,
-                'late_penalty_units' => $latePenaltyUnits,
-                'late_amount' => round($perDaySalary * $latePenaltyUnits, 2),
-                'formula_label' => '(Monthly Gross / 30) x Absent Days',
-                'late_formula_label' => '(Monthly Gross / 30) x FLOOR(Late Count / 3)',
+                'short_hours' => $shortHours,
+                'hourly_rate' => round($hourlyRate, 2),
+                'late_count' => 0,
+                'late_penalty_units' => 0.0,
+                'late_amount' => 0.0,
+                'formula_label' => '(Payable Gross / Assigned Hours) x Short Hours',
+                'late_formula_label' => 'Not applicable for TSA Teacher',
                 'details' => $details,
             ];
         }
@@ -741,6 +825,8 @@ class SalaryGenerationController extends Controller
             'assigned_hours' => $assignedHours,
             'attendance_hours' => $attendanceHours,
             'absent_hours' => $absentHours,
+            'short_hours' => $shortHours,
+            'hourly_rate' => 0.0,
             'late_count' => $lateCount,
             'late_penalty_units' => $latePenaltyUnits,
             'late_amount' => round($perDaySalary * $latePenaltyUnits, 2),
@@ -834,14 +920,22 @@ class SalaryGenerationController extends Controller
             $employmentStart = $parsedDateOfJoining;
         }
 
-        $eligibleDays = $employmentStart->greaterThan($period['end'])
-            ? 0
-            : $employmentStart->diffInDays($period['end']) + 1;
+        if ($employmentStart->greaterThan($period['end'])) {
+            $eligibleDays = 0;
+        } elseif (
+            $parsedDateOfJoining
+            && $parsedDateOfJoining->betweenIncluded($period['start'], $period['end'])
+        ) {
+            $payrollJoiningDay = min((int) $parsedDateOfJoining->day, self::SALARY_DEDUCTION_DAY_DIVISOR);
+            $eligibleDays = self::SALARY_DEDUCTION_DAY_DIVISOR - $payrollJoiningDay + 1;
+        } else {
+            $eligibleDays = self::SALARY_DEDUCTION_DAY_DIVISOR;
+        }
 
         return [
             'start' => $employmentStart,
             'end' => $period['end']->copy(),
-            'days' => $period['days'],
+            'days' => self::SALARY_DEDUCTION_DAY_DIVISOR,
             'eligible_days' => (int) $eligibleDays,
         ];
     }

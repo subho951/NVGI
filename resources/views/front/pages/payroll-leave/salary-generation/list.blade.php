@@ -17,6 +17,11 @@ if ($isTsaCategory) {
 
 $earningSalaryHeads = collect($salaryHeads)->where('type', \App\Models\SalaryHead::TYPE_EARNING)->values();
 $deductionSalaryHeads = collect($salaryHeads)->where('type', \App\Models\SalaryHead::TYPE_DEDUCTION)->values();
+if ($isTsaCategory) {
+    $deductionSalaryHeads = $deductionSalaryHeads->reject(function ($salaryHead) {
+        return preg_replace('/[^a-z0-9]+/', '', strtolower((string) $salaryHead->name)) === 'late';
+    })->values();
+}
 
 $formatMoney = function ($value) {
     return $value === null ? '--' : number_format((float) $value, 2);
@@ -389,7 +394,6 @@ $emptyColspan = 9 + $leaveCodes->count() + ($isTsaCategory ? 1 : 0);
                                             <td>
                                                 <div>Assigned: <strong>{{ $formatCount($row->absence['assigned_hours']) }}</strong></div>
                                                 <div>Attendance: <strong>{{ $formatCount($row->absence['attendance_hours']) }}</strong></div>
-                                                <div>Absent: <strong>{{ $formatCount($row->absence['absent_hours'] ?? 0) }}</strong></div>
                                             </td>
                                         @endif
                                         @foreach($leaveCodes as $leaveCode)
@@ -410,19 +414,13 @@ $emptyColspan = 9 + $leaveCodes->count() + ($isTsaCategory ? 1 : 0);
 
                                             @if($isTsaCategory)
                                                 <div class="salary-generation-muted">
-                                                    Late Count: {{ $formatCount($row->absence['late_count'] ?? 0) }}
+                                                    Short Hours: {{ $formatCount($row->absence['short_hours'] ?? 0) }}
                                                 </div>
                                                 <div class="salary-generation-muted">
-                                                    Late Penalty: {{ $formatCount($row->absence['late_penalty_units'] ?? 0) }} day(s)
+                                                    Hourly Rate: {{ $formatMoney($row->absence['hourly_rate'] ?? 0) }}
                                                 </div>
                                                 <div class="salary-generation-muted">
-                                                    Late Deduction: {{ $formatMoney($row->absence['late_amount'] ?? 0) }}
-                                                </div>
-                                                <div class="salary-generation-muted">
-                                                    Absent Count: {{ $formatCount($row->absence['absent_days'] ?? 0) }} day(s)
-                                                </div>
-                                                <div class="salary-generation-muted">
-                                                    Absent Deduction: {{ $formatMoney($row->absence['amount'] ?? 0) }}
+                                                    Hour Deduction: {{ $formatMoney($row->absence['amount'] ?? 0) }}
                                                 </div>
                                                 <div class="salary-generation-muted">
                                                     Holiday Excluded: {{ $formatCount($row->absence['holiday_days'] ?? 0) }} day(s)

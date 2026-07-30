@@ -11,9 +11,15 @@ $isTsaCategory = strtoupper(trim((string) ($filters['category'] ?? ''))) === 'TS
 if ($isTsaCategory) {
     $leaveCodes = collect();
 }
+$baseColumnCount = $isTsaCategory ? 25 : 30;
 
 $earningSalaryHeads = collect($salaryHeads)->where('type', \App\Models\SalaryHead::TYPE_EARNING)->values();
 $deductionSalaryHeads = collect($salaryHeads)->where('type', \App\Models\SalaryHead::TYPE_DEDUCTION)->values();
+if ($isTsaCategory) {
+    $deductionSalaryHeads = $deductionSalaryHeads->reject(function ($salaryHead) {
+        return preg_replace('/[^a-z0-9]+/', '', strtolower((string) $salaryHead->name)) === 'late';
+    })->values();
+}
 
 $formatMoney = function ($value) {
     return $value === null ? '' : number_format((float) $value, 2, '.', '');
@@ -71,7 +77,7 @@ $formatDateTime = function ($value) {
     <table>
         <thead>
             <tr>
-                <th colspan="{{ 30 + ($leaveCodes->count() * 2) }}">
+                <th colspan="{{ $baseColumnCount + ($leaveCodes->count() * 2) }}">
                     Salary Generation - {{ $monthOptions[(int) $filters['month']] ?? $filters['month'] }} {{ $filters['year'] }} - {{ $filters['branch_name'] }} - {{ $filters['category'] }}
                 </th>
             </tr>
@@ -94,16 +100,24 @@ $formatDateTime = function ($value) {
                 <th>Net</th>
                 <th>Assigned Hour</th>
                 <th>Attendance Hour</th>
-                <th>Absent Hour</th>
-                <th>Late Count</th>
-                <th>Late Penalty</th>
-                <th>Late Amount</th>
-                <th>Absent Count</th>
-                <th>Approved Leave Days</th>
-                <th>Unpaid Absent Days</th>
-                <th>Holiday Days</th>
-                <th>Before DOJ Excluded Days</th>
-                <th>Absent Amount</th>
+                @if($isTsaCategory)
+                    <th>Short Hour</th>
+                    <th>Hourly Rate</th>
+                    <th>Hour Deduction</th>
+                    <th>Holiday Days</th>
+                    <th>Before DOJ Excluded Days</th>
+                @else
+                    <th>Absent Hour</th>
+                    <th>Late Count</th>
+                    <th>Late Penalty</th>
+                    <th>Late Amount</th>
+                    <th>Absent Count</th>
+                    <th>Approved Leave Days</th>
+                    <th>Unpaid Absent Days</th>
+                    <th>Holiday Days</th>
+                    <th>Before DOJ Excluded Days</th>
+                    <th>Absent Amount</th>
+                @endif
                 @foreach($leaveCodes as $leaveCode)
                     <th>{{ $leaveCode }} Alloted</th>
                     <th>{{ $leaveCode }} Balance</th>
@@ -165,16 +179,24 @@ $formatDateTime = function ($value) {
                     <td>{{ $formatRoundedMoney($row->net_salary) }}</td>
                     <td>{{ $formatCount($row->assigned_hours) }}</td>
                     <td>{{ $formatCount($row->attendance_hours) }}</td>
-                    <td>{{ $formatCount($attendanceDetails['absent_hours'] ?? 0) }}</td>
-                    <td>{{ $formatCount($row->late_count ?? 0) }}</td>
-                    <td>{{ $formatCount($row->late_penalty_units ?? 0) }}</td>
-                    <td>{{ $formatMoney($row->late_amount ?? 0) }}</td>
-                    <td>{{ $formatCount($row->absent_days) }}</td>
-                    <td>{{ $formatCount($row->approved_leave_days ?? 0) }}</td>
-                    <td>{{ $formatCount($row->unpaid_absent_days) }}</td>
-                    <td>{{ $formatCount($row->holiday_days ?? 0) }}</td>
-                    <td>{{ $formatCount($row->pre_doj_excluded_days ?? 0) }}</td>
-                    <td>{{ $formatMoney($row->absent_amount) }}</td>
+                    @if($isTsaCategory)
+                        <td>{{ $formatCount($attendanceDetails['short_hours'] ?? 0) }}</td>
+                        <td>{{ $formatMoney($attendanceDetails['hourly_rate'] ?? 0) }}</td>
+                        <td>{{ $formatMoney($row->absent_amount) }}</td>
+                        <td>{{ $formatCount($row->holiday_days ?? 0) }}</td>
+                        <td>{{ $formatCount($row->pre_doj_excluded_days ?? 0) }}</td>
+                    @else
+                        <td>{{ $formatCount($attendanceDetails['absent_hours'] ?? 0) }}</td>
+                        <td>{{ $formatCount($row->late_count ?? 0) }}</td>
+                        <td>{{ $formatCount($row->late_penalty_units ?? 0) }}</td>
+                        <td>{{ $formatMoney($row->late_amount ?? 0) }}</td>
+                        <td>{{ $formatCount($row->absent_days) }}</td>
+                        <td>{{ $formatCount($row->approved_leave_days ?? 0) }}</td>
+                        <td>{{ $formatCount($row->unpaid_absent_days) }}</td>
+                        <td>{{ $formatCount($row->holiday_days ?? 0) }}</td>
+                        <td>{{ $formatCount($row->pre_doj_excluded_days ?? 0) }}</td>
+                        <td>{{ $formatMoney($row->absent_amount) }}</td>
+                    @endif
                     @foreach($leaveCodes as $leaveCode)
                         @php
                             $leave = $leaveDetails[$leaveCode] ?? ['alloted' => 0, 'balance' => 0];
