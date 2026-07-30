@@ -843,6 +843,36 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
     @endif
 
     <section class="roster-create-panel mb-3">
+        <div class="roster-panel-head">
+            <div>
+                <h3 class="roster-panel-title">Mark All Present</h3>
+                <div class="roster-range">
+                    Store scheduled punch-in and punch-out for every VHS teacher. Missing rosters use each employee's latest previous timeslots.
+                </div>
+            </div>
+            <form method="POST"
+                  action="{{ url('employee/schedule-roster/vhs/mark-attendance') }}"
+                  class="d-flex flex-wrap align-items-end gap-2"
+                  onsubmit="return confirm('Mark every VHS teacher present for the selected date? Existing real punch times will be kept.');">
+                @csrf
+                <div>
+                    <label for="vhs_attendance_date" class="form-label">Attendance Date</label>
+                    <input type="date"
+                           name="attendance_date"
+                           id="vhs_attendance_date"
+                           value="{{ old('attendance_date', \Carbon\Carbon::today('Asia/Kolkata')->toDateString()) }}"
+                           max="{{ \Carbon\Carbon::today('Asia/Kolkata')->toDateString() }}"
+                           class="form-control"
+                           required>
+                </div>
+                <button type="submit" class="btn btn-roster-primary">
+                    <i class="fa-solid fa-user-check me-1"></i> Submit
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section class="roster-create-panel mb-3">
         <div class="roster-panel-head mb-3">
             <div>
                 <h3 class="roster-panel-title">Create Individual Roster</h3>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\EmployeeScheduleRoster;
+use App\Services\EmployeeRosterAttendanceService;
 use App\Services\SiteAuthService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -344,6 +345,11 @@ class EmployeeScheduleRosterController extends Controller
         return redirect()->back()->with('success_message', 'VHS roster time updated successfully.');
     }
 
+    public function vhsMarkAttendance(Request $request)
+    {
+        return $this->markRosterAttendance($request, self::VHS_CATEGORIES);
+    }
+
     public function support(Request $request)
     {
         return $this->manualRosterPage(
@@ -385,6 +391,11 @@ class EmployeeScheduleRosterController extends Controller
     public function supportUpdateTime(Request $request)
     {
         return $this->manualRosterUpdateTime($request, self::SUPPORT_CATEGORIES);
+    }
+
+    public function supportMarkAttendance(Request $request)
+    {
+        return $this->markRosterAttendance($request, self::SUPPORT_CATEGORIES);
     }
 
     public function tsa(Request $request)
@@ -514,6 +525,11 @@ class EmployeeScheduleRosterController extends Controller
         return $this->manualRosterDeleteDate($request, self::TSA_CATEGORIES);
     }
 
+    public function tsaMarkAttendance(Request $request)
+    {
+        return $this->markRosterAttendance($request, self::TSA_CATEGORIES);
+    }
+
     public function employeeRosterPdf(Request $request, $employeeId)
     {
         $employee = Employee::where('id', '=', (int) $employeeId)
@@ -630,6 +646,7 @@ class EmployeeScheduleRosterController extends Controller
             'action' => $rosterTitle,
             'rosterTitle' => $rosterTitle,
             'rosterRoute' => $routePath,
+            'attendanceRoute' => $routePath . '/mark-attendance',
             'pdfRoute' => $routePath . '/pdf',
             'copyRoute' => $routePath . '/copy',
             'deleteRoute' => $routePath . '/delete',
@@ -676,6 +693,78 @@ class EmployeeScheduleRosterController extends Controller
         $data = $this->siteAuthService->admin_after_login_layout($pageTitle, $pageName, $data);
 
         return view('front.pages.' . $pageName, $data);
+    }
+
+    private function markRosterAttendance(Request $request, array $categories)
+    {
+        $attendanceDateValue = trim((string) $request->input('attendance_date', ''));
+
+        try {
+            $attendanceDate = Carbon::createFromFormat(
+                'Y-m-d',
+                $attendanceDateValue,
+                'Asia/Kolkata'
+            )->startOfDay();
+        } catch (\Throwable $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error_message', 'Please select a valid attendance date.');
+        }
+
+        if (
+            $attendanceDate->format('Y-m-d') !== $attendanceDateValue
+            || $attendanceDate->greaterThan(Carbon::today('Asia/Kolkata'))
+        ) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error_message', 'Attendance date must be today or an earlier date.');
+        }
+
+        try {
+            $result = app(EmployeeRosterAttendanceService::class)->markPresent(
+                $attendanceDate,
+                $categories,
+                $this->currentUserId()
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error_message', 'Roster attendance could not be saved. Please try again.');
+        }
+
+        if ($result['roster_assignments'] <= 0) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'error_message',
+                    'No selected-date roster or previous employee timeslot was available for '
+                        . $attendanceDate->format('d-m-Y') . '.'
+                );
+        }
+
+        $message = 'Attendance saved for ' . $attendanceDate->format('d-m-Y')
+            . '. Marked present: ' . $result['marked_present']
+            . ', already completed: ' . $result['already_completed']
+            . ', fallback rosters created: ' . $result['fallback_created']
+            . ', fallback rosters restored: ' . $result['fallback_restored'];
+
+        if ($result['skipped_employees'] > 0) {
+            $message .= ', employees skipped without a previous timeslot: ' . $result['skipped_employees'];
+        }
+
+        if ($result['skipped_invalid_time'] > 0) {
+            $message .= ', roster assignments skipped with invalid time: ' . $result['skipped_invalid_time'];
+        }
+
+        return redirect()
+            ->back()
+            ->with('success_message', $message . '.');
     }
 
     private function manualRosterPdf(Request $request, array $allowedCategories, string $title, string $filenamePrefix)
