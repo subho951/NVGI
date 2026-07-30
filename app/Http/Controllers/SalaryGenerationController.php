@@ -20,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class SalaryGenerationController extends Controller
 {
+    private const SALARY_DEDUCTION_DAY_DIVISOR = 30;
+
     protected $siteAuthService;
     protected $data;
 
@@ -689,10 +691,13 @@ class SalaryGenerationController extends Controller
 
         $approvedLeaveDays = round($approvedLeaveDays, 2);
         $unpaidAbsentDays = round($unpaidAbsentDays, 2);
+        $perDaySalary = $grossSalary / self::SALARY_DEDUCTION_DAY_DIVISOR;
         $details = [
             'employment_start_date' => $period['start']->toDateString(),
             'employment_end_date' => $period['end']->toDateString(),
             'eligible_days' => $period['eligible_days'],
+            'deduction_day_divisor' => self::SALARY_DEDUCTION_DAY_DIVISOR,
+            'deduction_day_rate' => round($perDaySalary, 2),
             'absent_hours' => $absentHours,
             'absent_dates' => $absentDates,
             'approved_leave_dates' => collect($absentDates)
@@ -705,17 +710,12 @@ class SalaryGenerationController extends Controller
         ];
 
         if ($this->isTsaCategory($category)) {
-            $hourlySalary = $assignedHours > 0 ? $grossSalary / $assignedHours : 0;
-            $chargeableLateHours = $assignedHours > 0
-                ? min($latePenaltyUnits, max($assignedHours - $absentHours, 0))
-                : 0;
-            $absentAmount = $hourlySalary * $absentHours;
-            $lateAmount = $hourlySalary * $chargeableLateHours;
+            $unpaidAbsentDays = $absentDays;
 
             return [
-                'amount' => round($absentAmount, 2),
+                'amount' => round($perDaySalary * $unpaidAbsentDays, 2),
                 'absent_days' => $absentDays,
-                'unpaid_absent_days' => 0.0,
+                'unpaid_absent_days' => $unpaidAbsentDays,
                 'approved_leave_days' => 0.0,
                 'holiday_days' => count($holidayDates),
                 'pre_doj_excluded_days' => count($preDojDates),
@@ -724,14 +724,12 @@ class SalaryGenerationController extends Controller
                 'absent_hours' => $absentHours,
                 'late_count' => $lateCount,
                 'late_penalty_units' => $latePenaltyUnits,
-                'late_amount' => round($lateAmount, 2),
-                'formula_label' => 'Absent Roster Hour x (Monthly Gross / Assigned Hour)',
-                'late_formula_label' => 'FLOOR(Late Count / 3) x (Monthly Gross / Assigned Hour)',
+                'late_amount' => round($perDaySalary * $latePenaltyUnits, 2),
+                'formula_label' => '(Monthly Gross / 30) x Absent Days',
+                'late_formula_label' => '(Monthly Gross / 30) x FLOOR(Late Count / 3)',
                 'details' => $details,
             ];
         }
-
-        $perDaySalary = $period['days'] > 0 ? $grossSalary / $period['days'] : 0;
 
         return [
             'amount' => round($perDaySalary * $unpaidAbsentDays, 2),
@@ -746,8 +744,8 @@ class SalaryGenerationController extends Controller
             'late_count' => $lateCount,
             'late_penalty_units' => $latePenaltyUnits,
             'late_amount' => round($perDaySalary * $latePenaltyUnits, 2),
-            'formula_label' => '(Monthly Gross / Month Days) x Unpaid Absent Days',
-            'late_formula_label' => '(Monthly Gross / Month Days) x FLOOR(Late Count / 3)',
+            'formula_label' => '(Monthly Gross / 30) x Unpaid Absent Days',
+            'late_formula_label' => '(Monthly Gross / 30) x FLOOR(Late Count / 3)',
             'details' => $details,
         ];
     }

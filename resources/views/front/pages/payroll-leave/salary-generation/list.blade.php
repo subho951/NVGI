@@ -413,7 +413,7 @@ $emptyColspan = 9 + $leaveCodes->count() + ($isTsaCategory ? 1 : 0);
                                                     Late Count: {{ $formatCount($row->absence['late_count'] ?? 0) }}
                                                 </div>
                                                 <div class="salary-generation-muted">
-                                                    Late Penalty: {{ $formatCount($row->absence['late_penalty_units'] ?? 0) }} hour(s)
+                                                    Late Penalty: {{ $formatCount($row->absence['late_penalty_units'] ?? 0) }} day(s)
                                                 </div>
                                                 <div class="salary-generation-muted">
                                                     Late Deduction: {{ $formatMoney($row->absence['late_amount'] ?? 0) }}

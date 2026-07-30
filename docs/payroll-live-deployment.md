@@ -94,6 +94,15 @@ Review the rows, select the employees and generate again. Salary generation uses
 duplicated. If a salary statement/pay slip was already finalized from the old
 calculation, regenerate that statement after regenerating salary.
 
+Absence and late deductions use a fixed 30-day salary rate for every employee
+category and every month:
+
+```text
+Daily deduction rate = Monthly gross salary / 30
+Absent deduction = Daily deduction rate x chargeable absent days
+Late deduction = Daily deduction rate x FLOOR(late count / 3)
+```
+
 Useful verification after generation:
 
 ```sql
