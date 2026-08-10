@@ -481,9 +481,10 @@ class StudentController extends Controller
                     ]);
 
                     $member->refresh();
-                    $this->createStudentFeeTransactionIfMissing($member, ['Admission fee', 'Session fee'], 'Admission fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Admission fee update sync', 3, $admissionFeesValue, 'Cash', null, null, $updatedBy);
-                    $this->createStudentFeeTransactionIfMissing($member, ['Books Fee'], 'Books Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Books Fee update sync', 4, $booksFeeValue, 'Cash', null, null, $updatedBy);
-                    $this->createStudentFeeTransactionIfMissing($member, ['Uniform Fee'], 'Uniform Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Uniform Fee update sync', 4, $uniformFeeValue, 'Cash', null, null, $updatedBy);
+                    // Finance transaction sync is intentionally disabled when editing student information.
+                    // $this->createStudentFeeTransactionIfMissing($member, ['Admission fee', 'Session fee'], 'Admission fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Admission fee update sync', 3, $admissionFeesValue, 'Cash', null, null, $updatedBy);
+                    // $this->createStudentFeeTransactionIfMissing($member, ['Books Fee'], 'Books Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Books Fee update sync', 4, $booksFeeValue, 'Cash', null, null, $updatedBy);
+                    // $this->createStudentFeeTransactionIfMissing($member, ['Uniform Fee'], 'Uniform Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Uniform Fee update sync', 4, $uniformFeeValue, 'Cash', null, null, $updatedBy);
                 });
 
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
