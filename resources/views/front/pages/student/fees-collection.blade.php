@@ -799,7 +799,8 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                             $month_txn_count  = (isset($row->{$monthAlias . '_txn_count'}) ? (int)$row->{$monthAlias . '_txn_count'} : 0);
                             $month_txn_amount = (isset($row->{$monthAlias . '_txn_amount'}) ? (float)$row->{$monthAlias . '_txn_amount'} : 0);
                             $monthName     = date("F", mktime(0, 0, 0, $monthInfo['month'], 1));
-                            $canCollect    = ((float)$month_payable > 0 && (float)$month_paid <= 0 && (float)$month_due > 0 && $month_txn_count <= 0);
+                            $hasTransactionMismatch = (abs((float)$month_paid - $month_txn_amount) > 0.009);
+                            $canCollect    = ((float)$month_payable > 0 && (float)$month_due > 0 && !$hasTransactionMismatch);
                             $statusClass   = 'pending';
                             $statusLabel   = 'Pending';
                             $statusIcon    = 'fa-clock';
@@ -808,26 +809,26 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                                 $statusClass = 'neutral';
                                 $statusLabel = 'No Fee';
                                 $statusIcon  = 'fa-minus';
-                            } elseif ((float)$month_paid > 0 && (float)$month_due > 0) {
-                                $statusClass = 'error';
-                                $statusLabel = 'Due Glitch';
-                                $statusIcon  = 'fa-triangle-exclamation';
                             } elseif ((float)$month_paid > 0 && $month_txn_count <= 0) {
                                 $statusClass = 'error';
                                 $statusLabel = 'Txn Missing';
                                 $statusIcon  = 'fa-triangle-exclamation';
-                            } elseif ((float)$month_paid > 0 && abs(((float)$month_paid) - $month_txn_amount) > 0.009) {
+                            } elseif ($hasTransactionMismatch) {
                                 $statusClass = 'error';
                                 $statusLabel = 'Txn Mismatch';
                                 $statusIcon  = 'fa-triangle-exclamation';
-                            } elseif ((float)$month_paid > 0 && $month_txn_count > 1) {
-                                $statusClass = 'warning';
-                                $statusLabel = 'Multiple Txn';
-                                $statusIcon  = 'fa-circle-info';
+                            } elseif ((float)$month_paid - (float)$month_payable > 0.009) {
+                                $statusClass = 'error';
+                                $statusLabel = 'Overpaid';
+                                $statusIcon  = 'fa-triangle-exclamation';
                             } elseif ((float)$month_paid > 0 && (float)$month_due <= 0) {
                                 $statusClass = 'paid';
                                 $statusLabel = 'Paid';
                                 $statusIcon  = 'fa-circle-check';
+                            } elseif ((float)$month_paid > 0 && (float)$month_due > 0) {
+                                $statusClass = 'warning';
+                                $statusLabel = 'Partially Paid';
+                                $statusIcon  = 'fa-circle-half-stroke';
                             }
                         ?>
                         <td class="month-cell" data-student-id="<?= $row->id ?>" data-month="<?= $monthInfo['month'] ?>">
@@ -883,7 +884,7 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                                             placeholder="Amount"
                                             value="<?= number_format((float)$month_due, 2, '.', '') ?>"
                                             autocomplete="off"
-                                            readonly
+                                            inputmode="decimal"
                                             oninput="allowNumberDot(this)">
 
                                         <button type="submit" class="btn btn-success btn-sm payment-submit-btn" title="Submit">
@@ -1254,7 +1255,6 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
             var bankAccountId = $.trim(form.find('select[name="bank_account_id"]').val());
             var paymentReference = $.trim(form.find('input[name="payment_reference"]').val());
 
-            var payableAmount = parseFloat(form.data('payable')) || 0;
             var dueAmount = parseFloat(form.data('due')) || 0;
             var studentName = form.data('student-name') || 'Student';
             var monthName = form.data('month-name') || 'Month';
@@ -1265,11 +1265,6 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                 return;
             }
 
-            if (amountNumber > payableAmount) {
-                showFeesToast('Payment amount cannot be greater than payable amount for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
-                return;
-            }
-
             if (dueAmount <= 0) {
                 showFeesToast('No due left for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
                 form.addClass('d-none');
@@ -1277,8 +1272,8 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                 return;
             }
 
-            if (Math.abs(amountNumber - dueAmount) > 0.009) {
-                showFeesToast('Please collect the full due amount for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
+            if (amountNumber - dueAmount > 0.009) {
+                showFeesToast('Payment amount cannot be greater than the remaining due for ' + studentName + ' (' + monthName + ' ' + year + ').', 'error');
                 return;
             }
 
@@ -1341,8 +1336,10 @@ $financialMonths = ((isset($financial_months) && is_array($financial_months) && 
                         updateCollectionStatus(monthCell, 'paid', 'Paid', 'fa-circle-check');
                         amountInput.val('');
                     } else {
+                        form.removeClass('d-none');
                         amountInput.val(response.month.due_numeric);
-                        updateCollectionStatus(monthCell, 'pending', 'Pending', 'fa-clock');
+                        form.find('.payment-reference-input').val('');
+                        updateCollectionStatus(monthCell, 'warning', 'Partially Paid', 'fa-circle-half-stroke');
                     }
 
                     showFeesToast(response.message, 'success');

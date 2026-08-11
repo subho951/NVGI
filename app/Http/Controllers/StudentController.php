@@ -422,6 +422,9 @@ class StudentController extends Controller
                 $monthlyFeesValue       = number_format((float)$request->monthly_fees, 2, '.', '');
                 $booksFeeValue          = number_format((float)$request->books_fee, 2, '.', '');
                 $uniformFeeValue        = number_format((float)$request->uniform_fee, 2, '.', '');
+                $originalStudentSerial  = (string)$member->student_id_serial;
+                $originalBooksFeeValue  = number_format((float)$member->books_fee, 2, '.', '');
+                $originalUniformFeeValue = number_format((float)$member->uniform_fee, 2, '.', '');
                 if($request->unit_id == 1){
                     $tsa_subjects = json_encode(array());
                 } else {
@@ -432,7 +435,7 @@ class StudentController extends Controller
                     }
                 }
 
-                DB::transaction(function () use ($member, $request, $student_id_serial, $full_name, $tsa_subjects, $photo, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $booksFeeValue, $uniformFeeValue, $id) {
+                DB::transaction(function () use ($member, $request, $student_id_serial, $full_name, $tsa_subjects, $photo, $updatedBy, $admissionFeesValue, $monthlyFeesValue, $booksFeeValue, $uniformFeeValue, $originalStudentSerial, $originalBooksFeeValue, $originalUniformFeeValue, $id) {
                     $member->update([
                         'student_id_serial'         => $student_id_serial,
                         'unit_id'                   => $request->unit_id,
@@ -477,14 +480,12 @@ class StudentController extends Controller
 
                     StudentPayment::where('student_id', '=', $id)->update([
                         'payable_amount'    => $monthlyFeesValue,
-                        'due_amount'        => DB::raw("CASE WHEN payment_amount > 0 THEN 0 ELSE {$monthlyFeesValue} END"),
+                        'due_amount'        => DB::raw("CASE WHEN {$monthlyFeesValue} > COALESCE(payment_amount, 0) THEN {$monthlyFeesValue} - COALESCE(payment_amount, 0) ELSE 0 END"),
                     ]);
 
                     $member->refresh();
-                    // Finance transaction sync is intentionally disabled when editing student information.
-                    // $this->createStudentFeeTransactionIfMissing($member, ['Admission fee', 'Session fee'], 'Admission fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Admission fee update sync', 3, $admissionFeesValue, 'Cash', null, null, $updatedBy);
-                    // $this->createStudentFeeTransactionIfMissing($member, ['Books Fee'], 'Books Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Books Fee update sync', 4, $booksFeeValue, 'Cash', null, null, $updatedBy);
-                    // $this->createStudentFeeTransactionIfMissing($member, ['Uniform Fee'], 'Uniform Fee collected for '.$full_name.' ('.$student_id_serial.') during student update', 'Uniform Fee update sync', 4, $uniformFeeValue, 'Cash', null, null, $updatedBy);
+                    $this->syncStudentSpecialFeeTransaction($member, $originalStudentSerial, 'Books Fee', $originalBooksFeeValue, $booksFeeValue, $updatedBy);
+                    $this->syncStudentSpecialFeeTransaction($member, $originalStudentSerial, 'Uniform Fee', $originalUniformFeeValue, $uniformFeeValue, $updatedBy);
                 });
 
                 return redirect($this->data['controller_route'] . "/list")->with('success_message', $this->data['title'].' updated successfully !!!');
@@ -1607,9 +1608,26 @@ class StudentController extends Controller
                     ];
                 }
 
-                $payableAmount = (float)$studentPayment->payable_amount;
-                $alreadyPaid   = (float)$studentPayment->payment_amount;
-                $currentDue    = (($alreadyPaid > 0) ? 0 : max($payableAmount, 0));
+                $payableAmount = max((float)$studentPayment->payable_amount, 0);
+                $storedPaidAmount = max((float)$studentPayment->payment_amount, 0);
+                $existingTransaction = Transaction::where('fee_id', '=', $studentPayment->id)
+                                                ->whereNull('deleted_at')
+                                                ->where('status', '!=', 3)
+                                                ->where('type', '=', 'INCOME')
+                                                ->selectRaw('COUNT(*) as txn_count, COALESCE(SUM(transaction_amount), 0) as txn_amount')
+                                                ->first();
+                $existingTransactionCount = (($existingTransaction) ? (int)$existingTransaction->txn_count : 0);
+                $transactionPaidAmount = (($existingTransaction) ? max((float)$existingTransaction->txn_amount, 0) : 0);
+
+                if (abs($storedPaidAmount - $transactionPaidAmount) > 0.009) {
+                    return [
+                        'status'      => false,
+                        'http_status' => 422,
+                        'message'     => 'Payment and transaction totals do not match for '.$student->full_name.' ('.$monthName.' '.$payableYear.'). Please reconcile before collecting again.',
+                    ];
+                }
+
+                $currentDue = $this->calculateStudentPaymentDue($payableAmount, $transactionPaidAmount);
 
                 if ($currentDue <= 0) {
                     return [
@@ -1619,37 +1637,16 @@ class StudentController extends Controller
                     ];
                 }
 
-                if ($enteredAmount > $payableAmount) {
+                if ($enteredAmount - $currentDue > 0.009) {
                     return [
                         'status'      => false,
                         'http_status' => 422,
-                        'message'     => 'Payment amount cannot be greater than payable amount for '.$student->full_name.' ('.$monthName.' '.$payableYear.').',
+                        'message'     => 'Payment amount cannot be greater than the remaining due for '.$student->full_name.' ('.$monthName.' '.$payableYear.').',
                     ];
                 }
 
-                if (abs($enteredAmount - $currentDue) > 0.009) {
-                    return [
-                        'status'      => false,
-                        'http_status' => 422,
-                        'message'     => 'Please collect the full due amount for '.$student->full_name.' ('.$monthName.' '.$payableYear.').',
-                    ];
-                }
-
-                $existingTransaction = Transaction::where('fee_id', '=', $studentPayment->id)
-                                                ->whereNull('deleted_at')
-                                                ->where('status', '!=', 3)
-                                                ->selectRaw('COUNT(*) as txn_count, COALESCE(SUM(transaction_amount), 0) as txn_amount')
-                                                ->first();
-                if ($existingTransaction && (int)$existingTransaction->txn_count > 0) {
-                    return [
-                        'status'      => false,
-                        'http_status' => 422,
-                        'message'     => 'A transaction already exists for '.$student->full_name.' ('.$monthName.' '.$payableYear.'). Please refresh the fees collection page.',
-                    ];
-                }
-
-                $newPaidAmount     = $enteredAmount;
-                $newDueAmount      = 0;
+                $newPaidAmount     = $transactionPaidAmount + $enteredAmount;
+                $newDueAmount      = $this->calculateStudentPaymentDue($payableAmount, $newPaidAmount);
                 $transactionAmount = number_format($enteredAmount, 2, '.', '');
 
                 $studentPayment->update([
@@ -1692,6 +1689,7 @@ class StudentController extends Controller
                     'payable_amount'  => $payableAmount,
                     'paid_amount'     => $newPaidAmount,
                     'due_amount'      => $newDueAmount,
+                    'transaction_count' => $existingTransactionCount + 1,
                 ];
             });
 
@@ -1710,7 +1708,7 @@ class StudentController extends Controller
             $totals = StudentPayment::select(
                                         DB::raw("COALESCE(SUM(payable_amount), 0) as total_payable"),
                                         DB::raw("COALESCE(SUM(payment_amount), 0) as total_paid"),
-                                        DB::raw("COALESCE(SUM(due_amount), 0) as total_due")
+                                        DB::raw("COALESCE(SUM(CASE WHEN payable_amount > COALESCE(payment_amount, 0) THEN payable_amount - COALESCE(payment_amount, 0) ELSE 0 END), 0) as total_due")
                                     )
                                     ->where('student_id', $request->student_id)
                                     ->where(function ($query) use ($financialStartYear, $financialEndYear) {
@@ -1740,7 +1738,7 @@ class StudentController extends Controller
                     'payable_numeric' => $payableAmount,
                     'paid_numeric'    => $newPaidAmount,
                     'due_numeric'     => $newDueAmount,
-                    'transaction_count' => 1,
+                    'transaction_count' => (int)$collectionResult['transaction_count'],
                     'transaction_amount' => $newPaidAmount,
                 ],
                 'total' => [
@@ -2042,6 +2040,7 @@ class StudentController extends Controller
                                         ->where('fee_id', '>', 0)
                                         ->whereNull('deleted_at')
                                         ->where('status', '!=', 3)
+                                        ->where('type', '=', 'INCOME')
                                         ->groupBy('fee_id');
 
         $paymentSubQuery = DB::table('student_payments as sp')
@@ -2060,7 +2059,7 @@ class StudentController extends Controller
 
             $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.payable_amount ELSE 0 END) as {$monthAlias}_payable"));
             $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.payment_amount ELSE 0 END) as {$monthAlias}_paid"));
-            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.due_amount ELSE 0 END) as {$monthAlias}_due"));
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN CASE WHEN sp.payable_amount > COALESCE(sp.payment_amount, 0) THEN sp.payable_amount - COALESCE(sp.payment_amount, 0) ELSE 0 END ELSE 0 END) as {$monthAlias}_due"));
             $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN COALESCE(fee_tx.txn_count, 0) ELSE 0 END) as {$monthAlias}_txn_count"));
             $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN COALESCE(fee_tx.txn_amount, 0) ELSE 0 END) as {$monthAlias}_txn_amount"));
 
@@ -2071,7 +2070,7 @@ class StudentController extends Controller
 
         $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN {$sessionMonthCondition} THEN sp.payable_amount ELSE 0 END) as total_payable"))
                         ->addSelect(DB::raw("SUM(CASE WHEN {$sessionMonthCondition} THEN sp.payment_amount ELSE 0 END) as total_paid"))
-                        ->addSelect(DB::raw("SUM(CASE WHEN {$sessionMonthCondition} THEN sp.due_amount ELSE 0 END) as total_due"))
+                        ->addSelect(DB::raw("SUM(CASE WHEN {$sessionMonthCondition} THEN CASE WHEN sp.payable_amount > COALESCE(sp.payment_amount, 0) THEN sp.payable_amount - COALESCE(sp.payment_amount, 0) ELSE 0 END ELSE 0 END) as total_due"))
                         ->groupBy('sp.student_id');
 
         return $paymentSubQuery;
@@ -2090,12 +2089,12 @@ class StudentController extends Controller
             $monthYear   = (int)$monthConfig['year'];
             $monthAlias  = $monthConfig['alias'];
 
-            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN sp.due_amount ELSE 0 END) as {$monthAlias}"));
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN CASE WHEN sp.payable_amount > COALESCE(sp.payment_amount, 0) THEN sp.payable_amount - COALESCE(sp.payment_amount, 0) ELSE 0 END ELSE 0 END) as {$monthAlias}"));
             $monthConditions[] = "(sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear})";
         }
 
         $monthCondition = implode(' OR ', $monthConditions);
-        $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN {$monthCondition} THEN sp.due_amount ELSE 0 END) as total_due"))
+        $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN {$monthCondition} THEN CASE WHEN sp.payable_amount > COALESCE(sp.payment_amount, 0) THEN sp.payable_amount - COALESCE(sp.payment_amount, 0) ELSE 0 END ELSE 0 END) as total_due"))
                         ->groupBy('sp.student_id');
 
         return $paymentSubQuery;
@@ -2314,6 +2313,89 @@ class StudentController extends Controller
         return $this->createStudentFeeTransaction($student, $particulars, $note, $ledgerId, $amount, $paymentMode, $bankAccountId, $paymentReference, $updatedBy);
     }
 
+    private function syncStudentSpecialFeeTransaction($student, $originalStudentSerial, $feeLabel, $originalAmount, $newAmount, $updatedBy)
+    {
+        $originalAmount = (float)$originalAmount;
+        $newAmount = (float)$newAmount;
+
+        if (abs($originalAmount - $newAmount) <= 0.009) {
+            return null;
+        }
+
+        $studentSerials = array_values(array_unique(array_filter([
+            trim((string)$originalStudentSerial),
+            trim((string)$student->student_id_serial),
+        ], function ($serial) {
+            return $serial !== '';
+        })));
+
+        $transactions = Transaction::whereNull('deleted_at')
+                                ->where('status', '!=', 3)
+                                ->where('type', '=', 'INCOME')
+                                ->where('ledger_id', '=', 4)
+                                ->where('particulars', 'like', $feeLabel . ' collected for %')
+                                ->where(function ($query) use ($studentSerials) {
+                                    foreach ($studentSerials as $studentSerial) {
+                                        $query->orWhere('particulars', 'like', '%(' . $studentSerial . ')%');
+                                    }
+                                })
+                                ->orderBy('id', 'ASC')
+                                ->lockForUpdate()
+                                ->get();
+
+        if ($newAmount <= 0) {
+            foreach ($transactions as $transaction) {
+                $transaction->status = 3;
+                $transaction->updated_by = $updatedBy;
+                $transaction->save();
+                $transaction->delete();
+            }
+
+            return null;
+        }
+
+        $studentName = trim((string)$student->full_name);
+        if ($studentName === '') {
+            $studentName = 'Unknown Student';
+        }
+
+        $particulars = $feeLabel . ' collected for ' . $studentName . ' (' . $student->student_id_serial . ') during student update';
+        $note = $feeLabel . ' amount synchronized from ' . number_format($originalAmount, 2, '.', '') . ' to ' . number_format($newAmount, 2, '.', '') . ' during student update';
+
+        if ($transactions->isEmpty()) {
+            return $this->createStudentFeeTransaction(
+                $student,
+                $particulars,
+                $note,
+                4,
+                $newAmount,
+                'Cash',
+                null,
+                null,
+                $updatedBy
+            );
+        }
+
+        $primaryTransaction = $transactions->shift();
+        $primaryTransaction->update([
+            'unit_id'            => (int)$student->unit_id,
+            'branch_id'          => (int)$student->branch_id,
+            'transaction_amount' => number_format($newAmount, 2, '.', ''),
+            'particulars'        => $particulars,
+            'note'               => $note,
+            'updated_by'         => $updatedBy,
+        ]);
+
+        foreach ($transactions as $duplicateTransaction) {
+            $duplicateTransaction->status = 3;
+            $duplicateTransaction->updated_by = $updatedBy;
+            $duplicateTransaction->save();
+            $duplicateTransaction->delete();
+        }
+
+        return $primaryTransaction;
+    }
+
     private function createStudentFeeTransaction($student, $particulars, $note, $ledgerId, $amount, $paymentMode, $bankAccountId, $paymentReference, $updatedBy)
     {
         if ((float)$amount <= 0) {
@@ -2350,10 +2432,6 @@ class StudentController extends Controller
 
     private function calculateStudentPaymentDue($payableAmount, $paidAmount)
     {
-        if ((float)$paidAmount > 0) {
-            return 0;
-        }
-
-        return max((float)$payableAmount, 0);
+        return max((float)$payableAmount - (float)$paidAmount, 0);
     }
 }
