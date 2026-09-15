@@ -1467,6 +1467,8 @@ class StudentController extends Controller
                                     'students.student_id_serial',
                                     'students.full_name',
                                     'students.father_mobile',
+                                    'students.admission_date',
+                                    'students.status',
                                     'units.name as unit_name',
                                     'branches.name as branch_name',
                                     'sessions.name as session_name',
@@ -1496,6 +1498,17 @@ class StudentController extends Controller
 
             $reportRows = $reportQuery->orderBy('students.full_name', 'ASC')->get();
 
+            $reportTotals = [];
+            foreach ($monthColumns as $monthColumn) {
+                $monthAlias = $monthColumn['alias'];
+                $reportTotals[$monthAlias] = $reportRows->sum(function ($row) use ($monthAlias) {
+                    return (float)($row->{$monthAlias} ?? 0);
+                });
+            }
+            $reportTotals['total_due'] = $reportRows->sum(function ($row) {
+                return (float)($row->total_due ?? 0);
+            });
+
             $unitName   = (($getUnit = Unit::select('name')->where('id', '=', $unitId)->first()) ? $getUnit->name : '');
             $branchName = (($getBranch = Branch::select('name')->where('id', '=', $branchId)->first()) ? $getBranch->name : '');
             $className  = 'ALL';
@@ -1506,6 +1519,7 @@ class StudentController extends Controller
             $reportData = [
                 'rows'                => $reportRows,
                 'month_columns'       => $monthColumns,
+                'report_totals'       => $reportTotals,
                 'collection_session'  => $sessionData['session_name'],
                 'unit_name'           => $unitName,
                 'branch_name'         => $branchName,
@@ -2088,9 +2102,11 @@ class StudentController extends Controller
             $monthNumber = (int)$monthConfig['month'];
             $monthYear   = (int)$monthConfig['year'];
             $monthAlias  = $monthConfig['alias'];
+            $monthEndDate = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $monthYear, $monthNumber)));
+            $admissionCondition = "(st.admission_date IS NULL OR st.admission_date <= '{$monthEndDate}')";
 
-            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} THEN CASE WHEN sp.payable_amount > COALESCE(sp.payment_amount, 0) THEN sp.payable_amount - COALESCE(sp.payment_amount, 0) ELSE 0 END ELSE 0 END) as {$monthAlias}"));
-            $monthConditions[] = "(sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear})";
+            $paymentSubQuery->addSelect(DB::raw("SUM(CASE WHEN sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} AND {$admissionCondition} THEN CASE WHEN sp.payable_amount > COALESCE(sp.payment_amount, 0) THEN sp.payable_amount - COALESCE(sp.payment_amount, 0) ELSE 0 END ELSE 0 END) as {$monthAlias}"));
+            $monthConditions[] = "(sp.payable_month = {$monthNumber} AND sp.payable_year = {$monthYear} AND {$admissionCondition})";
         }
 
         $monthCondition = implode(' OR ', $monthConditions);

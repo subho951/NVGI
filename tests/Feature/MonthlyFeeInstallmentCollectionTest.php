@@ -22,6 +22,7 @@ class MonthlyFeeInstallmentCollectionTest extends TestCase
             $table->string('student_id_serial');
             $table->string('full_name');
             $table->integer('session_id');
+            $table->date('admission_date')->nullable();
             $table->tinyInteger('status')->default(1);
             $table->softDeletes();
             $table->timestamps();
@@ -78,6 +79,7 @@ class MonthlyFeeInstallmentCollectionTest extends TestCase
             'student_id_serial' => 'VHS-BIB-2-0343',
             'full_name' => 'Installment Student',
             'session_id' => 10,
+            'admission_date' => '2026-04-01',
             'status' => 1,
         ]);
         DB::table('student_payments')->insert([
@@ -227,6 +229,65 @@ class MonthlyFeeInstallmentCollectionTest extends TestCase
 
         $this->assertEquals(1000, $dueSummary->aug_due);
         $this->assertEquals(1000, $dueSummary->total_due);
+    }
+
+    public function test_due_report_ignores_months_before_the_student_admission_month(): void
+    {
+        DB::table('students')->where('id', 343)->update([
+            'admission_date' => '2026-09-10',
+        ]);
+        DB::table('student_payments')->where('id', 81)->delete();
+        DB::table('student_payments')->insert([
+            [
+                'student_id' => 343,
+                'unit_id' => 1,
+                'branch_id' => 2,
+                'payable_month' => 7,
+                'payable_year' => 2026,
+                'payable_amount' => 1449,
+                'payment_amount' => 0,
+                'due_amount' => 1449,
+                'created_by' => 1,
+                'updated_by' => 1,
+            ],
+            [
+                'student_id' => 343,
+                'unit_id' => 1,
+                'branch_id' => 2,
+                'payable_month' => 8,
+                'payable_year' => 2026,
+                'payable_amount' => 1449,
+                'payment_amount' => 0,
+                'due_amount' => 1449,
+                'created_by' => 1,
+                'updated_by' => 1,
+            ],
+            [
+                'student_id' => 343,
+                'unit_id' => 1,
+                'branch_id' => 2,
+                'payable_month' => 9,
+                'payable_year' => 2026,
+                'payable_amount' => 1449,
+                'payment_amount' => 0,
+                'due_amount' => 1449,
+                'created_by' => 1,
+                'updated_by' => 1,
+            ],
+        ]);
+
+        $method = new \ReflectionMethod(StudentController::class, 'buildFinancialDueSubQuery');
+        $query = $method->invoke(app(StudentController::class), 10, [
+            ['month' => 7, 'year' => 2026, 'alias' => 'jul_due'],
+            ['month' => 8, 'year' => 2026, 'alias' => 'aug_due'],
+            ['month' => 9, 'year' => 2026, 'alias' => 'sep_due'],
+        ]);
+        $summary = $query->first();
+
+        $this->assertEquals(0, $summary->jul_due);
+        $this->assertEquals(0, $summary->aug_due);
+        $this->assertEquals(1449, $summary->sep_due);
+        $this->assertEquals(1449, $summary->total_due);
     }
 
     private function collect(array $overrides)

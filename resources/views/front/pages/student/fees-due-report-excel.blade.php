@@ -39,12 +39,16 @@
         .text-center {
             text-align: center;
         }
+        .total-row td {
+            background: #edf5ff;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
     <table>
         <tr>
-            <td class="title" colspan="{{ 8 + count($month_columns) }}">NVGI Due Student Report</td>
+            <td class="title" colspan="{{ 10 + count($month_columns) }}">NVGI Due Student Report</td>
         </tr>
         <tr>
             <td class="meta-key">Unit</td>
@@ -73,6 +77,8 @@
                 <th>Unit</th>
                 <th>Branch</th>
                 <th>Class</th>
+                <th>Status</th>
+                <th>Date of Admission</th>
                 @foreach($month_columns as $monthColumn)
                     <th>{{ $monthColumn['name'] }} Due</th>
                 @endforeach
@@ -91,6 +97,8 @@
                         <td>{{ $row->unit_name }}</td>
                         <td>{{ $row->branch_name }}</td>
                         <td>{{ $row->class_name }}</td>
+                        <td class="text-center">{{ ((int)$row->status === 1) ? 'Active' : 'Deactivated' }}</td>
+                        <td class="text-center">{{ (!empty($row->admission_date) && strtotime($row->admission_date)) ? date('d-m-Y', strtotime($row->admission_date)) : '-' }}</td>
                         @foreach($month_columns as $monthColumn)
                             @php
                                 $monthAlias = $monthColumn['alias'];
@@ -101,9 +109,16 @@
                         <td class="number">{{ number_format((float)$row->total_due, 2, '.', '') }}</td>
                     </tr>
                 @endforeach
+                <tr class="total-row">
+                    <td colspan="9" class="number">Total</td>
+                    @foreach($month_columns as $monthColumn)
+                        <td class="number">{{ number_format((float)($report_totals[$monthColumn['alias']] ?? 0), 2, '.', '') }}</td>
+                    @endforeach
+                    <td class="number">{{ number_format((float)($report_totals['total_due'] ?? 0), 2, '.', '') }}</td>
+                </tr>
             @else
                 <tr>
-                    <td colspan="{{ 8 + count($month_columns) }}" class="text-center">No due students found for selected filters.</td>
+                    <td colspan="{{ 10 + count($month_columns) }}" class="text-center">No due students found for selected filters.</td>
                 </tr>
             @endif
         </tbody>
