@@ -751,7 +751,6 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
                            name="attendance_date"
                            id="roster_attendance_date"
                            value="{{ old('attendance_date', \Carbon\Carbon::today('Asia/Kolkata')->toDateString()) }}"
-                           max="{{ \Carbon\Carbon::today('Asia/Kolkata')->toDateString() }}"
                            class="form-control"
                            required>
                 </div>

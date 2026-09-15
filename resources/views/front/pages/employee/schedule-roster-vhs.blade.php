@@ -861,7 +861,6 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
                            name="attendance_date"
                            id="vhs_attendance_date"
                            value="{{ old('attendance_date', \Carbon\Carbon::today('Asia/Kolkata')->toDateString()) }}"
-                           max="{{ \Carbon\Carbon::today('Asia/Kolkata')->toDateString() }}"
                            class="form-control"
                            required>
                 </div>
