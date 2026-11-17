@@ -845,15 +845,15 @@ $pdfUrl = $pdfUrl ?? (url('employee/schedule-roster/vhs/pdf') . '?month=' . urle
     <section class="roster-create-panel mb-3">
         <div class="roster-panel-head">
             <div>
-                <h3 class="roster-panel-title">Mark All Present</h3>
+                <h3 class="roster-panel-title">Mark All Present (Holiday Only)</h3>
                 <div class="roster-range">
-                    Store scheduled punch-in and punch-out for every VHS teacher. Missing rosters use each employee's latest previous timeslots.
+                    On applicable configured holidays only, store scheduled punch-in and punch-out without photos for existing rosters. Working-day punches require manual photo capture.
                 </div>
             </div>
             <form method="POST"
                   action="{{ url('employee/schedule-roster/vhs/mark-attendance') }}"
                   class="d-flex flex-wrap align-items-end gap-2"
-                  onsubmit="return confirm('Mark every VHS teacher present for the selected date? Existing real punch times will be kept.');">
+                  onsubmit="return confirm('Mark existing VHS holiday rosters present using scheduled times without photos? Existing real punch times will be kept.');">
                 @csrf
                 <div>
                     <label for="vhs_attendance_date" class="form-label">Attendance Date</label>

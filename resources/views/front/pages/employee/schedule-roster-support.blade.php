@@ -735,15 +735,15 @@ $entryWorkingDates = collect($entryCalendarDates)->where('is_roster_working_date
     <section class="support-panel mb-3">
         <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
             <div>
-                <h3 class="panel-title">Mark All Present</h3>
+                <h3 class="panel-title">Mark All Present (Holiday Only)</h3>
                 <div class="text-muted fw-semibold">
-                    Store scheduled punch-in and punch-out for every employee. Missing rosters use each employee's latest previous timeslots.
+                    On applicable configured holidays only, store scheduled punch-in and punch-out without photos for existing rosters. Working-day punches require manual photo capture.
                 </div>
             </div>
             <form method="POST"
                   action="{{ url($attendanceRoute) }}"
                   class="d-flex flex-wrap align-items-end gap-2"
-                  onsubmit="return confirm('Mark every employee in this roster present for the selected date? Existing real punch times will be kept.');">
+                  onsubmit="return confirm('Mark existing holiday rosters present using scheduled times without photos? Existing real punch times will be kept.');">
                 @csrf
                 <div>
                     <label class="form-label" for="roster_attendance_date">Attendance Date</label>

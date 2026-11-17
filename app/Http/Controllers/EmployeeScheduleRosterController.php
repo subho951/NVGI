@@ -752,11 +752,11 @@ class EmployeeScheduleRosterController extends Controller
         }
 
         if ($result['roster_assignments'] <= 0) {
-            if ($result['skipped_holidays'] > 0) {
+            if ($result['skipped_non_holidays'] > 0) {
                 return redirect()
                     ->back()
                     ->withInput()
-                    ->with('error_message', 'The selected date is a holiday. Attendance punches were not created.');
+                    ->with('error_message', 'Mark All Present is allowed only for existing rosters on an applicable configured holiday. Working-day punches must be recorded manually with photos.');
             }
 
             return redirect()
@@ -764,7 +764,7 @@ class EmployeeScheduleRosterController extends Controller
                 ->withInput()
                 ->with(
                     'error_message',
-                    'No selected-date roster or previous employee timeslot was available for '
+                    'No eligible existing holiday roster was available for '
                         . $attendanceDate->format('d-m-Y') . '.'
                 );
         }
@@ -772,12 +772,7 @@ class EmployeeScheduleRosterController extends Controller
         $message = 'Attendance saved for ' . $attendanceDate->format('d-m-Y')
             . '. Marked present: ' . $result['marked_present']
             . ', already completed: ' . $result['already_completed']
-            . ', fallback rosters created: ' . $result['fallback_created']
-            . ', fallback rosters restored: ' . $result['fallback_restored'];
-
-        if ($result['skipped_employees'] > 0) {
-            $message .= ', employees skipped without a previous timeslot: ' . $result['skipped_employees'];
-        }
+            . ', working-day rosters skipped: ' . $result['skipped_non_holidays'];
 
         if ($result['skipped_invalid_time'] > 0) {
             $message .= ', roster assignments skipped with invalid time: ' . $result['skipped_invalid_time'];

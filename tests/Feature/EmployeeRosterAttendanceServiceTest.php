@@ -129,6 +129,7 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
 
     public function test_each_roster_page_action_marks_only_its_categories_present(): void
     {
+        $this->insertHoliday();
         $this->insertEmployee(1, 'VHS TEACHER');
         $this->insertEmployee(2, 'TSA TEACHER');
         $this->insertEmployee(3, 'FRONT-DESK');
@@ -169,51 +170,49 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
         $this->assertSame('2026-07-29 15:00', $vhsAttendance->punch_out_at->format('Y-m-d H:i'));
     }
 
-    public function test_missing_tsa_roster_copies_all_latest_previous_timeslots_and_is_idempotent(): void
+    public function test_working_day_does_not_complete_manual_punch_or_create_attendance(): void
     {
-        $this->insertEmployee(2, 'TSA TEACHER');
-        $previousDate = $this->selectedDate->copy()->subDay();
-        $this->insertRoster(2, 'TSA TEACHER', $previousDate, '09:00', '11:00', 1, 'Bibirhat');
-        $this->insertRoster(2, 'TSA TEACHER', $previousDate, '14:00', '16:00', 2, 'Mukundapur');
+        $this->insertEmployee(1, 'VHS TEACHER');
+        $id = $this->insertRoster(1, 'VHS TEACHER', $this->selectedDate, '08:45', '15:30');
+        EmployeeAttendance::create(array_merge(
+            $this->attendanceSnapshot($id, 1, 'VHS TEACHER', '08:45', '15:30'),
+            ['punch_in_at' => $this->selectedDate->copy()->setTime(8, 44), 'punch_in_image' => '/manual.jpg']
+        ));
+        $this->insertEmployee(2, 'VHS TEACHER');
+        $this->insertRoster(2, 'VHS TEACHER', $this->selectedDate, '08:45', '15:30');
 
+        $controller = app(EmployeeScheduleRosterController::class);
+        $response = $controller->vhsMarkAttendance($this->attendanceRequest('/employee/schedule-roster/vhs/mark-attendance'));
+
+        $this->assertTrue($response->getSession()->has('error_message'));
+        $this->assertSame(1, EmployeeAttendance::count());
+        $attendance = EmployeeAttendance::firstOrFail();
+        $this->assertNull($attendance->punch_out_at);
+        $this->assertSame('/manual.jpg', $attendance->punch_in_image);
+        $this->assertSame('08:44', $attendance->punch_in_at->format('H:i'));
+    }
+
+    public function test_holiday_scope_excludes_other_branches_categories_and_deleted_rosters(): void
+    {
+        $this->insertHoliday('Bibirhat', 'VHS TEACHER');
+        $this->insertRoster(1, 'VHS TEACHER', $this->selectedDate, '09:00', '15:00');
+        $this->insertRoster(2, 'VHS TEACHER', $this->selectedDate, '09:00', '15:00', 2, 'Mukundapur');
+        $this->insertRoster(3, 'TSA TEACHER', $this->selectedDate, '09:00', '15:00');
+        $deleted = $this->insertRoster(4, 'VHS TEACHER', $this->selectedDate, '09:00', '15:00');
+        DB::table('employee_schedule_rosters')->where('id', $deleted)->update(['status' => 3]);
         $service = app(EmployeeRosterAttendanceService::class);
-        $firstResult = $service->markPresent($this->selectedDate, ['TSA TEACHER'], 99);
-
-        $this->assertSame(2, $firstResult['fallback_created']);
-        $this->assertSame(2, $firstResult['marked_present']);
-        $this->assertSame(2, DB::table('employee_schedule_rosters')
-            ->where('roster_date', '2026-07-29')
-            ->where('category', 'TSA TEACHER')
-            ->count());
-        $this->assertSame(2, EmployeeAttendance::count());
-        $this->assertDatabaseHas('employee_schedule_rosters', [
-            'employee_id' => 2,
-            'branch_id' => 1,
-            'roster_date' => '2026-07-29',
-            'in_time' => '09:00',
-            'out_time' => '11:00',
-            'created_by' => 99,
-        ]);
-        $this->assertDatabaseHas('employee_schedule_rosters', [
-            'employee_id' => 2,
-            'branch_id' => 2,
-            'roster_date' => '2026-07-29',
-            'in_time' => '14:00',
-            'out_time' => '16:00',
-            'created_by' => 99,
-        ]);
-
-        $secondResult = $service->markPresent($this->selectedDate, ['TSA TEACHER'], 99);
-
-        $this->assertSame(0, $secondResult['fallback_created']);
-        $this->assertSame(0, $secondResult['marked_present']);
-        $this->assertSame(2, $secondResult['already_completed']);
-        $this->assertSame(4, DB::table('employee_schedule_rosters')->count());
-        $this->assertSame(2, EmployeeAttendance::count());
+        $result = $service->markPresent($this->selectedDate, ['VHS TEACHER', 'TSA TEACHER']);
+        $this->assertSame(1, $result['marked_present']);
+        $this->assertSame(2, $result['skipped_non_holidays']);
+        $this->assertSame(1, EmployeeAttendance::firstOrFail()->employee_id);
+        $result = $service->markPresent($this->selectedDate, ['VHS TEACHER', 'TSA TEACHER']);
+        $this->assertSame(1, $result['already_completed']);
+        $this->assertSame(1, EmployeeAttendance::count());
     }
 
     public function test_existing_real_punch_is_preserved_and_absent_attendance_is_converted(): void
     {
+        $this->insertHoliday();
         $this->insertEmployee(3, 'FRONT-DESK');
         $this->insertEmployee(4, 'GROUP-D');
         $frontRosterId = $this->insertRoster(
@@ -276,7 +275,7 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
             ['VHS TEACHER']
         );
 
-        $this->assertSame(1, $result['skipped_employees']);
+        $this->assertSame(0, $result['marked_present']);
         $this->assertSame(0, $result['roster_assignments']);
         $this->assertSame(0, DB::table('employee_schedule_rosters')->count());
         $this->assertSame(0, EmployeeAttendance::count());
@@ -284,6 +283,7 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
 
     public function test_bulk_attendance_skips_rosters_before_employee_joining_date(): void
     {
+        $this->insertHoliday();
         $this->insertEmployee(6, 'VHS TEACHER', '2026-07-30');
         $this->insertRoster(6, 'VHS TEACHER', $this->selectedDate, '10:00', '15:00');
 
@@ -297,7 +297,7 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
         $this->assertSame(0, EmployeeAttendance::count());
     }
 
-    public function test_bulk_attendance_skips_configured_holiday(): void
+    public function test_bulk_attendance_allows_configured_holiday(): void
     {
         $this->insertEmployee(7, 'FRONT-DESK', '2026-07-01');
         $this->insertRoster(7, 'FRONT-DESK', $this->selectedDate, '08:30', '17:30');
@@ -314,9 +314,9 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
             ['FRONT-DESK']
         );
 
-        $this->assertSame(1, $result['skipped_holidays']);
-        $this->assertSame(0, $result['marked_present']);
-        $this->assertSame(0, EmployeeAttendance::count());
+        $this->assertSame(0, $result['skipped_non_holidays']);
+        $this->assertSame(1, $result['marked_present']);
+        $this->assertSame(1, EmployeeAttendance::count());
     }
 
     public function test_holiday_does_not_create_fallback_roster_from_previous_timeslot(): void
@@ -342,12 +342,81 @@ class EmployeeRosterAttendanceServiceTest extends TestCase
             ['GROUP-D']
         );
 
-        $this->assertSame(1, $result['skipped_holidays']);
         $this->assertSame(0, $result['fallback_created']);
         $this->assertSame(0, DB::table('employee_schedule_rosters')
             ->whereDate('roster_date', $this->selectedDate->toDateString())
             ->count());
         $this->assertSame(0, EmployeeAttendance::count());
+    }
+
+    public function test_inactive_holiday_and_future_date_cannot_generate_punches(): void
+    {
+        $this->insertRoster(1, 'VHS TEACHER', $this->selectedDate, '09:00', '15:00');
+        $this->insertHoliday();
+        DB::table('employee_holidays')->update(['status' => 0]);
+        $service = app(EmployeeRosterAttendanceService::class);
+        $result = $service->markPresent($this->selectedDate, ['VHS TEACHER']);
+        $this->assertSame(1, $result['skipped_non_holidays']);
+        $this->assertSame(0, EmployeeAttendance::count());
+
+        $future = Carbon::today('Asia/Kolkata')->addDay();
+        $this->insertRoster(2, 'VHS TEACHER', $future, '09:00', '15:00');
+        DB::table('employee_holidays')->insert([
+            'holiday_date' => $future->toDateString(), 'name' => 'Future Holiday', 'status' => 1,
+        ]);
+        $result = $service->markPresent($future, ['VHS TEACHER']);
+        $this->assertSame(0, $result['marked_present']);
+        $this->assertSame(0, EmployeeAttendance::count());
+    }
+
+    public function test_repair_command_previews_backs_up_and_only_resets_selected_photo_free_punch_outs(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        foreach ([1, 2, 3] as $id) {
+            $roster = $this->insertRoster($id, 'VHS TEACHER', $this->selectedDate, '09:00', '15:00');
+            EmployeeAttendance::create(array_merge(
+                $this->attendanceSnapshot($roster, $id, 'VHS TEACHER', '09:00', '15:00'),
+                [
+                    'punch_in_at' => $this->selectedDate->copy()->setTime(9, 0),
+                    'punch_in_image' => '/in.jpg',
+                    'punch_out_at' => $this->selectedDate->copy()->setTime(15, 0),
+                    'punch_out_image' => $id === 2 ? '/out.jpg' : null,
+                    'punch_out_ip' => '127.0.0.1',
+                    'punch_out_portal_branch_id' => 1,
+                ]
+            ));
+        }
+        $command = 'attendance:reset-photo-free-punch-outs';
+        $this->artisan($command, ['date' => '2026-07-29'])->assertExitCode(0);
+        $this->assertSame(3, EmployeeAttendance::whereNotNull('punch_out_at')->count());
+        $this->artisan($command, ['date' => '2026-07-29', '--ids' => '1,2', '--apply' => true])->assertExitCode(0);
+        $row = EmployeeAttendance::findOrFail(1);
+        $this->assertNull($row->punch_out_at);
+        $this->assertNull($row->punch_out_ip);
+        $this->assertNull($row->punch_out_portal_branch_id);
+        $this->assertSame('/in.jpg', $row->punch_in_image);
+        $this->assertSame('09:00', $row->punch_in_at->format('H:i'));
+        $this->assertSame(2, EmployeeAttendance::whereNotNull('punch_out_at')->count());
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $files = $disk->files('attendance-repairs');
+        $this->assertCount(1, $files);
+        $backup = json_decode($disk->get($files[0]), true);
+        $this->assertCount(1, $backup['records']);
+        $this->assertNotNull($backup['records'][0]['punch_out_at']);
+        $this->artisan($command, ['date' => '2026-07-29', '--ids' => '1,2', '--apply' => true])->assertExitCode(0);
+        $this->assertCount(1, $disk->files('attendance-repairs'));
+        $this->artisan($command, ['date' => '2026-02-30', '--apply' => true])->assertExitCode(1);
+    }
+
+    private function insertHoliday(?string $branch = null, ?string $category = null): void
+    {
+        DB::table('employee_holidays')->insert([
+            'holiday_date' => $this->selectedDate->toDateString(),
+            'name' => 'Test Holiday',
+            'branch_name' => $branch,
+            'category' => $category,
+            'status' => 1,
+        ]);
     }
 
     private function attendanceRequest(string $path): Request
